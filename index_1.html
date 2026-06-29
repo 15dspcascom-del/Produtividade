@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>15ª DSPC — Sistema de Produtividade</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@600;700&display=swap');
+
+:root {
+  --azul: #0a1628;
+  --azul-medio: #102040;
+  --azul-claro: #1a3a6b;
+  --dourado: #c8a84b;
+  --dourado-claro: #e2c97e;
+  --cinza: #f0f2f7;
+  --cinza-borda: #d0d7e3;
+  --texto: #1a2035;
+  --texto-leve: #5a6480;
+  --branco: #ffffff;
+  --verde: #1a7a4a;
+  --vermelho: #b02020;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', sans-serif; background: var(--cinza); color: var(--texto); min-height: 100vh; }
+
+/* ===== TELAS ===== */
+.tela { display: none; }
+.tela.ativa { display: flex; }
+
+/* ===== LOGIN ===== */
+#tela-login {
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--azul) 0%, var(--azul-claro) 100%);
+  padding: 20px;
+}
+
+.login-box {
+  background: var(--branco);
+  border-radius: 14px;
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+}
+
+.login-header { text-align: center; margin-bottom: 36px; }
+
+.brasao {
+  width: 72px; height: 72px;
+  background: var(--azul); border-radius: 50%;
+  margin: 0 auto 16px;
+  display: flex; align-items: center; justify-content: center;
+  border: 3px solid var(--dourado);
+}
+.brasao svg { width: 38px; height: 38px; fill: var(--dourado); }
+
+.login-header h1 { font-family: 'Rajdhani', sans-serif; font-size: 20px; color: var(--azul); letter-spacing: 1px; line-height: 1.3; }
+.login-header p { font-size: 11px; color: var(--texto-leve); margin-top: 5px; letter-spacing: 0.5px; text-transform: uppercase; }
+
+.f-label { display: block; font-size: 11px; font-weight: 600; color: var(--texto-leve); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+.f-input, .f-select {
+  width: 100%; padding: 11px 14px;
+  border: 1.5px solid var(--cinza-borda); border-radius: 8px;
+  font-size: 14px; font-family: 'Inter', sans-serif; color: var(--texto);
+  background: var(--branco); transition: border-color 0.2s; margin-bottom: 18px;
+  appearance: none;
+}
+.f-input:focus, .f-select:focus { outline: none; border-color: var(--azul-claro); box-shadow: 0 0 0 3px rgba(26,58,107,0.09); }
+
+.btn-primario {
+  width: 100%; padding: 13px;
+  background: var(--azul); color: var(--branco);
+  border: none; border-radius: 8px;
+  font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif;
+  letter-spacing: 0.5px; cursor: pointer; transition: background 0.2s;
+}
+.btn-primario:hover { background: var(--azul-claro); }
+
+.msg-erro { color: var(--vermelho); font-size: 12px; text-align: center; margin-top: 10px; min-height: 18px; }
+
+/* ===== TOPBAR ===== */
+.topbar {
+  background: var(--azul); color: var(--branco);
+  padding: 13px 28px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 3px solid var(--dourado);
+  position: sticky; top: 0; z-index: 100;
+}
+.topbar-esq { display: flex; align-items: center; gap: 12px; }
+.topbar-logo {
+  width: 40px; height: 40px;
+  background: rgba(200,168,75,0.12); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--dourado); flex-shrink: 0;
+}
+.topbar-logo svg { width: 20px; height: 20px; fill: var(--dourado); }
+.topbar-titulo { font-family: 'Rajdhani', sans-serif; font-size: 17px; letter-spacing: 1px; }
+.topbar-sub { font-size: 10px; color: var(--dourado-claro); margin-top: 1px; }
+.topbar-dir { display: flex; align-items: center; gap: 10px; }
+.badge {
+  background: rgba(200,168,75,0.15); border: 1px solid var(--dourado);
+  color: var(--dourado-claro); padding: 5px 12px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+}
+.btn-sair {
+  background: transparent; border: 1px solid rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.65); padding: 5px 13px; border-radius: 6px;
+  font-size: 11px; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s;
+}
+.btn-sair:hover { border-color: white; color: white; }
+
+/* ===== LAYOUT APP ===== */
+#app { display: none; flex-direction: column; min-height: 100vh; }
+.app-corpo { flex: 1; }
+
+/* ===== TELA SELEÇÃO ===== */
+#tela-selecao {
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: calc(100vh - 73px);
+  padding: 40px 20px;
+}
+.selecao-box { width: 100%; max-width: 720px; }
+.selecao-titulo { text-align: center; margin-bottom: 12px; }
+.selecao-titulo h2 { font-family: 'Rajdhani', sans-serif; font-size: 26px; color: var(--azul); letter-spacing: 1px; }
+.selecao-delegacia {
+  text-align: center; margin-bottom: 36px;
+  background: var(--branco); border: 1.5px solid var(--cinza-borda);
+  border-radius: 10px; padding: 14px 20px;
+}
+.selecao-delegacia span { font-size: 12px; color: var(--texto-leve); text-transform: uppercase; letter-spacing: 0.7px; display: block; margin-bottom: 4px; }
+.selecao-delegacia strong { font-size: 17px; color: var(--azul); font-family: 'Rajdhani', sans-serif; letter-spacing: 0.5px; }
+
+.modal-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.modal-card {
+  background: var(--branco); border: 2px solid var(--cinza-borda);
+  border-radius: 12px; padding: 28px 16px; text-align: center;
+  cursor: pointer; transition: all 0.22s;
+}
+.modal-card:hover { border-color: var(--azul-claro); box-shadow: 0 8px 24px rgba(10,22,40,0.1); transform: translateY(-3px); }
+.modal-icon { width: 56px; height: 56px; border-radius: 12px; margin: 0 auto 14px; display: flex; align-items: center; justify-content: center; }
+.ic-exp { background: rgba(10,22,40,0.07); }
+.ic-pla { background: rgba(26,122,74,0.09); }
+.ic-bo  { background: rgba(200,168,75,0.11); }
+.modal-card h3 { font-family: 'Rajdhani', sans-serif; font-size: 17px; color: var(--azul); letter-spacing: 0.5px; margin-bottom: 6px; }
+.modal-card p { font-size: 11px; color: var(--texto-leve); line-height: 1.5; }
+
+/* ===== ADMIN ===== */
+#tela-admin {
+  flex-direction: column;
+  min-height: calc(100vh - 73px);
+  padding: 32px;
+  max-width: 900px; margin: 0 auto; width: 100%;
+}
+.admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+.admin-header h2 { font-family: 'Rajdhani', sans-serif; font-size: 22px; color: var(--azul); letter-spacing: 0.5px; }
+.btn-novo {
+  padding: 10px 20px; background: var(--azul); color: white;
+  border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+  font-family: 'Inter', sans-serif; cursor: pointer; transition: background 0.2s;
+}
+.btn-novo:hover { background: var(--azul-claro); }
+
+.tabela-wrap { background: var(--branco); border: 1.5px solid var(--cinza-borda); border-radius: 10px; overflow: hidden; }
+table { width: 100%; border-collapse: collapse; }
+thead { background: var(--azul); color: white; }
+thead th { padding: 12px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.7px; text-align: left; font-weight: 600; }
+tbody tr { border-bottom: 1px solid var(--cinza-borda); }
+tbody tr:last-child { border-bottom: none; }
+tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
+.badge-del { background: rgba(10,22,40,0.07); color: var(--azul); padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.btn-editar, .btn-excluir {
+  padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  font-family: 'Inter', sans-serif; cursor: pointer; border: none; transition: all 0.2s;
+}
+.btn-editar { background: rgba(26,58,107,0.1); color: var(--azul-claro); margin-right: 6px; }
+.btn-editar:hover { background: var(--azul-claro); color: white; }
+.btn-excluir { background: rgba(176,32,32,0.08); color: var(--vermelho); }
+.btn-excluir:hover { background: var(--vermelho); color: white; }
+
+.admin-loading { text-align: center; padding: 40px; color: var(--texto-leve); font-size: 14px; }
+
+/* ===== MODAL ESCRIVÃO ===== */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: none; align-items: center; justify-content: center; z-index: 200;
+}
+.overlay.aberto { display: flex; }
+.modal-esc {
+  background: var(--branco); border-radius: 12px;
+  padding: 36px; width: 90%; max-width: 460px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.modal-esc h3 { font-family: 'Rajdhani', sans-serif; font-size: 20px; color: var(--azul); margin-bottom: 24px; letter-spacing: 0.5px; }
+.modal-esc .f-label { margin-top: 14px; }
+.modal-esc-acoes { display: flex; gap: 10px; margin-top: 24px; }
+.btn-cancelar {
+  flex: 1; padding: 11px; background: transparent;
+  border: 1.5px solid var(--cinza-borda); border-radius: 8px;
+  font-size: 13px; color: var(--texto-leve); cursor: pointer; font-family: 'Inter', sans-serif;
+}
+.btn-salvar {
+  flex: 2; padding: 11px; background: var(--azul); color: white;
+  border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+  font-family: 'Inter', sans-serif; cursor: pointer; transition: background 0.2s;
+}
+.btn-salvar:hover { background: var(--azul-claro); }
+
+/* ===== FORMULÁRIO ===== */
+#tela-formulario { display: none; padding: 28px 32px; max-width: 920px; margin: 0 auto; flex-direction: column; }
+
+.form-header { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; padding-bottom: 18px; border-bottom: 2px solid var(--cinza-borda); }
+.btn-voltar {
+  background: transparent; border: 1.5px solid var(--cinza-borda); color: var(--texto-leve);
+  padding: 8px 16px; border-radius: 8px; font-size: 12px; cursor: pointer;
+  font-family: 'Inter', sans-serif; transition: all 0.2s;
+}
+.btn-voltar:hover { border-color: var(--azul-claro); color: var(--azul); }
+.form-header-info h2 { font-family: 'Rajdhani', sans-serif; font-size: 20px; color: var(--azul); letter-spacing: 0.5px; }
+.form-header-info p { font-size: 12px; color: var(--texto-leve); margin-top: 2px; }
+
+.form-meta {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+  margin-bottom: 28px; background: var(--branco);
+  padding: 18px; border-radius: 10px; border: 1.5px solid var(--cinza-borda);
+}
+.fm-item label { display: block; font-size: 11px; font-weight: 600; color: var(--texto-leve); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 5px; }
+.fm-item input, .fm-item select {
+  width: 100%; padding: 9px 11px; border: 1.5px solid var(--cinza-borda);
+  border-radius: 6px; font-size: 13px; font-family: 'Inter', sans-serif; color: var(--texto);
+}
+.fm-item input:focus, .fm-item select:focus { outline: none; border-color: var(--azul-claro); }
+
+/* Seções de campo */
+.c-secao { background: var(--branco); border: 1.5px solid var(--cinza-borda); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+.c-secao-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 18px; background: var(--azul); cursor: pointer; user-select: none;
+}
+.c-secao-head-esq { display: flex; align-items: center; gap: 10px; }
+.c-num {
+  background: var(--dourado); color: var(--azul);
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; flex-shrink: 0;
+}
+.c-secao-head h3 { font-size: 12px; font-weight: 600; color: var(--branco); letter-spacing: 0.2px; }
+.c-toggle { color: var(--dourado); font-size: 16px; transition: transform 0.2s; }
+.c-secao-head.aberto .c-toggle { transform: rotate(180deg); }
+.c-body { padding: 18px; display: none; }
+.c-body.aberto { display: block; }
+
+.c-row { display: grid; gap: 10px; margin-bottom: 10px; }
+.c-row.c1 { grid-template-columns: 1fr; }
+.c-row.c2 { grid-template-columns: 120px 1fr; }
+.c-row.c3 { grid-template-columns: 100px 1fr 1fr; }
+.c-row.c4 { grid-template-columns: 90px 1fr 1fr 1fr; }
+
+.c-grupo label { display: block; font-size: 10px; font-weight: 600; color: var(--texto-leve); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
+.c-grupo input, .c-grupo select, .c-grupo textarea {
+  width: 100%; padding: 8px 11px; border: 1.5px solid var(--cinza-borda);
+  border-radius: 6px; font-size: 13px; font-family: 'Inter', sans-serif; color: var(--texto);
+  transition: border-color 0.2s;
+}
+.c-grupo input:focus, .c-grupo select:focus, .c-grupo textarea:focus {
+  outline: none; border-color: var(--azul-claro); box-shadow: 0 0 0 2px rgba(26,58,107,0.07);
+}
+
+.btn-add-linha {
+  background: transparent; border: 1.5px dashed var(--cinza-borda); color: var(--texto-leve);
+  padding: 7px 14px; border-radius: 6px; font-size: 11px; cursor: pointer;
+  font-family: 'Inter', sans-serif; width: 100%; margin-top: 4px; transition: all 0.2s;
+}
+.btn-add-linha:hover { border-color: var(--azul-claro); color: var(--azul); }
+
+.linha-removivel { position: relative; }
+.btn-rm {
+  position: absolute; right: -8px; top: 22px;
+  background: var(--vermelho); color: white; border: none;
+  width: 18px; height: 18px; border-radius: 50%; font-size: 10px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+
+.form-acoes { display: flex; gap: 10px; margin-top: 28px; padding-top: 20px; border-top: 2px solid var(--cinza-borda); }
+.btn-enviar {
+  flex: 1; padding: 13px; background: var(--azul); color: white;
+  border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
+  font-family: 'Inter', sans-serif; cursor: pointer; transition: background 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-enviar:hover { background: var(--azul-claro); }
+.btn-enviar:disabled { background: var(--texto-leve); cursor: not-allowed; }
+.btn-limpar {
+  padding: 13px 22px; background: transparent; color: var(--texto-leve);
+  border: 1.5px solid var(--cinza-borda); border-radius: 8px; font-size: 13px;
+  font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s;
+}
+.btn-limpar:hover { border-color: var(--vermelho); color: var(--vermelho); }
+
+/* Spinner */
+.spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Modal feedback */
+.overlay-feedback { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 300; }
+.overlay-feedback.aberto { display: flex; }
+.modal-fb { background: var(--branco); border-radius: 12px; padding: 36px; max-width: 380px; width: 90%; text-align: center; }
+.fb-icon { width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 26px; }
+.fb-icon.ok { background: rgba(26,122,74,0.1); color: var(--verde); }
+.fb-icon.err { background: rgba(176,32,32,0.1); color: var(--vermelho); }
+.modal-fb h3 { font-size: 18px; color: var(--azul); margin-bottom: 8px; }
+.modal-fb p { font-size: 13px; color: var(--texto-leve); margin-bottom: 22px; }
+.btn-fb { padding: 11px 28px; background: var(--azul); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; }
+
+@media (max-width: 640px) {
+  .modal-cards { grid-template-columns: 1fr; }
+  .form-meta { grid-template-columns: 1fr; }
+  .c-row.c3, .c-row.c4, .c-row.c2 { grid-template-columns: 1fr; }
+  #tela-formulario, #tela-admin { padding: 16px; }
+  .topbar { padding: 11px 14px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="tela-login" class="tela ativa">
+  <div class="login-box">
+    <div class="login-header">
+      <div class="brasao">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4l6 2.67V11c0 3.83-2.56 7.42-6 8.58C8.56 18.42 6 14.83 6 11V7.67L12 5z"/></svg>
+      </div>
+      <h1>POLÍCIA CIVIL<br>15ª DSPC — PATOS/PB</h1>
+      <p>Sistema de Produtividade</p>
+    </div>
+    <label class="f-label">Nome</label>
+    <input class="f-input" type="text" id="login-nome" placeholder="Seu nome completo" autocomplete="off" />
+    <label class="f-label">Senha</label>
+    <input class="f-input" type="password" id="login-senha" placeholder="Sua senha" />
+    <button class="btn-primario" onclick="fazerLogin()">ENTRAR</button>
+    <div class="msg-erro" id="msg-erro-login"></div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-esq">
+      <div class="topbar-logo">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4l6 2.67V11c0 3.83-2.56 7.42-6 8.58C8.56 18.42 6 14.83 6 11V7.67L12 5z"/></svg>
+      </div>
+      <div>
+        <div class="topbar-titulo">15ª DSPC — PATOS/PB</div>
+        <div class="topbar-sub">Sistema de Produtividade</div>
+      </div>
+    </div>
+    <div class="topbar-dir">
+      <div class="badge" id="badge-usuario">—</div>
+      <button class="btn-sair" onclick="sair()">Sair</button>
+    </div>
+  </div>
+
+  <div class="app-corpo">
+
+    <!-- SELEÇÃO DE MODALIDADE -->
+    <div id="tela-selecao" class="tela">
+      <div class="selecao-box">
+        <div class="selecao-titulo"><h2>SELECIONE A MODALIDADE</h2></div>
+        <div class="selecao-delegacia">
+          <span>Delegacia vinculada</span>
+          <strong id="label-delegacia">—</strong>
+        </div>
+        <div class="modal-cards">
+          <div class="modal-card" onclick="abrirFormulario('expediente')">
+            <div class="modal-icon ic-exp">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="#0a1628"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+            </div>
+            <h3>EXPEDIENTE</h3>
+            <p>Registro diário — 28 procedimentos</p>
+          </div>
+          <div class="modal-card" onclick="abrirFormulario('plantao')">
+            <div class="modal-icon ic-pla">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="#1a7a4a"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+            </div>
+            <h3>PLANTÃO</h3>
+            <p>Registro de plantão — 9 procedimentos</p>
+          </div>
+          <div class="modal-card" onclick="abrirFormulario('bo')">
+            <div class="modal-icon ic-bo">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="#c8a84b"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+            </div>
+            <h3>SETOR DE B.O.</h3>
+            <p>Registro de boletins — manhã/tarde</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="tela-admin" class="tela" style="flex-direction:column;">
+      <div class="admin-header">
+        <h2>GERENCIAR ESCRIVÃES</h2>
+        <button class="btn-novo" onclick="abrirModalEscrivao()">+ Novo Escrivão</button>
+      </div>
+      <div class="tabela-wrap">
+        <div class="admin-loading" id="admin-loading">Carregando...</div>
+        <table id="tabela-escrivaes" style="display:none">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Delegacia</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-escrivaes"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- FORMULÁRIO -->
+    <div id="tela-formulario" style="display:none; flex-direction:column; padding:28px 32px; max-width:920px; margin:0 auto;">
+      <div class="form-header">
+        <button class="btn-voltar" onclick="voltarSelecao()">← Voltar</button>
+        <div class="form-header-info">
+          <h2 id="form-titulo">EXPEDIENTE</h2>
+          <p id="form-sub">Preencha os procedimentos</p>
+        </div>
+      </div>
+      <div class="form-meta">
+        <div class="fm-item">
+          <label>Data</label>
+          <input type="date" id="meta-data" />
+        </div>
+        <div class="fm-item" id="wrap-horario">
+          <label>Horário</label>
+          <input type="text" id="meta-horario" placeholder="ex: 08h às 18h" />
+        </div>
+        <div class="fm-item" id="wrap-turno" style="display:none">
+          <label>Turno</label>
+          <select id="meta-turno"><option value="Manhã">Manhã</option><option value="Tarde">Tarde</option></select>
+        </div>
+        <div class="fm-item">
+          <label>Escrivão</label>
+          <input type="text" id="meta-escrivao" readonly />
+        </div>
+      </div>
+      <div id="campos-container"></div>
+      <div class="form-acoes">
+        <button class="btn-limpar" onclick="limparForm()">Limpar</button>
+        <button class="btn-enviar" id="btn-enviar" onclick="enviar()">
+          <span id="btn-txt">Enviar Registro</span>
+          <div class="spinner" id="spinner"></div>
+        </button>
+      </div>
+    </div>
+
+  </div><!-- fim app-corpo -->
+</div><!-- fim app -->
+
+<!-- Modal Escrivão -->
+<div class="overlay" id="overlay-esc">
+  <div class="modal-esc">
+    <h3 id="modal-esc-titulo">Novo Escrivão</h3>
+    <input type="hidden" id="esc-id-edit" value="" />
+    <label class="f-label">Nome completo</label>
+    <input class="f-input" type="text" id="esc-nome" placeholder="Nome do escrivão" />
+    <label class="f-label">Senha</label>
+    <input class="f-input" type="text" id="esc-senha" placeholder="Defina uma senha" />
+    <label class="f-label">Delegacia vinculada</label>
+    <select class="f-select" id="esc-delegacia">
+      <option value="">Selecione...</option>
+      <optgroup label="Municipais">
+        <option>1ª DD</option><option>Cacimba de Areia</option>
+        <option>2ª DD</option><option>São José de Espinharas</option>
+        <option>Malta</option><option>Condado</option><option>Vista Serrana</option>
+        <option>Santa Luzia</option><option>Várzea</option>
+        <option>Junco do Seridó</option><option>São José do Sabugi</option>
+        <option>Teixeira</option><option>Desterro</option><option>Cacimbas</option>
+        <option>Mãe D'água</option><option>Maturéia</option>
+        <option>São Mamede</option><option>Passagem</option>
+        <option>Santa Terezinha</option><option>São José do Bonfim</option>
+        <option>Areia de Baraúnas</option><option>Quixaba</option>
+      </optgroup>
+      <optgroup label="Especializadas">
+        <option>DEAM</option><option>DRF</option><option>DHE</option>
+      </optgroup>
+    </select>
+    <div class="modal-esc-acoes">
+      <button class="btn-cancelar" onclick="fecharModalEsc()">Cancelar</button>
+      <button class="btn-salvar" onclick="salvarEscrivao()">Salvar</button>
+    </div>
+    <div class="msg-erro" id="msg-erro-esc"></div>
+  </div>
+</div>
+
+<!-- Modal Feedback -->
+<div class="overlay-feedback" id="overlay-fb">
+  <div class="modal-fb">
+    <div class="fb-icon" id="fb-icon">✓</div>
+    <h3 id="fb-titulo"></h3>
+    <p id="fb-msg"></p>
+    <button class="btn-fb" onclick="fecharFeedback()">OK</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIGURAÇÃO
+// ============================================================
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxHTHk68GGsnieua1zbjg0QLo-fqrwR3CuP5N8JunTaNTF_TbOgahh0_uPapbo29A0G/exec';
+
+// ============================================================
+// CAMPOS DOS FORMULÁRIOS
+// ============================================================
+const CAMPOS_EXP = [
+  { id:'bos', titulo:'BOs — Boletins de Ocorrência', sub:['quantidade','crime','cidade'] },
+  { id:'apfs', titulo:'APFs — Autos de Prisão em Flagrante', sub:['quantidade','crime','cidade'] },
+  { id:'aafai', titulo:'AAFAIs', sub:['quantidade','crime','cidade'] },
+  { id:'tcos', titulo:'TCOs — Termos Circunstanciados', sub:['quantidade','crime','cidade'] },
+  { id:'bocs', titulo:'BOCs — Boletins Circunstanciados', sub:['quantidade','crime','cidade'] },
+  { id:'med_prot', titulo:'Medidas Protetivas', sub:['quantidade','crime','cidade'] },
+  { id:'repr_prisao', titulo:'Representações por Prisão', sub:['quantidade','crime','cidade'] },
+  { id:'repr_busca', titulo:'Representações por Buscas', sub:['quantidade','crime','cidade'] },
+  { id:'pris_flagrante', titulo:'Prisões em Flagrante', sub:['quantidade','crime','cidade'] },
+  { id:'pris_mandado', titulo:'Prisões por Cumprimento de Mandados', sub:['quantidade','crime','cidade'] },
+  { id:'req_exames', titulo:'Requisições de Exames', sub:['quantidade','crime','cidade'] },
+  { id:'oitivas', titulo:'Oitivas', sub:['quantidade','crime','cidade'] },
+  { id:'ord_missao', titulo:'Ordens de Missão Expedidas', sub:['quantidade','cidade'] },
+  { id:'bos_ip', titulo:'BOs Transformados em IP', sub:['quantidade','crime','cidade'] },
+  { id:'cotas_min', titulo:'Cotas Ministeriais Cumpridas Lançadas no PJE', sub:['quantidade'] },
+  { id:'prot_pje', titulo:'Protocolados no PJE', sub:['quantidade','procedimento','crime'] },
+  { id:'intimacoes', titulo:'Intimações Cumpridas', sub:['quantidade','crime','cidade'] },
+  { id:'oficios', titulo:'Ofícios Confeccionados', sub:['quantidade'] },
+  { id:'despachos', titulo:'Despachos e Deliberações', sub:['quantidade'] },
+  { id:'rel_missao', titulo:'Relatórios de Missão Confeccionados pela Equipe', sub:['quantidade'] },
+  { id:'cond_presos', titulo:'Condução de Presos', sub:['quantidade','crime','cidade'] },
+  { id:'armas', titulo:'Armas Apreendidas', sub:['quantidade','crime','cidade'] },
+  { id:'drogas', titulo:'Drogas Apreendidas', sub:['quantidade','crime','cidade'] },
+  { id:'veiculos', titulo:'Veículos Encaminhados ao Fórum/DETRAN ou Devolvidos', sub:['quantidade','crime','cidade'] },
+  { id:'aud_custodia', titulo:'Audiências de Custódia', sub:['quantidade','crime','cidade'] },
+  { id:'operacoes', titulo:'Participação em Operações Policiais (pela equipe da DP)', sub:['quantidade','crime','cidade'] },
+  { id:'diligencias', titulo:'Diligências Diversas', sub:['quantidade','crime','cidade'] },
+  { id:'atendimentos', titulo:'Atendimentos Diversos', sub:['quantidade','descrição','cidade'] },
+];
+
+const CAMPOS_PLA = [
+  { id:'bos', titulo:'BOs — Boletins de Ocorrência', sub:['quantidade','crime','cidade'] },
+  { id:'apfs', titulo:'APFs — Autos de Prisão em Flagrante', sub:['quantidade','crime','cidade'] },
+  { id:'tcos', titulo:'TCOs — Termos Circunstanciados', sub:['quantidade','crime','cidade'] },
+  { id:'bocs', titulo:'BOCs — Boletins Circunstanciados', sub:['quantidade','crime','cidade'] },
+  { id:'med_prot', titulo:'Medidas Protetivas', sub:['quantidade','crime','cidade'] },
+  { id:'atendimentos', titulo:'Atendimentos', sub:['quantidade','descrição','cidade'] },
+  { id:'oitivas', titulo:'Oitivas', sub:['quantidade','tipo (depoimento/declaração/interrogatório)'] },
+  { id:'req_ecd', titulo:'Confecção de Requisições de Exames de Corpo de Delito', sub:['quantidade','tipo de exame','crime','cidade'] },
+  { id:'outras_ocor', titulo:'Outras Ocorrências', sub:['quantidade','descrição'] },
+];
+
+const CAMPOS_BO = [
+  { id:'boletins', titulo:'Boletins de Ocorrência', sub:['quantidade','crime','delegacia'] },
+];
+
+// ============================================================
+// ESTADO
+// ============================================================
+let usuarioLogado = null; // { nome, delegacia, isAdmin }
+let modalidadeAtual = '';
+let linhaCounters = {};
+
+// ============================================================
+// LOGIN
+// ============================================================
+async function fazerLogin() {
+  const nome = document.getElementById('login-nome').value.trim();
+  const senha = document.getElementById('login-senha').value;
+  const erroEl = document.getElementById('msg-erro-login');
+  erroEl.textContent = '';
+
+  if (!nome || !senha) { erroEl.textContent = 'Preencha nome e senha.'; return; }
+
+  // Admin hardcoded
+  if (nome.toLowerCase() === 'admin' && senha === 'admin@15dspc') {
+    usuarioLogado = { nome: 'Administrador', delegacia: null, isAdmin: true };
+    entrarNoApp();
+    return;
+  }
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=login&nome=' + encodeURIComponent(nome) + '&senha=' + encodeURIComponent(senha));
+    const data = await resp.json();
+    if (data.status === 'ok') {
+      usuarioLogado = { nome: data.nome, delegacia: data.delegacia, isAdmin: false };
+      entrarNoApp();
+    } else {
+      erroEl.textContent = 'Nome ou senha incorretos.';
+    }
+  } catch(e) {
+    erroEl.textContent = 'Erro de conexão com o servidor.';
+  }
+}
+
+document.getElementById('login-senha').addEventListener('keydown', e => { if(e.key==='Enter') fazerLogin(); });
+
+function entrarNoApp() {
+  document.getElementById('tela-login').classList.remove('ativa');
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('app').style.flexDirection = 'column';
+  document.getElementById('badge-usuario').textContent = usuarioLogado.nome;
+
+  if (usuarioLogado.isAdmin) {
+    mostrarTela('admin');
+    carregarEscrivaes();
+  } else {
+    document.getElementById('label-delegacia').textContent = usuarioLogado.delegacia;
+    mostrarTela('selecao');
+  }
+}
+
+function sair() {
+  usuarioLogado = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('tela-login').classList.add('ativa');
+  document.getElementById('login-nome').value = '';
+  document.getElementById('login-senha').value = '';
+  esconderTodasTelas();
+}
+
+// ============================================================
+// NAVEGAÇÃO DE TELAS
+// ============================================================
+function mostrarTela(id) {
+  esconderTodasTelas();
+  const el = document.getElementById('tela-' + id);
+  if (el) { el.classList.add('ativa'); el.style.display = 'flex'; }
+}
+
+function esconderTodasTelas() {
+  ['tela-selecao','tela-admin'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.classList.remove('ativa'); el.style.display = 'none'; }
+  });
+  document.getElementById('tela-formulario').style.display = 'none';
+}
+
+function voltarSelecao() {
+  document.getElementById('tela-formulario').style.display = 'none';
+  mostrarTela('selecao');
+}
+
+// ============================================================
+// FORMULÁRIO
+// ============================================================
+function abrirFormulario(modalidade) {
+  modalidadeAtual = modalidade;
+  linhaCounters = {};
+  esconderTodasTelas();
+  document.getElementById('tela-formulario').style.display = 'flex';
+
+  const titulosMap = { expediente:'EXPEDIENTE', plantao:'PLANTÃO', bo:'SETOR DE B.O.' };
+  const subMap = { expediente:'28 procedimentos', plantao:'9 procedimentos', bo:'Boletins por turno' };
+  document.getElementById('form-titulo').textContent = titulosMap[modalidade];
+  document.getElementById('form-sub').textContent = subMap[modalidade];
+  document.getElementById('meta-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('meta-escrivao').value = usuarioLogado.nome;
+
+  document.getElementById('wrap-turno').style.display = modalidade === 'bo' ? 'block' : 'none';
+  document.getElementById('wrap-horario').style.display = modalidade === 'bo' ? 'none' : 'block';
+
+  const campos = modalidade === 'expediente' ? CAMPOS_EXP : modalidade === 'plantao' ? CAMPOS_PLA : CAMPOS_BO;
+  renderCampos(campos);
+}
+
+function renderCampos(campos) {
+  const cont = document.getElementById('campos-container');
+  cont.innerHTML = '';
+  campos.forEach((campo, idx) => {
+    const sec = document.createElement('div');
+    sec.className = 'c-secao';
+    sec.id = 'sec-' + campo.id;
+    sec.innerHTML = `
+      <div class="c-secao-head" onclick="toggleSec('${campo.id}')">
+        <div class="c-secao-head-esq">
+          <div class="c-num">${idx+1}</div>
+          <h3>${campo.titulo}</h3>
+        </div>
+        <span class="c-toggle">▾</span>
+      </div>
+      <div class="c-body" id="body-${campo.id}">
+        <div id="linhas-${campo.id}">${renderLinha(campo,0,false)}</div>
+        <button class="btn-add-linha" onclick="addLinha('${campo.id}',${JSON.stringify(campo).replace(/"/g,'&quot;')})">+ Adicionar linha</button>
+      </div>`;
+    cont.appendChild(sec);
+  });
+}
+
+function colClass(n) { return ['','c1','c2','c3','c4'][n] || 'c3'; }
+
+function renderLinha(campo, idx, removivel) {
+  const n = campo.sub.length;
+  const rm = removivel ? `<button class="btn-rm" onclick="this.closest('.linha-removivel').remove()">✕</button>` : '';
+  const wrap = removivel ? 'linha-removivel' : '';
+  const inputs = campo.sub.map((sub,i) => {
+    const t = sub === 'quantidade' ? 'number' : 'text';
+    const ph = sub.charAt(0).toUpperCase() + sub.slice(1);
+    return `<div class="c-grupo"><label>${sub.toUpperCase()}</label><input type="${t}" placeholder="${ph}" ${t==='number'?'min="0"':''} /></div>`;
+  }).join('');
+  return `<div class="c-row ${colClass(n)} ${wrap}">${inputs}${rm}</div>`;
+}
+
+function addLinha(campoId, campo) {
+  if (!linhaCounters[campoId]) linhaCounters[campoId] = 1;
+  const idx = linhaCounters[campoId]++;
+  const cont = document.getElementById('linhas-' + campoId);
+  const d = document.createElement('div');
+  d.innerHTML = renderLinha(campo, idx, true);
+  cont.appendChild(d.firstElementChild);
+}
+
+function toggleSec(id) {
+  const head = document.querySelector(`#sec-${id} .c-secao-head`);
+  const body = document.getElementById('body-' + id);
+  head.classList.toggle('aberto');
+  body.classList.toggle('aberto');
+}
+
+// ============================================================
+// COLETA E ENVIO
+// ============================================================
+function coletarDados() {
+  const campos = modalidadeAtual === 'expediente' ? CAMPOS_EXP : modalidadeAtual === 'plantao' ? CAMPOS_PLA : CAMPOS_BO;
+  const resultado = {
+    modalidade: modalidadeAtual,
+    delegacia: usuarioLogado.delegacia,
+    escrivao: usuarioLogado.nome,
+    data: document.getElementById('meta-data').value,
+    horario: modalidadeAtual !== 'bo' ? document.getElementById('meta-horario').value : '',
+    turno: modalidadeAtual === 'bo' ? document.getElementById('meta-turno').value : '',
+    campos: {}
+  };
+  campos.forEach(campo => {
+    const linhas = document.querySelectorAll(`#linhas-${campo.id} .c-row`);
+    resultado.campos[campo.id] = [];
+    linhas.forEach(linha => {
+      const inputs = linha.querySelectorAll('input');
+      const obj = {};
+      campo.sub.forEach((sub, i) => { obj[sub] = inputs[i]?.value || ''; });
+      if (Object.values(obj).some(v => v !== '')) resultado.campos[campo.id].push(obj);
+    });
+  });
+  return resultado;
+}
+
+async function enviar() {
+  const dados = coletarDados();
+  const btn = document.getElementById('btn-enviar');
+  const txt = document.getElementById('btn-txt');
+  const sp = document.getElementById('spinner');
+  btn.disabled = true; txt.textContent = 'Enviando...'; sp.style.display = 'block';
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, { method:'POST', body: JSON.stringify({acao:'salvar', ...dados}) });
+    const result = await resp.json();
+    if (result.status === 'ok') mostrarFeedback(true, 'Registro enviado!', 'Dados salvos na planilha com sucesso.');
+    else mostrarFeedback(false, 'Erro ao enviar', result.message || 'Tente novamente.');
+  } catch(e) {
+    mostrarFeedback(false, 'Erro de conexão', 'Verifique a URL do Apps Script.');
+  } finally {
+    btn.disabled = false; txt.textContent = 'Enviar Registro'; sp.style.display = 'none';
+  }
+}
+
+function limparForm() {
+  document.querySelectorAll('#campos-container input').forEach(el => el.value = '');
+  document.querySelectorAll('.linha-removivel').forEach(el => el.remove());
+}
+
+// ============================================================
+// ADMIN — GERENCIAR ESCRIVÃES
+// ============================================================
+async function carregarEscrivaes() {
+  document.getElementById('admin-loading').style.display = 'block';
+  document.getElementById('tabela-escrivaes').style.display = 'none';
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=listarEscrivaes');
+    const data = await resp.json();
+    renderTabela(data.escrivaes || []);
+  } catch(e) {
+    document.getElementById('admin-loading').textContent = 'Erro ao carregar. Verifique a URL do Apps Script.';
+  }
+}
+
+function renderTabela(lista) {
+  const tbody = document.getElementById('tbody-escrivaes');
+  tbody.innerHTML = '';
+  if (lista.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--texto-leve);padding:24px;">Nenhum escrivão cadastrado.</td></tr>';
+  } else {
+    lista.forEach(e => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${e.nome}</td>
+        <td><span class="badge-del">${e.delegacia}</span></td>
+        <td>
+          <button class="btn-editar" onclick='abrirModalEscrivao(${JSON.stringify(e)})'>Editar</button>
+          <button class="btn-excluir" onclick="excluirEscrivao('${e.nome}')">Excluir</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  document.getElementById('admin-loading').style.display = 'none';
+  document.getElementById('tabela-escrivaes').style.display = 'table';
+}
+
+function abrirModalEscrivao(esc = null) {
+  document.getElementById('modal-esc-titulo').textContent = esc ? 'Editar Escrivão' : 'Novo Escrivão';
+  document.getElementById('esc-nome').value = esc ? esc.nome : '';
+  document.getElementById('esc-senha').value = esc ? esc.senha : '';
+  document.getElementById('esc-delegacia').value = esc ? esc.delegacia : '';
+  document.getElementById('esc-id-edit').value = esc ? esc.nome : '';
+  document.getElementById('msg-erro-esc').textContent = '';
+  document.getElementById('overlay-esc').classList.add('aberto');
+}
+
+function fecharModalEsc() { document.getElementById('overlay-esc').classList.remove('aberto'); }
+
+async function salvarEscrivao() {
+  const nome = document.getElementById('esc-nome').value.trim();
+  const senha = document.getElementById('esc-senha').value.trim();
+  const delegacia = document.getElementById('esc-delegacia').value;
+  const nomeAntigo = document.getElementById('esc-id-edit').value;
+  const erroEl = document.getElementById('msg-erro-esc');
+  if (!nome || !senha || !delegacia) { erroEl.textContent = 'Preencha todos os campos.'; return; }
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ acao: 'salvarEscrivao', nome, senha, delegacia, nomeAntigo })
+    });
+    const data = await resp.json();
+    if (data.status === 'ok') { fecharModalEsc(); carregarEscrivaes(); }
+    else erroEl.textContent = data.message || 'Erro ao salvar.';
+  } catch(e) { erroEl.textContent = 'Erro de conexão.'; }
+}
+
+async function excluirEscrivao(nome) {
+  if (!confirm(`Excluir o escrivão "${nome}"?`)) return;
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, { method:'POST', body: JSON.stringify({ acao:'excluirEscrivao', nome }) });
+    const data = await resp.json();
+    if (data.status === 'ok') carregarEscrivaes();
+    else alert('Erro ao excluir: ' + (data.message || ''));
+  } catch(e) { alert('Erro de conexão.'); }
+}
+
+// ============================================================
+// FEEDBACK
+// ============================================================
+let feedbackSucesso = false;
+function mostrarFeedback(ok, titulo, msg) {
+  feedbackSucesso = ok;
+  const icon = document.getElementById('fb-icon');
+  icon.className = 'fb-icon ' + (ok ? 'ok' : 'err');
+  icon.textContent = ok ? '✓' : '✕';
+  document.getElementById('fb-titulo').textContent = titulo;
+  document.getElementById('fb-msg').textContent = msg;
+  document.getElementById('overlay-fb').classList.add('aberto');
+}
+function fecharFeedback() {
+  document.getElementById('overlay-fb').classList.remove('aberto');
+  if (feedbackSucesso) voltarSelecao();
+}
+</script>
+</body>
+</html>
