@@ -501,6 +501,14 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 
       <div class="form-meta" id="meta-plantao" style="display:none; grid-template-columns: repeat(4, 1fr);">
         <div class="fm-item">
+          <label>Local do Plantão</label>
+          <select id="plantao-local">
+            <option value="Central - Patos">Central - Patos</option>
+            <option value="Teixeira">Teixeira</option>
+            <option value="DHE">DHE</option>
+          </select>
+        </div>
+        <div class="fm-item">
           <label>Início — Data</label>
           <input type="date" id="plantao-data-inicio" />
         </div>
@@ -756,6 +764,7 @@ function abrirFormulario(modalidade) {
   if (modalidade === 'plantao') {
     document.getElementById('meta-padrao').style.display = 'none';
     document.getElementById('meta-plantao').style.display = 'grid';
+    document.getElementById('plantao-local').value = 'Central - Patos';
     document.getElementById('plantao-data-inicio').value = hoje;
     document.getElementById('plantao-hora-inicio').value = '08:00';
     document.getElementById('meta-escrivao-plantao').value = usuarioLogado.nome;
@@ -856,10 +865,11 @@ function coletarDados() {
     const horaInicio = document.getElementById('plantao-hora-inicio').value;
     const dataFim = document.getElementById('plantao-data-fim').value;
     const horaFim = document.getElementById('plantao-hora-fim').value;
+    const localPlantao = document.getElementById('plantao-local').value;
     const fmt = (d) => { const [y,m,dd] = d.split('-'); return `${dd}/${m}`; };
     resultado = {
       modalidade: modalidadeAtual,
-      delegacia: usuarioLogado.delegacia,
+      delegacia: localPlantao,
       escrivao: usuarioLogado.nome,
       data: dataInicio,
       horario: `Início: ${horaInicio}h de ${fmt(dataInicio)} | Final: ${horaFim}h de ${fmt(dataFim)}`,
@@ -923,7 +933,8 @@ async function abrirMeusRegistros() {
 
   const agora = new Date();
   const hoje = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
-  const url = `${APPS_SCRIPT_URL}?acao=meusRegistros&modalidade=${modalidadeAtual}&delegacia=${encodeURIComponent(usuarioLogado.delegacia)}&escrivao=${encodeURIComponent(usuarioLogado.nome)}&data=${hoje}`;
+  const delegaciaConsulta = modalidadeAtual === 'plantao' ? document.getElementById('plantao-local').value : usuarioLogado.delegacia;
+  const url = `${APPS_SCRIPT_URL}?acao=meusRegistros&modalidade=${modalidadeAtual}&delegacia=${encodeURIComponent(delegaciaConsulta)}&escrivao=${encodeURIComponent(usuarioLogado.nome)}&data=${hoje}`;
 
   try {
     const resp = await fetch(url);
