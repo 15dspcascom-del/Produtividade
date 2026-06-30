@@ -933,8 +933,7 @@ async function abrirMeusRegistros() {
 
   const agora = new Date();
   const hoje = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
-  const delegaciaConsulta = modalidadeAtual === 'plantao' ? document.getElementById('plantao-local').value : usuarioLogado.delegacia;
-  const url = `${APPS_SCRIPT_URL}?acao=meusRegistros&modalidade=${modalidadeAtual}&delegacia=${encodeURIComponent(delegaciaConsulta)}&escrivao=${encodeURIComponent(usuarioLogado.nome)}&data=${hoje}`;
+  const url = `${APPS_SCRIPT_URL}?acao=meusRegistros&modalidade=${modalidadeAtual}&delegacia=${encodeURIComponent(usuarioLogado.delegacia)}&escrivao=${encodeURIComponent(usuarioLogado.nome)}&data=${hoje}`;
 
   try {
     const resp = await fetch(url);
@@ -977,6 +976,7 @@ function renderRegistros(registros) {
         ${r['CIDADE'] ? `<span><b>Cidade:</b> ${r['CIDADE']}</span>` : ''}
         ${r['DELEGACIA B.O.'] ? `<span><b>Delegacia:</b> ${r['DELEGACIA B.O.']}</span>` : ''}
         ${r['TURNO'] ? `<span><b>Turno:</b> ${r['TURNO']}</span>` : ''}
+        ${r['POLO'] ? `<span><b>Polo:</b> ${r['POLO']}</span>` : ''}
       </div>
       ${r['HORA DO REGISTRO'] ? `<span class="registro-hora">Registrado às ${r['HORA DO REGISTRO']}</span>` : ''}
     </div>`;
