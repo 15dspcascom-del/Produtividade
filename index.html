@@ -432,7 +432,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <p id="form-sub">Preencha os procedimentos</p>
         </div>
       </div>
-      <div class="form-meta">
+      <div class="form-meta" id="meta-padrao">
         <div class="fm-item">
           <label>Data</label>
           <input type="date" id="meta-data" />
@@ -448,6 +448,29 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         <div class="fm-item">
           <label>Escrivão</label>
           <input type="text" id="meta-escrivao" readonly />
+        </div>
+      </div>
+
+      <div class="form-meta" id="meta-plantao" style="display:none; grid-template-columns: repeat(4, 1fr);">
+        <div class="fm-item">
+          <label>Início — Data</label>
+          <input type="date" id="plantao-data-inicio" />
+        </div>
+        <div class="fm-item">
+          <label>Início — Hora</label>
+          <input type="time" id="plantao-hora-inicio" value="08:00" />
+        </div>
+        <div class="fm-item">
+          <label>Final — Data</label>
+          <input type="date" id="plantao-data-fim" />
+        </div>
+        <div class="fm-item">
+          <label>Final — Hora</label>
+          <input type="time" id="plantao-hora-fim" value="08:00" />
+        </div>
+        <div class="fm-item" style="grid-column: 1 / -1;">
+          <label>Escrivão</label>
+          <input type="text" id="meta-escrivao-plantao" readonly />
         </div>
       </div>
       <div id="campos-container"></div>
@@ -665,16 +688,46 @@ function abrirFormulario(modalidade) {
   const subMap = { expediente:'28 procedimentos', plantao:'9 procedimentos', bo:'Boletins por turno' };
   document.getElementById('form-titulo').textContent = titulosMap[modalidade];
   document.getElementById('form-sub').textContent = subMap[modalidade];
-  document.getElementById('meta-data').value = new Date().toISOString().split('T')[0];
-  document.getElementById('meta-escrivao').value = usuarioLogado.nome;
 
-  document.getElementById('wrap-turno').style.display = modalidade === 'bo' ? 'block' : 'none';
-  document.getElementById('wrap-horario').style.display = modalidade === 'bo' ? 'none' : 'block';
-  document.getElementById('meta-horario').value = modalidade === 'expediente' ? '08h às 18h' : '';
+  const hoje = new Date().toISOString().split('T')[0];
+
+  if (modalidade === 'plantao') {
+    document.getElementById('meta-padrao').style.display = 'none';
+    document.getElementById('meta-plantao').style.display = 'grid';
+    document.getElementById('plantao-data-inicio').value = hoje;
+    document.getElementById('plantao-hora-inicio').value = '08:00';
+    document.getElementById('meta-escrivao-plantao').value = usuarioLogado.nome;
+    calcularFimPlantao();
+  } else {
+    document.getElementById('meta-padrao').style.display = 'grid';
+    document.getElementById('meta-plantao').style.display = 'none';
+    document.getElementById('meta-data').value = hoje;
+    document.getElementById('meta-escrivao').value = usuarioLogado.nome;
+    document.getElementById('wrap-turno').style.display = modalidade === 'bo' ? 'block' : 'none';
+    document.getElementById('wrap-horario').style.display = modalidade === 'bo' ? 'none' : 'block';
+    document.getElementById('meta-horario').value = modalidade === 'expediente' ? '08h às 18h' : '';
+  }
 
   const campos = modalidade === 'expediente' ? CAMPOS_EXP : modalidade === 'plantao' ? CAMPOS_PLA : CAMPOS_BO;
   renderCampos(campos);
 }
+
+function calcularFimPlantao() {
+  const dataInicio = document.getElementById('plantao-data-inicio').value;
+  const horaInicio = document.getElementById('plantao-hora-inicio').value;
+  if (!dataInicio || !horaInicio) return;
+  const inicio = new Date(`${dataInicio}T${horaInicio}`);
+  const fim = new Date(inicio.getTime() + 24 * 60 * 60 * 1000);
+  document.getElementById('plantao-data-fim').value = fim.toISOString().split('T')[0];
+  document.getElementById('plantao-hora-fim').value = fim.toTimeString().slice(0,5);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const di = document.getElementById('plantao-data-inicio');
+  const hi = document.getElementById('plantao-hora-inicio');
+  if (di) di.addEventListener('change', calcularFimPlantao);
+  if (hi) hi.addEventListener('change', calcularFimPlantao);
+});
 
 function renderCampos(campos) {
   const cont = document.getElementById('campos-container');
@@ -734,15 +787,35 @@ function toggleSec(id) {
 // ============================================================
 function coletarDados() {
   const campos = modalidadeAtual === 'expediente' ? CAMPOS_EXP : modalidadeAtual === 'plantao' ? CAMPOS_PLA : CAMPOS_BO;
-  const resultado = {
-    modalidade: modalidadeAtual,
-    delegacia: usuarioLogado.delegacia,
-    escrivao: usuarioLogado.nome,
-    data: document.getElementById('meta-data').value,
-    horario: modalidadeAtual !== 'bo' ? document.getElementById('meta-horario').value : '',
-    turno: modalidadeAtual === 'bo' ? document.getElementById('meta-turno').value : '',
-    campos: {}
-  };
+
+  let resultado;
+  if (modalidadeAtual === 'plantao') {
+    const dataInicio = document.getElementById('plantao-data-inicio').value;
+    const horaInicio = document.getElementById('plantao-hora-inicio').value;
+    const dataFim = document.getElementById('plantao-data-fim').value;
+    const horaFim = document.getElementById('plantao-hora-fim').value;
+    const fmt = (d) => { const [y,m,dd] = d.split('-'); return `${dd}/${m}`; };
+    resultado = {
+      modalidade: modalidadeAtual,
+      delegacia: usuarioLogado.delegacia,
+      escrivao: usuarioLogado.nome,
+      data: dataInicio,
+      horario: `Início: ${horaInicio}h de ${fmt(dataInicio)} | Final: ${horaFim}h de ${fmt(dataFim)}`,
+      turno: '',
+      campos: {}
+    };
+  } else {
+    resultado = {
+      modalidade: modalidadeAtual,
+      delegacia: usuarioLogado.delegacia,
+      escrivao: usuarioLogado.nome,
+      data: document.getElementById('meta-data').value,
+      horario: modalidadeAtual !== 'bo' ? document.getElementById('meta-horario').value : '',
+      turno: modalidadeAtual === 'bo' ? document.getElementById('meta-turno').value : '',
+      campos: {}
+    };
+  }
+
   campos.forEach(campo => {
     const linhas = document.querySelectorAll(`#linhas-${campo.id} .c-row`);
     resultado.campos[campo.id] = [];
