@@ -750,7 +750,8 @@ function abrirFormulario(modalidade) {
   document.getElementById('form-titulo').textContent = titulosMap[modalidade];
   document.getElementById('form-sub').textContent = subMap[modalidade];
 
-  const hoje = new Date().toISOString().split('T')[0];
+  const agoraForm = new Date();
+  const hoje = `${agoraForm.getFullYear()}-${String(agoraForm.getMonth()+1).padStart(2,'0')}-${String(agoraForm.getDate()).padStart(2,'0')}`;
 
   if (modalidade === 'plantao') {
     document.getElementById('meta-padrao').style.display = 'none';
@@ -779,8 +780,8 @@ function calcularFimPlantao() {
   if (!dataInicio || !horaInicio) return;
   const inicio = new Date(`${dataInicio}T${horaInicio}`);
   const fim = new Date(inicio.getTime() + 24 * 60 * 60 * 1000);
-  document.getElementById('plantao-data-fim').value = fim.toISOString().split('T')[0];
-  document.getElementById('plantao-hora-fim').value = fim.toTimeString().slice(0,5);
+  document.getElementById('plantao-data-fim').value = `${fim.getFullYear()}-${String(fim.getMonth()+1).padStart(2,'0')}-${String(fim.getDate()).padStart(2,'0')}`;
+  document.getElementById('plantao-hora-fim').value = `${String(fim.getHours()).padStart(2,'0')}:${String(fim.getMinutes()).padStart(2,'0')}`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -920,7 +921,8 @@ async function abrirMeusRegistros() {
   document.getElementById('overlay-registros').classList.add('aberto');
   document.getElementById('corpo-registros').innerHTML = '<div class="registros-loading">Carregando...</div>';
 
-  const hoje = new Date().toISOString().split('T')[0];
+  const agora = new Date();
+  const hoje = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
   const url = `${APPS_SCRIPT_URL}?acao=meusRegistros&modalidade=${modalidadeAtual}&delegacia=${encodeURIComponent(usuarioLogado.delegacia)}&escrivao=${encodeURIComponent(usuarioLogado.nome)}&data=${hoje}`;
 
   try {
