@@ -1034,6 +1034,8 @@ document.addEventListener('change', function(e) {
     if (outro) outro.style.display = e.target.value === 'Outros' ? 'block' : 'none';
   }
 });
+
+function addLinha(campoId, campo) {
   if (!linhaCounters[campoId]) linhaCounters[campoId] = 1;
   const idx = linhaCounters[campoId]++;
   const cont = document.getElementById('linhas-' + campoId);
