@@ -705,7 +705,7 @@ const CAMPO_TIPOS = {
 };
 
 const CAMPOS_EXP = [
-  { id:'bos', titulo:'BOs — Boletins de Ocorrência (Exceto B.O. referente a cumprimento de mandado de prisão.)', sub:['quantidade','crime','cidade'] },
+  { id:'bos', titulo:'BOs — Boletins de Ocorrência (Exceto referente a cumprimento de mandado de prisão.)', sub:['quantidade','crime','cidade'] },
   { id:'apfs', titulo:'APFs — Autos de Prisão em Flagrante', sub:['quantidade','crime','cidade'] },
   { id:'aafai', titulo:'AAFAIs', sub:['quantidade','crime','cidade'] },
   { id:'tcos', titulo:'TCOs — Termos Circunstanciados', sub:['quantidade','crime','cidade'] },
@@ -966,9 +966,9 @@ function renderInput(sub, campoId) {
     return `<div class="c-grupo">
       <label>QUANTIDADE</label>
       <div class="qtd-wrap">
-        <button type="button" class="btn-qtd" onclick="ajustarQtd(this,-1)">−</button>
+        <button type="button" class="btn-qtd">−</button>
         <input type="number" min="0" value="0" class="qtd-input" />
-        <button type="button" class="btn-qtd" onclick="ajustarQtd(this,1)">+</button>
+        <button type="button" class="btn-qtd">+</button>
       </div>
     </div>`;
   }
@@ -1026,6 +1026,15 @@ function ajustarQtd(btn, delta) {
   const val = Math.max(0, parseInt(input.value || 0) + delta);
   input.value = val;
 }
+
+// Delegação de eventos para botões de quantidade
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('btn-qtd')) {
+    const delta = e.target.textContent.trim() === '+' ? 1 : -1;
+    const input = e.target.parentElement.querySelector('.qtd-input');
+    if (input) input.value = Math.max(0, parseInt(input.value || 0) + delta);
+  }
+});
 
 // Listener para "Outros" no select de cidade
 document.addEventListener('change', function(e) {
