@@ -280,6 +280,18 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
   outline: none; border-color: var(--azul-claro); box-shadow: 0 0 0 2px rgba(26,58,107,0.07);
 }
 
+/* Botão de quantidade */
+.qtd-wrap { display: flex; align-items: center; gap: 0; border: 1.5px solid var(--cinza-borda); border-radius: 6px; overflow: hidden; }
+.btn-qtd {
+  width: 36px; height: 36px; background: var(--cinza); border: none;
+  font-size: 18px; font-weight: 700; cursor: pointer; color: var(--azul);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: background 0.15s; line-height: 1;
+}
+.btn-qtd:hover { background: var(--cinza-borda); }
+.qtd-input { flex: 1; border: none; border-left: 1.5px solid var(--cinza-borda); border-right: 1.5px solid var(--cinza-borda); text-align: center; font-size: 14px; font-weight: 600; padding: 8px 4px; min-width: 0; font-family: 'Inter', sans-serif; color: var(--texto); }
+.qtd-input:focus { outline: none; }
+
 .btn-add-linha {
   background: transparent; border: 1.5px dashed var(--cinza-borda); color: var(--texto-leve);
   padding: 7px 14px; border-radius: 6px; font-size: 11px; cursor: pointer;
@@ -421,7 +433,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
     <input class="f-input" type="text" id="login-nome" placeholder="Seu nome completo" autocomplete="off" />
     <label class="f-label">Senha</label>
     <input class="f-input" type="password" id="login-senha" placeholder="Sua senha" />
-    <button class="btn-primario" onclick="fazerLogin()">ENTRAR</button>
+    <button class="btn-primario" id="btn-login" onclick="fazerLogin()">ENTRAR</button>
     <div class="msg-erro" id="msg-erro-login"></div>
   </div>
 </div>
@@ -623,6 +635,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         <label><input type="checkbox" value="DEAM"> DEAM</label>
         <label><input type="checkbox" value="DRF"> DRF</label>
         <label><input type="checkbox" value="DHE"> DHE</label>
+        <label><input type="checkbox" value="Setor de B.O. - Central Patos"> Setor de B.O. - Central Patos</label>
       </div>
     </div>
     <div class="modal-esc-acoes">
@@ -665,8 +678,34 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxHTHk68GGsnieu
 // ============================================================
 // CAMPOS DOS FORMULÁRIOS
 // ============================================================
+// Mapeamento delegacia → cidade padrão
+const CIDADE_PADRAO = {
+  '1ª DD':'Patos','2ª DD':'Patos','DEAM':'Patos','DRF':'Patos','DHE':'Patos',
+  'Central - Patos':'Patos','Teixeira':'Teixeira','Cacimba de Areia':'Cacimba de Areia',
+  'São José de Espinharas':'São José de Espinharas','Malta':'Malta','Condado':'Condado',
+  'Vista Serrana':'Vista Serrana','Santa Luzia':'Santa Luzia','Várzea':'Várzea',
+  'Junco do Seridó':'Junco do Seridó','São José do Sabugi':'São José do Sabugi',
+  'Desterro':'Desterro','Cacimbas':'Cacimbas',"Mãe D'água":'Mãe d\'Água','Maturéia':'Matureia',
+  'São Mamede':'São Mamede','Passagem':'Passagem','Santa Terezinha':'Santa Terezinha',
+  'São José do Bonfim':'São José do Bonfim','Areia de Baraúnas':'Areia de Baraúnas','Quixaba':'Quixaba'
+};
+
+const CIDADES = [
+  'Aparecida','Areia de Baraúnas','Cacimba de Areia','Cacimbas','Condado','Desterro',
+  'Emas','Junco do Seridó',"Mãe d'Água",'Malta','Matureia','Passagem','Patos','Quixaba',
+  'Salgadinho','Santa Luzia','Santa Terezinha','São José do Bonfim','São José de Espinharas',
+  'São José do Sabugi','São Mamede','Teixeira','Vista Serrana','Várzea'
+];
+
+// Tipos especiais de campos
+const CAMPO_TIPOS = {
+  cidade: 'cidade-select',
+  'tipo (depoimento/declaração/interrogatório)': 'oitiva-select',
+  procedimento: 'proc-pje-select',
+};
+
 const CAMPOS_EXP = [
-  { id:'bos', titulo:'BOs — Boletins de Ocorrência', sub:['quantidade','crime','cidade'] },
+  { id:'bos', titulo:'BOs — Boletins de Ocorrência (Exceto B.O. referente a cumprimento de mandado de prisão.)', sub:['quantidade','crime','cidade'] },
   { id:'apfs', titulo:'APFs — Autos de Prisão em Flagrante', sub:['quantidade','crime','cidade'] },
   { id:'aafai', titulo:'AAFAIs', sub:['quantidade','crime','cidade'] },
   { id:'tcos', titulo:'TCOs — Termos Circunstanciados', sub:['quantidade','crime','cidade'] },
@@ -676,23 +715,23 @@ const CAMPOS_EXP = [
   { id:'repr_busca', titulo:'Representações por Buscas', sub:['quantidade','crime','cidade'] },
   { id:'pris_flagrante', titulo:'Prisões em Flagrante', sub:['quantidade','crime','cidade'] },
   { id:'pris_mandado', titulo:'Prisões por Cumprimento de Mandados', sub:['quantidade','crime','cidade'] },
-  { id:'req_exames', titulo:'Requisições de Exames', sub:['quantidade','crime','cidade'] },
-  { id:'oitivas', titulo:'Oitivas', sub:['quantidade','crime','cidade'] },
+  { id:'req_exames', titulo:'Requisições de Exames', sub:['quantidade','tipo de crime','cidade'] },
+  { id:'oitivas', titulo:'Oitivas', sub:['quantidade','tipo (depoimento/declaração/interrogatório)','cidade'] },
   { id:'ord_missao', titulo:'Ordens de Missão Expedidas', sub:['quantidade','cidade'] },
   { id:'bos_ip', titulo:'BOs Transformados em IP', sub:['quantidade','crime','cidade'] },
   { id:'cotas_min', titulo:'Cotas Ministeriais Cumpridas Lançadas no PJE', sub:['quantidade'] },
   { id:'prot_pje', titulo:'Protocolados no PJE', sub:['quantidade','procedimento','crime'] },
-  { id:'intimacoes', titulo:'Intimações Cumpridas', sub:['quantidade','crime','cidade'] },
+  { id:'intimacoes', titulo:'Intimações Cumpridas', sub:['quantidade'] },
   { id:'oficios', titulo:'Ofícios Confeccionados', sub:['quantidade'] },
   { id:'despachos', titulo:'Despachos e Deliberações', sub:['quantidade'] },
   { id:'rel_missao', titulo:'Relatórios de Missão Confeccionados pela Equipe', sub:['quantidade'] },
   { id:'cond_presos', titulo:'Condução de Presos', sub:['quantidade','crime','cidade'] },
-  { id:'armas', titulo:'Armas Apreendidas', sub:['quantidade','crime','cidade'] },
-  { id:'drogas', titulo:'Drogas Apreendidas', sub:['quantidade','crime','cidade'] },
-  { id:'veiculos', titulo:'Veículos Encaminhados ao Fórum/DETRAN ou Devolvidos', sub:['quantidade','crime','cidade'] },
+  { id:'armas', titulo:'Armas Apreendidas', sub:['quantidade','descrição','crime','cidade'] },
+  { id:'drogas', titulo:'Drogas Apreendidas', sub:['quantidade','descrição','cidade'] },
+  { id:'veiculos', titulo:'Veículos Encaminhados ao Fórum/DETRAN ou Devolvidos', sub:['quantidade','descrição do veículo','placa','cidade'] },
   { id:'aud_custodia', titulo:'Audiências de Custódia', sub:['quantidade','crime','cidade'] },
-  { id:'operacoes', titulo:'Participação em Operações Policiais (pela equipe da DP)', sub:['quantidade','crime','cidade'] },
-  { id:'diligencias', titulo:'Diligências Diversas', sub:['quantidade','crime','cidade'] },
+  { id:'operacoes', titulo:'Participação em Operações Policiais (pela equipe da DP)', sub:['quantidade','nome da operação','crime','cidade'] },
+  { id:'diligencias', titulo:'Diligências Diversas', sub:['quantidade','descrição','crime','cidade'] },
   { id:'atendimentos', titulo:'Atendimentos Diversos', sub:['quantidade','descrição','cidade'] },
 ];
 
@@ -702,10 +741,10 @@ const CAMPOS_PLA = [
   { id:'tcos', titulo:'TCOs — Termos Circunstanciados', sub:['quantidade','crime','cidade'] },
   { id:'bocs', titulo:'BOCs — Boletins Circunstanciados', sub:['quantidade','crime','cidade'] },
   { id:'med_prot', titulo:'Medidas Protetivas', sub:['quantidade','crime','cidade'] },
-  { id:'atendimentos', titulo:'Atendimentos', sub:['quantidade','descrição','cidade'] },
+  { id:'atendimentos', titulo:'Atendimentos', sub:['quantidade','descrição'] },
   { id:'oitivas', titulo:'Oitivas', sub:['quantidade','tipo (depoimento/declaração/interrogatório)'] },
   { id:'req_ecd', titulo:'Confecção de Requisições de Exames de Corpo de Delito', sub:['quantidade','tipo de exame','crime','cidade'] },
-  { id:'outras_ocor', titulo:'Outras Ocorrências', sub:['quantidade','descrição'] },
+  { id:'outras_ocor', titulo:'Outras Ocorrências', sub:['quantidade','descrição','cidade'] },
 ];
 
 const CAMPOS_BO = [
@@ -726,6 +765,7 @@ async function fazerLogin() {
   const nome = document.getElementById('login-nome').value.trim();
   const senha = document.getElementById('login-senha').value;
   const erroEl = document.getElementById('msg-erro-login');
+  const btn = document.getElementById('btn-login');
   erroEl.textContent = '';
 
   if (!nome || !senha) { erroEl.textContent = 'Preencha nome e senha.'; return; }
@@ -736,6 +776,9 @@ async function fazerLogin() {
     entrarNoApp();
     return;
   }
+
+  btn.textContent = 'Entrando...';
+  btn.disabled = true;
 
   try {
     const resp = await fetch(APPS_SCRIPT_URL + '?acao=login&nome=' + encodeURIComponent(nome) + '&senha=' + encodeURIComponent(senha));
@@ -748,6 +791,9 @@ async function fazerLogin() {
     }
   } catch(e) {
     erroEl.textContent = 'Erro de conexão com o servidor.';
+  } finally {
+    btn.textContent = 'ENTRAR';
+    btn.disabled = false;
   }
 }
 
@@ -907,19 +953,87 @@ function renderCampos(campos) {
 
 function colClass(n) { return ['','c1','c2','c3','c4'][n] || 'c3'; }
 
+function getCidadePadrao() {
+  if (modalidadeAtual === 'plantao') {
+    const polo = document.getElementById('plantao-local')?.value || '';
+    return CIDADE_PADRAO[polo] || 'Patos';
+  }
+  return CIDADE_PADRAO[usuarioLogado?.delegacia] || 'Patos';
+}
+
+function renderInput(sub, campoId) {
+  if (sub === 'quantidade') {
+    return `<div class="c-grupo">
+      <label>QUANTIDADE</label>
+      <div class="qtd-wrap">
+        <button type="button" class="btn-qtd" onclick="ajustarQtd(this,-1)">−</button>
+        <input type="number" min="0" value="0" class="qtd-input" />
+        <button type="button" class="btn-qtd" onclick="ajustarQtd(this,1)">+</button>
+      </div>
+    </div>`;
+  }
+  if (sub === 'cidade') {
+    const cidadePadrao = getCidadePadrao();
+    const opts = CIDADES.map(c => `<option${c===cidadePadrao?' selected':''}>${c}</option>`).join('');
+    return `<div class="c-grupo">
+      <label>CIDADE</label>
+      <select class="cidade-sel">
+        ${opts}
+        <option value="Outros">Outros</option>
+      </select>
+      <input type="text" class="cidade-outro" placeholder="Digite a cidade" style="display:none;margin-top:4px;" />
+    </div>`;
+  }
+  if (sub === 'tipo (depoimento/declaração/interrogatório)') {
+    return `<div class="c-grupo">
+      <label>TIPO</label>
+      <select>
+        <option value="">Selecione...</option>
+        <option>Declaração</option>
+        <option>Depoimento</option>
+        <option>Interrogatório</option>
+      </select>
+    </div>`;
+  }
+  if (sub === 'procedimento' && campoId === 'prot_pje') {
+    return `<div class="c-grupo">
+      <label>PROCEDIMENTO</label>
+      <select>
+        <option value="">Selecione...</option>
+        <option>TCO</option>
+        <option>IP</option>
+        <option>BO</option>
+        <option>BOC</option>
+        <option>APF</option>
+        <option>Outros</option>
+      </select>
+    </div>`;
+  }
+  const ph = sub.charAt(0).toUpperCase() + sub.slice(1);
+  return `<div class="c-grupo"><label>${sub.toUpperCase()}</label><input type="text" placeholder="${ph}" /></div>`;
+}
+
 function renderLinha(campo, idx, removivel) {
   const n = campo.sub.length;
   const rm = removivel ? `<button class="btn-rm" onclick="this.closest('.linha-removivel').remove()">✕</button>` : '';
   const wrap = removivel ? 'linha-removivel' : '';
-  const inputs = campo.sub.map((sub,i) => {
-    const t = sub === 'quantidade' ? 'number' : 'text';
-    const ph = sub.charAt(0).toUpperCase() + sub.slice(1);
-    return `<div class="c-grupo"><label>${sub.toUpperCase()}</label><input type="${t}" placeholder="${ph}" ${t==='number'?'min="0"':''} /></div>`;
-  }).join('');
+  const inputs = campo.sub.map(sub => renderInput(sub, campo.id)).join('');
   return `<div class="c-row ${colClass(n)} ${wrap}">${inputs}${rm}</div>`;
 }
 
-function addLinha(campoId, campo) {
+function ajustarQtd(btn, delta) {
+  const input = btn.parentElement.querySelector('.qtd-input');
+  const val = Math.max(0, parseInt(input.value || 0) + delta);
+  input.value = val;
+}
+
+// Listener para "Outros" no select de cidade
+document.addEventListener('change', function(e) {
+  if (e.target.classList.contains('cidade-sel')) {
+    const outro = e.target.parentElement.querySelector('.cidade-outro');
+    if (outro) outro.style.display = e.target.value === 'Outros' ? 'block' : 'none';
+  }
+});
   if (!linhaCounters[campoId]) linhaCounters[campoId] = 1;
   const idx = linhaCounters[campoId]++;
   const cont = document.getElementById('linhas-' + campoId);
@@ -974,10 +1088,30 @@ function coletarDados() {
     const linhas = document.querySelectorAll(`#linhas-${campo.id} .c-row`);
     resultado.campos[campo.id] = [];
     linhas.forEach(linha => {
-      const inputs = linha.querySelectorAll('input');
       const obj = {};
-      campo.sub.forEach((sub, i) => { obj[sub] = inputs[i]?.value || ''; });
-      if (Object.values(obj).some(v => v !== '')) resultado.campos[campo.id].push(obj);
+      campo.sub.forEach((sub, i) => {
+        if (sub === 'quantidade') {
+          obj[sub] = linha.querySelector('.qtd-input')?.value || '0';
+        } else if (sub === 'cidade') {
+          const sel = linha.querySelector('.cidade-sel');
+          const outro = linha.querySelector('.cidade-outro');
+          obj[sub] = sel?.value === 'Outros' ? (outro?.value || 'Outros') : (sel?.value || '');
+        } else if (sub === 'tipo (depoimento/declaração/interrogatório)') {
+          const selects = linha.querySelectorAll('select');
+          obj[sub] = selects[0]?.value || '';
+        } else if (sub === 'procedimento' && campo.id === 'prot_pje') {
+          const selects = linha.querySelectorAll('select');
+          obj[sub] = selects[0]?.value || '';
+        } else {
+          // pega inputs de texto na ordem, pulando qtd-input e selects já mapeados
+          const textInputs = Array.from(linha.querySelectorAll('input:not(.qtd-input):not(.cidade-outro)'));
+          const selects = Array.from(linha.querySelectorAll('select:not(.cidade-sel)'));
+          const subIdx = campo.sub.filter((s,idx) => idx < campo.sub.indexOf(sub) && s !== 'quantidade' && s !== 'cidade' && s !== 'tipo (depoimento/declaração/interrogatório)' && !(s === 'procedimento' && campo.id === 'prot_pje')).length;
+          obj[sub] = textInputs[subIdx]?.value || '';
+        }
+      });
+      const qtd = parseInt(obj['quantidade'] || '0');
+      if (qtd > 0 || Object.values(obj).some(v => v !== '' && v !== '0')) resultado.campos[campo.id].push(obj);
     });
   });
   return resultado;
@@ -1132,9 +1266,11 @@ async function salvarEscrivao() {
   const senha = document.getElementById('esc-senha').value.trim();
   const nomeAntigo = document.getElementById('esc-id-edit').value;
   const erroEl = document.getElementById('msg-erro-esc');
+  const btnSalvar = document.querySelector('#overlay-esc .btn-salvar');
   const checks = document.querySelectorAll('#esc-delegacias-lista input[type="checkbox"]:checked');
   const delegacias = Array.from(checks).map(cb => cb.value);
   if (!nome || !senha || delegacias.length === 0) { erroEl.textContent = 'Preencha todos os campos e selecione ao menos uma delegacia.'; return; }
+  btnSalvar.textContent = 'Salvando...'; btnSalvar.disabled = true;
   try {
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -1144,6 +1280,7 @@ async function salvarEscrivao() {
     if (data.status === 'ok') { fecharModalEsc(); carregarEscrivaes(); }
     else erroEl.textContent = data.message || 'Erro ao salvar.';
   } catch(e) { erroEl.textContent = 'Erro de conexão.'; }
+  finally { btnSalvar.textContent = 'Salvar'; btnSalvar.disabled = false; }
 }
 
 async function excluirEscrivao(nome) {
