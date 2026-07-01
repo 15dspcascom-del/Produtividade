@@ -266,9 +266,9 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 
 .c-row { display: grid; gap: 10px; margin-bottom: 10px; }
 .c-row.c1 { grid-template-columns: 1fr; }
-.c-row.c2 { grid-template-columns: 120px 1fr; }
-.c-row.c3 { grid-template-columns: 100px 1fr 1fr; }
-.c-row.c4 { grid-template-columns: 90px 1fr 1fr 1fr; }
+.c-row.c2 { grid-template-columns: 140px 1fr; }
+.c-row.c3 { grid-template-columns: 140px 1fr 1fr; }
+.c-row.c4 { grid-template-columns: 140px 1fr 1fr 1fr; }
 
 .c-grupo label { display: block; font-size: 10px; font-weight: 600; color: var(--texto-leve); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
 .c-grupo input, .c-grupo select, .c-grupo textarea {
@@ -281,7 +281,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 }
 
 /* Botão de quantidade */
-.qtd-wrap { display: flex; align-items: center; gap: 0; border: 1.5px solid var(--cinza-borda); border-radius: 6px; overflow: hidden; }
+.qtd-wrap { display: flex; align-items: center; gap: 0; border: 1.5px solid var(--cinza-borda); border-radius: 6px; overflow: hidden; width: 120px; }
 .btn-qtd {
   width: 36px; height: 36px; background: var(--cinza); border: none;
   font-size: 18px; font-weight: 700; cursor: pointer; color: var(--azul);
@@ -289,7 +289,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
   transition: background 0.15s; line-height: 1;
 }
 .btn-qtd:hover { background: var(--cinza-borda); }
-.qtd-input { flex: 1; border: none; border-left: 1.5px solid var(--cinza-borda); border-right: 1.5px solid var(--cinza-borda); text-align: center; font-size: 14px; font-weight: 600; padding: 8px 4px; min-width: 0; font-family: 'Inter', sans-serif; color: var(--texto); }
+.qtd-input { flex: 1; border: none; border-left: 1.5px solid var(--cinza-borda); border-right: 1.5px solid var(--cinza-borda); text-align: center; font-size: 15px; font-weight: 600; padding: 8px 6px; min-width: 48px; font-family: 'Inter', sans-serif; color: var(--texto); background: var(--branco); }
 .qtd-input:focus { outline: none; }
 
 .btn-add-linha {
