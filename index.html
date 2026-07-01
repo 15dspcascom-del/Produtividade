@@ -966,9 +966,9 @@ function renderInput(sub, campoId) {
     return `<div class="c-grupo">
       <label>QUANTIDADE</label>
       <div class="qtd-wrap">
-        <button type="button" class="btn-qtd">−</button>
+        <button type="button" class="btn-qtd" data-delta="-1">−</button>
         <input type="number" min="0" value="0" class="qtd-input" />
-        <button type="button" class="btn-qtd">+</button>
+        <button type="button" class="btn-qtd" data-delta="1">+</button>
       </div>
     </div>`;
   }
@@ -1029,9 +1029,11 @@ function ajustarQtd(btn, delta) {
 
 // Delegação de eventos para botões de quantidade
 document.addEventListener('click', function(e) {
-  if (e.target.classList.contains('btn-qtd')) {
-    const delta = e.target.textContent.trim() === '+' ? 1 : -1;
-    const input = e.target.parentElement.querySelector('.qtd-input');
+  const btn = e.target.closest('.btn-qtd');
+  if (btn) {
+    e.preventDefault();
+    const delta = parseInt(btn.getAttribute('data-delta') || '0');
+    const input = btn.parentElement.querySelector('.qtd-input');
     if (input) input.value = Math.max(0, parseInt(input.value || 0) + delta);
   }
 });
