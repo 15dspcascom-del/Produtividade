@@ -430,6 +430,48 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
   .topbar { padding: 11px 14px; }
 }
 
+/* ===== TELA DE PRESENÇA ===== */
+.presenca-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+.presenca-tab {
+  padding: 9px 24px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  font-family: 'Inter', sans-serif; cursor: pointer; border: 1.5px solid var(--cinza-borda);
+  background: var(--branco); color: var(--texto-leve); transition: all 0.2s;
+}
+.presenca-tab.ativa { background: var(--azul); color: white; border-color: var(--azul); }
+.presenca-resumo {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 24px;
+}
+.presenca-kpi {
+  background: var(--branco); border: 1.5px solid var(--cinza-borda);
+  border-radius: 10px; padding: 18px; text-align: center;
+}
+.presenca-kpi .kpi-valor { font-size: 32px; }
+.presenca-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 14px; }
+.presenca-card {
+  background: var(--branco); border: 1.5px solid var(--cinza-borda);
+  border-radius: 10px; padding: 18px; display: flex; align-items: center; gap: 14px;
+}
+.presenca-card.enviou { border-color: var(--verde); background: rgba(26,122,74,0.03); }
+.presenca-card.nao-enviou { border-color: var(--cinza-borda); opacity: 0.7; }
+.presenca-avatar {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; font-family: 'Rajdhani', sans-serif;
+}
+.presenca-avatar.ok { background: rgba(26,122,74,0.12); color: var(--verde); }
+.presenca-avatar.nok { background: rgba(176,32,32,0.08); color: var(--vermelho); }
+.presenca-info { flex: 1; min-width: 0; }
+.presenca-nome { font-size: 14px; font-weight: 600; color: var(--azul); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.presenca-del { font-size: 11px; color: var(--texto-leve); margin-bottom: 4px; }
+.presenca-envios { font-size: 11px; }
+.presenca-badge-ok { background: rgba(26,122,74,0.1); color: var(--verde); padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.presenca-badge-nok { background: rgba(176,32,32,0.08); color: var(--vermelho); padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.presenca-mods { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.presenca-mod { font-size: 10px; padding: 1px 7px; border-radius: 8px; font-weight: 600; }
+.mod-exp { background: rgba(10,22,40,0.08); color: var(--azul); }
+.mod-pla { background: rgba(26,122,74,0.1); color: var(--verde); }
+.mod-bo { background: rgba(200,168,75,0.15); color: #8a6d00; }
+
 /* ===== TELA DE CONSULTA ===== */
 .consulta-filtros {
   display: grid; grid-template-columns: repeat(6,1fr); gap: 14px;
@@ -525,6 +567,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
       <div class="admin-header">
         <h2>GERENCIAR ESCRIVÃES</h2>
         <div style="display:flex;gap:10px;">
+          <button class="btn-novo" style="background:var(--verde);color:white;" onclick="mostrarTela('presenca')">✅ Envios do Dia</button>
           <button class="btn-novo" style="background:var(--dourado);color:var(--azul);" onclick="mostrarTela('consulta')">📊 Consultas e Dashboard</button>
           <button class="btn-novo" onclick="abrirModalEscrivao()">+ Novo Escrivão</button>
         </div>
@@ -542,6 +585,26 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           </thead>
           <tbody id="tbody-escrivaes"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- TELA DE PRESENÇA -->
+    <div id="tela-presenca" class="tela" style="flex-direction:column; padding:28px 32px; max-width:1000px; margin:0 auto; width:100%;">
+      <div class="admin-header">
+        <h2>✅ ENVIOS DO DIA</h2>
+        <button class="btn-voltar" onclick="mostrarTela('admin')">← Voltar</button>
+      </div>
+
+      <div class="presenca-tabs">
+        <button class="presenca-tab ativa" id="tab-hoje" onclick="mudarTabPresenca('hoje')">Hoje</button>
+        <button class="presenca-tab" id="tab-ontem" onclick="mudarTabPresenca('ontem')">Ontem</button>
+      </div>
+
+      <div id="presenca-loading" style="text-align:center;padding:40px;color:var(--texto-leve);font-size:14px;">Carregando...</div>
+
+      <div id="presenca-corpo" style="display:none;">
+        <div class="presenca-resumo" id="presenca-resumo"></div>
+        <div class="presenca-grid" id="presenca-grid"></div>
       </div>
     </div>
 
@@ -1075,10 +1138,11 @@ function mostrarTela(id) {
   const el = document.getElementById('tela-' + id);
   if (el) { el.classList.add('ativa'); el.style.display = 'flex'; }
   if (id === 'consulta') iniciarConsulta();
+  if (id === 'presenca') iniciarPresenca();
 }
 
 function esconderTodasTelas() {
-  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta'].forEach(id => {
+  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta','tela-presenca'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.classList.remove('ativa'); el.style.display = 'none'; }
   });
@@ -1591,6 +1655,119 @@ async function excluirEscrivao(nome) {
 // FEEDBACK
 // ============================================================
 let feedbackSucesso = false;
+// ============================================================
+// PRESENÇA — ENVIOS DO DIA
+// ============================================================
+let diaPresenca = 'hoje';
+let escrivaesCadastrados = [];
+
+async function iniciarPresenca() {
+  diaPresenca = 'hoje';
+  document.getElementById('tab-hoje').classList.add('ativa');
+  document.getElementById('tab-ontem').classList.remove('ativa');
+  await carregarPresenca();
+}
+
+function mudarTabPresenca(dia) {
+  diaPresenca = dia;
+  document.getElementById('tab-hoje').classList.toggle('ativa', dia === 'hoje');
+  document.getElementById('tab-ontem').classList.toggle('ativa', dia === 'ontem');
+  carregarPresenca();
+}
+
+async function carregarPresenca() {
+  document.getElementById('presenca-loading').style.display = 'block';
+  document.getElementById('presenca-corpo').style.display = 'none';
+
+  const agora = new Date();
+  const dataAlvo = new Date(agora);
+  if (diaPresenca === 'ontem') dataAlvo.setDate(dataAlvo.getDate() - 1);
+  const dataStr = `${dataAlvo.getFullYear()}-${String(dataAlvo.getMonth()+1).padStart(2,'0')}-${String(dataAlvo.getDate()).padStart(2,'0')}`;
+
+  try {
+    // Buscar escrivães cadastrados e registros do dia em paralelo
+    const [respEsc, respReg] = await Promise.all([
+      fetch(APPS_SCRIPT_URL + '?acao=listarEscrivaes'),
+      fetch(APPS_SCRIPT_URL + `?acao=consultar&dataIni=${dataStr}&dataFim=${dataStr}&escrivao=&modalidade=&delegacia=`)
+    ]);
+    const dataEsc = await respEsc.json();
+    const dataReg = await respReg.json();
+
+    escrivaesCadastrados = dataEsc.escrivaes || [];
+    const registros = dataReg.registros || [];
+
+    // Mapear quem enviou e em quais modalidades
+    const envios = {};
+    registros.forEach(r => {
+      if (!envios[r.escrivao]) envios[r.escrivao] = { modalidades: new Set(), delegacia: r.delegacia };
+      envios[r.escrivao].modalidades.add(r.modalidade);
+    });
+
+    renderPresenca(escrivaesCadastrados, envios, dataStr);
+  } catch(e) {
+    document.getElementById('presenca-loading').style.display = 'none';
+    document.getElementById('presenca-loading').textContent = 'Erro ao carregar dados.';
+  }
+}
+
+function renderPresenca(escrivaes, envios, dataStr) {
+  document.getElementById('presenca-loading').style.display = 'none';
+  document.getElementById('presenca-corpo').style.display = 'block';
+
+  const total = escrivaes.length;
+  const enviaram = escrivaes.filter(e => envios[e.nome]).length;
+  const naoEnviaram = total - enviaram;
+
+  // KPIs
+  document.getElementById('presenca-resumo').innerHTML = `
+    <div class="presenca-kpi">
+      <div class="kpi-valor" style="color:var(--azul);">${total}</div>
+      <div class="kpi-label">Total de Escrivães</div>
+    </div>
+    <div class="presenca-kpi" style="border-color:var(--verde);">
+      <div class="kpi-valor" style="color:var(--verde);">${enviaram}</div>
+      <div class="kpi-label">Enviaram Registros</div>
+    </div>
+    <div class="presenca-kpi" style="border-color:var(--vermelho);">
+      <div class="kpi-valor" style="color:var(--vermelho);">${naoEnviaram}</div>
+      <div class="kpi-label">Não Enviaram</div>
+    </div>`;
+
+  const nomeMod = { expediente: 'Exp', plantao: 'Pla', bo: 'B.O.' };
+  const classeMod = { expediente: 'mod-exp', plantao: 'mod-pla', bo: 'mod-bo' };
+
+  // Cards — primeiro os que enviaram, depois os que não enviaram
+  const ordenados = [...escrivaes].sort((a,b) => {
+    const aEnviou = !!envios[a.nome];
+    const bEnviou = !!envios[b.nome];
+    if (aEnviou && !bEnviou) return -1;
+    if (!aEnviou && bEnviou) return 1;
+    return a.nome.localeCompare(b.nome);
+  });
+
+  document.getElementById('presenca-grid').innerHTML = ordenados.map(e => {
+    const enviou = envios[e.nome];
+    const delegacias = Array.isArray(e.delegacias) ? e.delegacias : [e.delegacia];
+    const inicial = e.nome.charAt(0).toUpperCase();
+    const mods = enviou ? Array.from(enviou.modalidades) : [];
+    const badgesMod = mods.map(m => `<span class="presenca-mod ${classeMod[m]||''}">${nomeMod[m]||m}</span>`).join('');
+
+    return `<div class="presenca-card ${enviou ? 'enviou' : 'nao-enviou'}">
+      <div class="presenca-avatar ${enviou ? 'ok' : 'nok'}">${inicial}</div>
+      <div class="presenca-info">
+        <div class="presenca-nome">${e.nome}</div>
+        <div class="presenca-del">${delegacias.join(', ')}</div>
+        <div class="presenca-envios">
+          ${enviou
+            ? `<span class="presenca-badge-ok">✓ Enviou</span>`
+            : `<span class="presenca-badge-nok">✗ Não enviou</span>`}
+        </div>
+        ${mods.length ? `<div class="presenca-mods">${badgesMod}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
 // ============================================================
 // CONSULTA E DASHBOARD (ADMIN)
 // ============================================================
