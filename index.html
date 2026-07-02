@@ -322,6 +322,14 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
   font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s;
 }
 .btn-limpar:hover { border-color: var(--vermelho); color: var(--vermelho); }
+.btn-sem-ocorrencias {
+  padding: 13px 18px; background: transparent; color: var(--dourado);
+  border: 1.5px solid var(--dourado); border-radius: 8px; font-size: 13px;
+  font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-sem-ocorrencias:hover { background: var(--dourado); color: var(--azul); }
+.btn-sem-ocorrencias:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Spinner */
 .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
@@ -586,6 +594,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
       <div id="campos-container"></div>
       <div class="form-acoes">
         <button class="btn-limpar" onclick="limparForm()">Limpar</button>
+        <button class="btn-sem-ocorrencias" id="btn-sem-ocor" onclick="enviarSemOcorrencias()">⚪ Sem Ocorrências</button>
         <button class="btn-enviar" id="btn-enviar" onclick="enviar()">
           <span id="btn-txt">Enviar Registro</span>
           <div class="spinner" id="spinner"></div>
@@ -1124,7 +1133,7 @@ function coletarDados() {
         }
       });
       const qtd = parseInt(obj['quantidade'] || '0');
-      if (qtd > 0 || Object.values(obj).some(v => v !== '' && v !== '0')) resultado.campos[campo.id].push(obj);
+      if (qtd > 0) resultado.campos[campo.id].push(obj);
     });
   });
   return resultado;
@@ -1148,8 +1157,62 @@ async function enviar() {
   }
 }
 
+async function enviarSemOcorrencias() {
+  if (!confirm('Confirmar envio de "Sem Ocorrências"?\n\nIsso registrará que não houve ocorrências no período.')) return;
+
+  const btn = document.getElementById('btn-sem-ocor');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+
+  // Monta metadados iguais ao envio normal
+  let data, horario, turno, delegacia;
+  if (modalidadeAtual === 'plantao') {
+    const dataInicio = document.getElementById('plantao-data-inicio').value;
+    const horaInicio = document.getElementById('plantao-hora-inicio').value;
+    const dataFim = document.getElementById('plantao-data-fim').value;
+    const horaFim = document.getElementById('plantao-hora-fim').value;
+    const polo = document.getElementById('plantao-local').value;
+    const fmt = (d) => { const [y,m,dd] = d.split('-'); return `${dd}/${m}`; };
+    data = dataInicio;
+    horario = `Início: ${horaInicio}h de ${fmt(dataInicio)} | Final: ${horaFim}h de ${fmt(dataFim)}`;
+    turno = '';
+    delegacia = polo;
+  } else if (modalidadeAtual === 'bo') {
+    data = document.getElementById('meta-data').value;
+    horario = '';
+    turno = document.getElementById('meta-turno').value;
+    delegacia = usuarioLogado.delegacia;
+  } else {
+    data = document.getElementById('meta-data').value;
+    horario = document.getElementById('meta-horario').value;
+    turno = '';
+    delegacia = usuarioLogado.delegacia;
+  }
+
+  const dados = {
+    acao: 'semOcorrencias',
+    modalidade: modalidadeAtual,
+    delegacia,
+    escrivao: usuarioLogado.nome,
+    data,
+    horario,
+    turno
+  };
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, { method: 'POST', body: JSON.stringify(dados) });
+    const result = await resp.json();
+    if (result.status === 'ok') mostrarFeedback(true, 'Registrado!', 'Sem ocorrências registrado na planilha.');
+    else mostrarFeedback(false, 'Erro ao enviar', result.message || 'Tente novamente.');
+  } catch(e) {
+    mostrarFeedback(false, 'Erro de conexão', 'Verifique a URL do Apps Script.');
+  } finally {
+    btn.disabled = false; btn.textContent = '⚪ Sem Ocorrências';
+  }
+}
+
 function limparForm() {
-  document.querySelectorAll('#campos-container input').forEach(el => el.value = '');
+  document.querySelectorAll('#campos-container input:not(.qtd-input)').forEach(el => el.value = '');
+  document.querySelectorAll('.qtd-input').forEach(el => el.value = '0');
   document.querySelectorAll('.linha-removivel').forEach(el => el.remove());
 }
 
