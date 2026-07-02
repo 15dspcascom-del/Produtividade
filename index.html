@@ -429,6 +429,29 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
   #tela-formulario, #tela-admin { padding: 16px; }
   .topbar { padding: 11px 14px; }
 }
+
+/* ===== TELA DE CONSULTA ===== */
+.consulta-filtros {
+  display: grid; grid-template-columns: repeat(6,1fr); gap: 14px;
+  background: var(--branco); border: 1.5px solid var(--cinza-borda);
+  border-radius: 10px; padding: 20px; margin-bottom: 24px;
+}
+.kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+.kpi-card { background: var(--branco); border: 1.5px solid var(--cinza-borda); border-radius: 10px; padding: 20px; text-align: center; }
+.kpi-valor { font-family: 'Rajdhani', sans-serif; font-size: 36px; font-weight: 700; color: var(--azul); line-height: 1; }
+.kpi-label { font-size: 11px; color: var(--texto-leve); text-transform: uppercase; letter-spacing: 0.7px; margin-top: 6px; }
+.consulta-tabela-wrap { background: var(--branco); border: 1.5px solid var(--cinza-borda); border-radius: 10px; overflow: hidden; }
+.consulta-tabela-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1.5px solid var(--cinza-borda); }
+.consulta-tabela-header span { font-size: 13px; color: var(--texto-leve); font-weight: 600; }
+.btn-exportar { background: var(--verde); color: white; border: none; border-radius: 6px; padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: opacity 0.2s; }
+.btn-exportar:hover { opacity: 0.85; }
+.consulta-tabela { width: 100%; border-collapse: collapse; font-size: 12px; }
+.consulta-tabela thead { background: var(--azul); color: white; }
+.consulta-tabela th { padding: 10px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; white-space: nowrap; }
+.consulta-tabela tbody tr { border-bottom: 1px solid var(--cinza-borda); }
+.consulta-tabela tbody tr:hover { background: rgba(10,22,40,0.03); }
+.consulta-tabela td { padding: 9px 14px; color: var(--texto); }
+@media (max-width:768px) { .consulta-filtros { grid-template-columns: 1fr 1fr; } .kpi-grid { grid-template-columns: 1fr 1fr; } }
 </style>
 </head>
 <body>
@@ -501,7 +524,10 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
     <div id="tela-admin" class="tela" style="flex-direction:column;">
       <div class="admin-header">
         <h2>GERENCIAR ESCRIVÃES</h2>
-        <button class="btn-novo" onclick="abrirModalEscrivao()">+ Novo Escrivão</button>
+        <div style="display:flex;gap:10px;">
+          <button class="btn-novo" style="background:var(--dourado);color:var(--azul);" onclick="mostrarTela('consulta')">📊 Consultas e Dashboard</button>
+          <button class="btn-novo" onclick="abrirModalEscrivao()">+ Novo Escrivão</button>
+        </div>
       </div>
       <div class="tabela-wrap">
         <div class="admin-loading" id="admin-loading">Carregando...</div>
@@ -519,6 +545,105 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
       </div>
     </div>
 
+    <!-- TELA DE CONSULTA / DASHBOARD -->
+    <div id="tela-consulta" class="tela" style="flex-direction:column; padding:28px 32px; max-width:1100px; margin:0 auto; width:100%;">
+      <div class="admin-header">
+        <h2>📊 CONSULTAS E DASHBOARD</h2>
+        <button class="btn-voltar" onclick="mostrarTela('admin')">← Voltar</button>
+      </div>
+
+      <!-- Filtros -->
+      <div class="consulta-filtros">
+        <div class="fm-item">
+          <label>Data Início</label>
+          <input type="date" id="filtro-data-ini" />
+        </div>
+        <div class="fm-item">
+          <label>Data Fim</label>
+          <input type="date" id="filtro-data-fim" />
+        </div>
+        <div class="fm-item">
+          <label>Escrivão</label>
+          <select id="filtro-escrivao">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div class="fm-item">
+          <label>Modalidade</label>
+          <select id="filtro-modalidade">
+            <option value="">Todas</option>
+            <option value="expediente">Expediente</option>
+            <option value="plantao">Plantão</option>
+            <option value="bo">Setor de B.O.</option>
+          </select>
+        </div>
+        <div class="fm-item">
+          <label>Delegacia</label>
+          <select id="filtro-delegacia">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="fm-item" style="display:flex;align-items:flex-end;">
+          <button class="btn-novo" onclick="buscarRegistros()" style="width:100%;">🔍 Buscar</button>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid" id="kpi-grid" style="display:none;">
+        <div class="kpi-card">
+          <div class="kpi-valor" id="kpi-total">0</div>
+          <div class="kpi-label">Total de Registros</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-valor" id="kpi-escrivaes">0</div>
+          <div class="kpi-label">Escrivães Ativos</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-valor" id="kpi-delegacias">0</div>
+          <div class="kpi-label">Delegacias</div>
+        </div>
+        <div class="kpi-card" style="border-color:var(--dourado);">
+          <div class="kpi-valor" id="kpi-sem-ocor" style="color:var(--dourado);">0</div>
+          <div class="kpi-label">Sem Ocorrências</div>
+        </div>
+      </div>
+
+      <!-- Resultados -->
+      <div id="consulta-resultado" style="display:none;">
+        <div class="consulta-tabela-wrap">
+          <div class="consulta-tabela-header">
+            <span id="consulta-count">0 registros encontrados</span>
+            <button class="btn-exportar" onclick="exportarCSV()">⬇ Exportar CSV</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="consulta-tabela" id="consulta-tabela">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Horário</th>
+                  <th>Delegacia/Polo</th>
+                  <th>Escrivão</th>
+                  <th>Procedimento</th>
+                  <th>Quantidade</th>
+                  <th>Crime/Descrição</th>
+                  <th>Cidade</th>
+                  <th>Hora Registro</th>
+                </tr>
+              </thead>
+              <tbody id="consulta-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="consulta-vazio" style="display:none;text-align:center;padding:40px;color:var(--texto-leve);font-size:14px;">
+        Nenhum registro encontrado com os filtros selecionados.
+      </div>
+      <div id="consulta-loading" style="display:none;text-align:center;padding:40px;color:var(--texto-leve);font-size:14px;">
+        Buscando registros...
+      </div>
+    </div>
+
     <!-- FORMULÁRIO -->
     <div id="tela-formulario" style="display:none; flex-direction:column; padding:28px 32px; max-width:920px; margin:0 auto;">
       <div class="form-header">
@@ -526,6 +651,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         <div class="form-header-info">
           <h2 id="form-titulo">EXPEDIENTE</h2>
           <p id="form-sub">Preencha os procedimentos</p>
+          <p id="form-delegacia" style="font-size:12px; color:var(--dourado); font-weight:600; margin-top:2px; letter-spacing:0.3px;"></p>
         </div>
         <button class="btn-ver-registros" onclick="abrirMeusRegistros()">📋 Meus Registros</button>
       </div>
@@ -856,6 +982,8 @@ function _abrirFormularioReal(modalidade) {
   const subMap = { expediente:'28 procedimentos', plantao:'9 procedimentos', bo:'Boletins por turno' };
   document.getElementById('form-titulo').textContent = titulosMap[modalidade];
   document.getElementById('form-sub').textContent = subMap[modalidade];
+  const nomeDel = modalidade === 'plantao' ? '' : (usuarioLogado.delegacia || '');
+  document.getElementById('form-delegacia').textContent = nomeDel ? `📍 ${nomeDel}` : '';
 
   const agoraForm = new Date();
   const hoje = `${agoraForm.getFullYear()}-${String(agoraForm.getMonth()+1).padStart(2,'0')}-${String(agoraForm.getDate()).padStart(2,'0')}`;
@@ -946,10 +1074,11 @@ function mostrarTela(id) {
   esconderTodasTelas();
   const el = document.getElementById('tela-' + id);
   if (el) { el.classList.add('ativa'); el.style.display = 'flex'; }
+  if (id === 'consulta') iniciarConsulta();
 }
 
 function esconderTodasTelas() {
-  ['tela-selecao','tela-admin','tela-escolha-delegacia'].forEach(id => {
+  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.classList.remove('ativa'); el.style.display = 'none'; }
   });
@@ -1462,6 +1591,118 @@ async function excluirEscrivao(nome) {
 // FEEDBACK
 // ============================================================
 let feedbackSucesso = false;
+// ============================================================
+// CONSULTA E DASHBOARD (ADMIN)
+// ============================================================
+let dadosConsulta = [];
+
+async function iniciarConsulta() {
+  // Preencher filtro de escrivães
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL + '?acao=listarEscrivaes');
+    const data = await resp.json();
+    const sel = document.getElementById('filtro-escrivao');
+    sel.innerHTML = '<option value="">Todos</option>';
+    (data.escrivaes || []).forEach(e => {
+      sel.innerHTML += `<option value="${e.nome}">${e.nome}</option>`;
+    });
+  } catch(e) {}
+
+  // Preencher filtro de delegacias
+  const delSel = document.getElementById('filtro-delegacia');
+  const todasDel = [
+    '1ª DD','Cacimba de Areia','2ª DD','São José de Espinharas','Malta','Condado',
+    'Vista Serrana','Santa Luzia','Várzea','Junco do Seridó','São José do Sabugi',
+    'Teixeira','Desterro','Cacimbas',"Mãe D'água",'Maturéia','São Mamede','Passagem',
+    'Santa Terezinha','São José do Bonfim','Areia de Baraúnas','Quixaba',
+    'DEAM','DRF','DHE','Central - Patos'
+  ];
+  delSel.innerHTML = '<option value="">Todas</option>';
+  todasDel.forEach(d => delSel.innerHTML += `<option value="${d}">${d}</option>`);
+
+  // Data padrão: hoje
+  const agora = new Date();
+  const hoje = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
+  document.getElementById('filtro-data-ini').value = hoje;
+  document.getElementById('filtro-data-fim').value = hoje;
+}
+
+async function buscarRegistros() {
+  const dataIni = document.getElementById('filtro-data-ini').value;
+  const dataFim = document.getElementById('filtro-data-fim').value;
+  const escrivao = document.getElementById('filtro-escrivao').value;
+  const modalidade = document.getElementById('filtro-modalidade').value;
+  const delegacia = document.getElementById('filtro-delegacia').value;
+
+  document.getElementById('consulta-loading').style.display = 'block';
+  document.getElementById('consulta-resultado').style.display = 'none';
+  document.getElementById('consulta-vazio').style.display = 'none';
+  document.getElementById('kpi-grid').style.display = 'none';
+
+  try {
+    const params = new URLSearchParams({ acao:'consultar', dataIni, dataFim, escrivao, modalidade, delegacia });
+    const resp = await fetch(APPS_SCRIPT_URL + '?' + params.toString());
+    const data = await resp.json();
+    dadosConsulta = data.registros || [];
+    renderConsulta(dadosConsulta);
+  } catch(e) {
+    document.getElementById('consulta-loading').style.display = 'none';
+    document.getElementById('consulta-vazio').style.display = 'block';
+    document.getElementById('consulta-vazio').textContent = 'Erro ao buscar registros. Verifique a conexão.';
+  }
+}
+
+function renderConsulta(registros) {
+  document.getElementById('consulta-loading').style.display = 'none';
+
+  if (registros.length === 0) {
+    document.getElementById('consulta-vazio').style.display = 'block';
+    return;
+  }
+
+  // KPIs
+  const escrivaesUnicos = new Set(registros.map(r => r.escrivao)).size;
+  const delegaciasUnicas = new Set(registros.map(r => r.delegacia)).size;
+  const semOcor = registros.filter(r => r.procedimento === 'SEM OCORRÊNCIAS').length;
+  document.getElementById('kpi-total').textContent = registros.length;
+  document.getElementById('kpi-escrivaes').textContent = escrivaesUnicos;
+  document.getElementById('kpi-delegacias').textContent = delegaciasUnicas;
+  document.getElementById('kpi-sem-ocor').textContent = semOcor;
+  document.getElementById('kpi-grid').style.display = 'grid';
+
+  // Tabela
+  document.getElementById('consulta-count').textContent = `${registros.length} registro(s) encontrado(s)`;
+  const tbody = document.getElementById('consulta-tbody');
+  tbody.innerHTML = registros.map(r => `
+    <tr>
+      <td>${r.data || '—'}</td>
+      <td>${r.horario || r.turno || '—'}</td>
+      <td>${r.delegacia || '—'}</td>
+      <td>${r.escrivao || '—'}</td>
+      <td>${r.procedimento === 'SEM OCORRÊNCIAS' ? '<span style="background:rgba(200,168,75,0.15);color:var(--dourado);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">SEM OCORRÊNCIAS</span>' : (r.procedimento || '—')}</td>
+      <td>${r.quantidade || '—'}</td>
+      <td>${r.crime || '—'}</td>
+      <td>${r.cidade || '—'}</td>
+      <td style="white-space:nowrap;">${r.horaRegistro || '—'}</td>
+    </tr>`).join('');
+
+  document.getElementById('consulta-resultado').style.display = 'block';
+}
+
+function exportarCSV() {
+  if (!dadosConsulta.length) return;
+  const cab = ['Data','Horário','Delegacia','Escrivão','Procedimento','Quantidade','Crime/Descrição','Cidade','Hora Registro'];
+  const linhas = dadosConsulta.map(r => [
+    r.data,r.horario||r.turno,r.delegacia,r.escrivao,r.procedimento,r.quantidade,r.crime,r.cidade,r.horaRegistro
+  ].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(','));
+  const csv = [cab.join(','), ...linhas].join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `registros_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
 function mostrarFeedback(ok, titulo, msg) {
   feedbackSucesso = ok;
   const icon = document.getElementById('fb-icon');
