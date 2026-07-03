@@ -1867,15 +1867,20 @@ function montarTextoArea(dados, dataISO) {
   const pad = (n) => String(parseInt(n)||0).padStart(2,'0');
 
   const linhas = [];
-  linhas.push('*POLICIA CIVIL*');
+  linhas.push('*POLÍCIA CIVIL*');
+  linhas.push('');
   linhas.push('*15ª Delegacia Seccional, com sede em Patos/PB (15ª/PATOS)*');
+  linhas.push('');
   linhas.push('*PRODUTIVIDADE DAS UNIDADES DURANTE O EXPEDIENTE NORMAL DE TRABALHO (Seg a Sex - 08h às 18h)*');
+  linhas.push('');
   linhas.push('*RELATÓRIO CONSOLIDADO:*');
-  linhas.push(`*DATA: ${dataFmt}, ${diaSemana}*`);
+  linhas.push('');
+  linhas.push(`*DATA: ${dataFmt}, ${diaSemana}, 08h às 18h.*`);
   linhas.push('');
 
   AREAS.forEach(area => {
-    linhas.push(`*ÁREA ${area.num}:*`);
+    linhas.push(`*ÁREA ${area.num}*:`);
+    linhas.push('');
 
     area.delegacias.forEach((del, idx) => {
       const letra = LETRAS[idx];
@@ -1888,7 +1893,6 @@ function montarTextoArea(dados, dataISO) {
         return;
       }
 
-      // Montar linhas de procedimentos
       let temAlgo = false;
       Object.entries(NOMES_PROC_AREA).forEach(([k, nome]) => {
         const p = procs[k];
@@ -1896,7 +1900,6 @@ function montarTextoArea(dados, dataISO) {
         temAlgo = true;
         const total = parseInt(p.total);
 
-        // Detalhar os itens
         const detalhes = [];
         if (p.linhas && p.linhas.length > 0) {
           p.linhas.forEach(l => {
@@ -1913,10 +1916,10 @@ function montarTextoArea(dados, dataISO) {
         } else {
           linhas.push(`${nome}: ${pad(total)}`);
         }
+        linhas.push(''); // linha em branco após cada procedimento
       });
 
-      if (!temAlgo) linhas.push('Sem ocorrências');
-      linhas.push('');
+      if (!temAlgo) { linhas.push('Sem ocorrências'); linhas.push(''); }
     });
   });
 
