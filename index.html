@@ -579,6 +579,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <button class="btn-novo" style="background:var(--verde);color:white;" onclick="mostrarTela('presenca')">✅ Envios do Dia</button>
           <button class="btn-novo" style="background:var(--dourado);color:var(--azul);" onclick="mostrarTela('consulta')">📊 Consultas e Dashboard</button>
           <button class="btn-novo" style="background:#6a0dad;color:white;" onclick="mostrarTela('relatorio')">📄 Relatório CICC</button>
+          <button class="btn-novo" style="background:#c0392b;color:white;" onclick="mostrarTela('relatorio-area')">🗂 Relatório de Área</button>
           <button class="btn-novo" onclick="abrirModalEscrivao()">+ Novo Escrivão</button>
         </div>
       </div>
@@ -595,6 +596,41 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           </thead>
           <tbody id="tbody-escrivaes"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- TELA RELATÓRIO DE ÁREA -->
+    <div id="tela-relatorio-area" class="tela" style="flex-direction:column; padding:28px 32px; max-width:900px; margin:0 auto; width:100%;">
+      <div class="admin-header">
+        <h2>🗂 RELATÓRIO DE ÁREA</h2>
+        <button class="btn-voltar" onclick="mostrarTela('admin')">← Voltar</button>
+      </div>
+
+      <div style="background:var(--branco);border:1.5px solid var(--cinza-borda);border-radius:10px;padding:24px;margin-bottom:20px;">
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:20px;">
+          <div class="fm-item">
+            <label>Data do Relatório</label>
+            <input type="date" id="rarea-data" />
+          </div>
+          <div class="fm-item">
+            <label>Dia da Semana</label>
+            <input type="text" id="rarea-diaSemana" placeholder="ex: quarta-feira" />
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-enviar" onclick="gerarRelatorioArea()" id="btn-gerar-area">
+        <span id="btn-area-txt">🗂 Gerar Relatório de Área</span>
+        <div class="spinner" id="spinner-area"></div>
+      </button>
+
+      <div id="rarea-resultado" style="display:none;margin-top:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <strong style="font-size:14px;color:var(--azul);">Relatório gerado — copie o texto abaixo:</strong>
+          <button class="btn-exportar" onclick="copiarRelatorioArea()">📋 Copiar Tudo</button>
+        </div>
+        <textarea id="rarea-texto" rows="50" readonly style="width:100%;padding:16px;border:1.5px solid var(--cinza-borda);border-radius:8px;font-size:13px;font-family:monospace;line-height:1.7;background:var(--cinza);color:var(--texto);resize:vertical;"></textarea>
+        <div id="rarea-copiado" style="display:none;text-align:center;color:var(--verde);font-weight:600;margin-top:8px;">✓ Copiado!</div>
       </div>
     </div>
 
@@ -1237,10 +1273,11 @@ function mostrarTela(id) {
   if (id === 'consulta') iniciarConsulta();
   if (id === 'presenca') iniciarPresenca();
   if (id === 'relatorio') iniciarRelatorio();
+  if (id === 'relatorio-area') iniciarRelatorioArea();
 }
 
 function esconderTodasTelas() {
-  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta','tela-presenca','tela-relatorio'].forEach(id => {
+  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta','tela-presenca','tela-relatorio','tela-relatorio-area'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.classList.remove('ativa'); el.style.display = 'none'; }
   });
@@ -1753,6 +1790,149 @@ async function excluirEscrivao(nome) {
 // FEEDBACK
 // ============================================================
 let feedbackSucesso = false;
+// ============================================================
+// RELATÓRIO DE ÁREA
+// ============================================================
+const AREAS = [
+  { num: 1,  delegacias: ['1ª DD', 'Cacimba de Areia'] },
+  { num: 2,  delegacias: ['2ª DD', 'São José de Espinharas'] },
+  { num: 3,  delegacias: ['Teixeira', 'Desterro', 'Cacimbas'] },
+  { num: 4,  delegacias: ['Santa Luzia', 'Junco do Seridó', 'São José do Sabugi', 'Várzea'] },
+  { num: 5,  delegacias: ['São Mamede', 'Passagem'] },
+  { num: 6,  delegacias: ['Quixaba', 'Areia de Baraúnas'] },
+  { num: 7,  delegacias: ['Santa Terezinha', 'São José do Bonfim'] },
+  { num: 8,  delegacias: ['Malta', 'Condado', 'Vista Serrana'] },
+  { num: 9,  delegacias: ['Maturéia', "Mãe D'água"] },
+  { num: 10, delegacias: ['DRF'] },
+  { num: 11, delegacias: ['DHE'] },
+  { num: 12, delegacias: ['DEAM'] },
+];
+
+const NOMES_PROC_AREA = {
+  bos: 'BOs', apfs: 'APFs', aafai: 'AAFAIs', tcos: 'TCOs', bocs: 'BOCs',
+  med_prot: 'MEDIDAS PROTETIVAS', repr_prisao: 'REPRESENTAÇÕES POR PRISÃO',
+  repr_busca: 'REPRESENTAÇÕES POR BUSCAS', pris_flagrante: 'PRISÕES EM FLAGRANTE',
+  pris_mandado: 'CUMPRIMENTO DE MANDADO DE PRISÃO',
+  req_exames: 'REQUISIÇÕES DE EXAMES', oitivas: 'OITIVAS',
+  ord_missao: 'ORDENS DE MISSÃO', bos_ip: 'BOs TRANSFORMADOS EM IP',
+  cotas_min: 'COTAS AO MINISTÉRIO PÚBLICO', prot_pje: 'PROTOCOLOS PJE',
+  intimacoes: 'INTIMAÇÕES', oficios: 'OFÍCIOS', despachos: 'DESPACHOS',
+  rel_missao: 'RELATÓRIOS DE MISSÃO', cond_presos: 'CONDUÇÃO DE PRESOS',
+  armas: 'ARMAS APREENDIDAS', drogas: 'DROGAS APREENDIDAS',
+  veiculos: 'VEÍCULOS', aud_custodia: 'AUDIÊNCIAS DE CUSTÓDIA',
+  operacoes: 'OPERAÇÕES', diligencias: 'DILIGÊNCIAS',
+  atendimentos: 'ATENDIMENTOS DIVERSOS'
+};
+
+const LETRAS = ['a','b','c','d','e','f'];
+
+function iniciarRelatorioArea() {
+  const agora = new Date();
+  const hoje = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
+  document.getElementById('rarea-data').value = hoje;
+  const diasSemana = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  document.getElementById('rarea-diaSemana').value = diasSemana[agora.getDay()];
+  document.getElementById('rarea-resultado').style.display = 'none';
+}
+
+async function gerarRelatorioArea() {
+  const data = document.getElementById('rarea-data').value;
+  if (!data) { alert('Selecione a data.'); return; }
+
+  const btn = document.getElementById('btn-gerar-area');
+  const txt = document.getElementById('btn-area-txt');
+  const sp = document.getElementById('spinner-area');
+  btn.disabled = true; txt.textContent = 'Buscando dados...'; sp.style.display = 'block';
+
+  try {
+    const resp = await fetch(`${APPS_SCRIPT_URL}?acao=dadosCICC&data=${data}`);
+    const dados = await resp.json();
+    if (dados.status !== 'ok') throw new Error(dados.message);
+    const texto = montarTextoArea(dados, data);
+    document.getElementById('rarea-texto').value = texto;
+    document.getElementById('rarea-resultado').style.display = 'block';
+    document.getElementById('rarea-resultado').scrollIntoView({ behavior: 'smooth' });
+  } catch(e) {
+    alert('Erro ao gerar relatório: ' + e.message);
+  } finally {
+    btn.disabled = false; txt.textContent = '🗂 Gerar Relatório de Área'; sp.style.display = 'none';
+  }
+}
+
+function montarTextoArea(dados, dataISO) {
+  const [ano, mes, dia] = dataISO.split('-');
+  const dataFmt = `${dia}/${mes}/${ano}`;
+  const diaSemana = document.getElementById('rarea-diaSemana').value;
+  const exp = dados.expediente || {};
+  const pad = (n) => String(parseInt(n)||0).padStart(2,'0');
+
+  const linhas = [];
+  linhas.push('*POLICIA CIVIL*');
+  linhas.push('*15ª Delegacia Seccional, com sede em Patos/PB (15ª/PATOS)*');
+  linhas.push('*PRODUTIVIDADE DAS UNIDADES DURANTE O EXPEDIENTE NORMAL DE TRABALHO (Seg a Sex - 08h às 18h)*');
+  linhas.push('*RELATÓRIO CONSOLIDADO:*');
+  linhas.push(`*DATA: ${dataFmt}, ${diaSemana}*`);
+  linhas.push('');
+
+  AREAS.forEach(area => {
+    linhas.push(`*ÁREA ${area.num}:*`);
+
+    area.delegacias.forEach((del, idx) => {
+      const letra = LETRAS[idx];
+      linhas.push(`*${letra}) ${del.toUpperCase()}:*`);
+
+      const procs = exp[del];
+      if (!procs || Object.keys(procs).length === 0) {
+        linhas.push('Sem ocorrências');
+        linhas.push('');
+        return;
+      }
+
+      // Montar linhas de procedimentos
+      let temAlgo = false;
+      Object.entries(NOMES_PROC_AREA).forEach(([k, nome]) => {
+        const p = procs[k];
+        if (!p || parseInt(p.total) === 0) return;
+        temAlgo = true;
+        const total = parseInt(p.total);
+
+        // Detalhar os itens
+        const detalhes = [];
+        if (p.linhas && p.linhas.length > 0) {
+          p.linhas.forEach(l => {
+            const qtd = parseInt(l.quantidade) || 0;
+            if (qtd === 0) return;
+            const crime = l.crime || l['descrição'] || l['tipo (depoimento/declaração/interrogatório)'] || l['tipo de crime'] || l['nome da operação'] || '';
+            const cidade = l.cidade || '';
+            if (crime) detalhes.push(`${pad(qtd)} ${crime}${cidade && cidade !== del ? ' (' + cidade + ')' : ''}`);
+          });
+        }
+
+        if (detalhes.length > 0) {
+          linhas.push(`${nome}: ${pad(total)} (${detalhes.join('; ')})`);
+        } else {
+          linhas.push(`${nome}: ${pad(total)}`);
+        }
+      });
+
+      if (!temAlgo) linhas.push('Sem ocorrências');
+      linhas.push('');
+    });
+  });
+
+  linhas.push('Assessoria de Estatística 15aDSPC/Patos');
+  return linhas.join('\n');
+}
+
+function copiarRelatorioArea() {
+  const txt = document.getElementById('rarea-texto');
+  txt.select();
+  document.execCommand('copy');
+  const ok = document.getElementById('rarea-copiado');
+  ok.style.display = 'block';
+  setTimeout(() => ok.style.display = 'none', 2000);
+}
+
 // ============================================================
 // RELATÓRIO CICC
 // ============================================================
