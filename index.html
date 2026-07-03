@@ -446,7 +446,16 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
   border-radius: 10px; padding: 18px; text-align: center;
 }
 .presenca-kpi .kpi-valor { font-size: 32px; }
-.presenca-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 14px; }
+.presenca-grupo { margin-bottom: 28px; }
+.presenca-grupo-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: var(--branco);
+  border: 1.5px solid var(--cinza-borda); border-radius: 8px;
+  margin-bottom: 14px; font-family: 'Rajdhani', sans-serif;
+  font-size: 15px; font-weight: 700; letter-spacing: 0.5px;
+}
+.presenca-grupo-stats { font-size: 12px; font-family: 'Inter', sans-serif; }
+.presenca-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 12px; }
 .presenca-card {
   background: var(--branco); border: 1.5px solid var(--cinza-borda);
   border-radius: 10px; padding: 18px; display: flex; align-items: center; gap: 14px;
@@ -569,6 +578,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         <div style="display:flex;gap:10px;">
           <button class="btn-novo" style="background:var(--verde);color:white;" onclick="mostrarTela('presenca')">✅ Envios do Dia</button>
           <button class="btn-novo" style="background:var(--dourado);color:var(--azul);" onclick="mostrarTela('consulta')">📊 Consultas e Dashboard</button>
+          <button class="btn-novo" style="background:#6a0dad;color:white;" onclick="mostrarTela('relatorio')">📄 Relatório CICC</button>
           <button class="btn-novo" onclick="abrirModalEscrivao()">+ Novo Escrivão</button>
         </div>
       </div>
@@ -585,6 +595,93 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           </thead>
           <tbody id="tbody-escrivaes"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- TELA DE RELATÓRIO CICC -->
+    <div id="tela-relatorio" class="tela" style="flex-direction:column; padding:28px 32px; max-width:1000px; margin:0 auto; width:100%;">
+      <div class="admin-header">
+        <h2>📄 RELATÓRIO CICC</h2>
+        <button class="btn-voltar" onclick="mostrarTela('admin')">← Voltar</button>
+      </div>
+
+      <!-- Seleção de data e campos manuais -->
+      <div style="background:var(--branco);border:1.5px solid var(--cinza-borda);border-radius:10px;padding:24px;margin-bottom:20px;">
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:20px;margin-bottom:20px;">
+          <div class="fm-item">
+            <label>Data do Relatório</label>
+            <input type="date" id="rel-data" />
+          </div>
+          <div class="fm-item">
+            <label>Dia da Semana (ex: quinta-feira)</label>
+            <input type="text" id="rel-diaSemana" placeholder="ex: quinta-feira" />
+          </div>
+        </div>
+
+        <hr style="border:none;border-top:1.5px solid var(--cinza-borda);margin:16px 0;">
+
+        <p style="font-size:12px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:14px;">III — Setor de Custódia (preenchimento manual)</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div class="fm-item">
+            <label>Início do Plantão Custódia</label>
+            <input type="text" id="cust-inicio" placeholder="ex: 08h do dia 02/07/2026, quinta-feira" />
+          </div>
+          <div class="fm-item">
+            <label>Final do Plantão Custódia</label>
+            <input type="text" id="cust-final" placeholder="ex: 08h do dia 03/07/2026, sexta-feira" />
+          </div>
+          <div class="fm-item">
+            <label>Duração</label>
+            <input type="text" id="cust-duracao" placeholder="ex: Plantão 24h" />
+          </div>
+          <div class="fm-item">
+            <label>Servidor Responsável</label>
+            <input type="text" id="cust-servidor" placeholder="Nome do servidor" />
+          </div>
+          <div class="fm-item">
+            <label>Presos no início</label>
+            <input type="text" id="cust-ini-qtd" placeholder="ex: 01 preso custodiado" />
+          </div>
+          <div class="fm-item">
+            <label>Presos Recebidos (qtd)</label>
+            <input type="number" id="cust-recebidos-qtd" placeholder="0" min="0" value="0" />
+          </div>
+          <div class="fm-item" style="grid-column:1/-1;">
+            <label>Nomes dos Presos Recebidos (um por linha)</label>
+            <textarea id="cust-recebidos-nomes" rows="3" placeholder="NOME SOBRENOME;&#10;NOME SOBRENOME;" style="width:100%;padding:9px;border:1.5px solid var(--cinza-borda);border-radius:6px;font-size:13px;font-family:'Inter',sans-serif;resize:vertical;"></textarea>
+          </div>
+          <div class="fm-item" style="grid-column:1/-1;">
+            <label>Audiências de Custódia (nomes, um por linha)</label>
+            <textarea id="cust-audiencias" rows="3" placeholder="NOME SOBRENOME;&#10;NOME SOBRENOME;" style="width:100%;padding:9px;border:1.5px solid var(--cinza-borda);border-radius:6px;font-size:13px;font-family:'Inter',sans-serif;resize:vertical;"></textarea>
+          </div>
+          <div class="fm-item">
+            <label>Transferências para Unidades Prisionais (qtd)</label>
+            <input type="number" id="cust-transf-qtd" placeholder="0" min="0" value="0" />
+          </div>
+          <div class="fm-item">
+            <label>Nomes dos Transferidos (um por linha)</label>
+            <textarea id="cust-transf-nomes" rows="3" placeholder="NOME SOBRENOME;&#10;NOME SOBRENOME;" style="width:100%;padding:9px;border:1.5px solid var(--cinza-borda);border-radius:6px;font-size:13px;font-family:'Inter',sans-serif;resize:vertical;"></textarea>
+          </div>
+          <div class="fm-item">
+            <label>Situação Final da Carceragem</label>
+            <input type="text" id="cust-final-qtd" placeholder="ex: 02 custodiados" />
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-enviar" onclick="gerarRelatorioCICC()" id="btn-gerar-rel">
+        <span id="btn-gerar-txt">📄 Gerar Relatório</span>
+        <div class="spinner" id="spinner-rel"></div>
+      </button>
+
+      <!-- Resultado -->
+      <div id="rel-resultado" style="display:none;margin-top:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <strong style="font-size:14px;color:var(--azul);">Relatório gerado — copie o texto abaixo:</strong>
+          <button class="btn-exportar" onclick="copiarRelatorio()">📋 Copiar Tudo</button>
+        </div>
+        <textarea id="rel-texto" rows="40" readonly style="width:100%;padding:16px;border:1.5px solid var(--cinza-borda);border-radius:8px;font-size:13px;font-family:monospace;line-height:1.7;background:var(--cinza);color:var(--texto);resize:vertical;"></textarea>
+        <div id="rel-copiado" style="display:none;text-align:center;color:var(--verde);font-weight:600;margin-top:8px;">✓ Copiado!</div>
       </div>
     </div>
 
@@ -1139,10 +1236,11 @@ function mostrarTela(id) {
   if (el) { el.classList.add('ativa'); el.style.display = 'flex'; }
   if (id === 'consulta') iniciarConsulta();
   if (id === 'presenca') iniciarPresenca();
+  if (id === 'relatorio') iniciarRelatorio();
 }
 
 function esconderTodasTelas() {
-  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta','tela-presenca'].forEach(id => {
+  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta','tela-presenca','tela-relatorio'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.classList.remove('ativa'); el.style.display = 'none'; }
   });
@@ -1656,6 +1754,291 @@ async function excluirEscrivao(nome) {
 // ============================================================
 let feedbackSucesso = false;
 // ============================================================
+// RELATÓRIO CICC
+// ============================================================
+function iniciarRelatorio() {
+  const agora = new Date();
+  const hoje = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
+  document.getElementById('rel-data').value = hoje;
+  const diasSemana = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  document.getElementById('rel-diaSemana').value = diasSemana[agora.getDay()];
+  document.getElementById('rel-resultado').style.display = 'none';
+}
+
+async function gerarRelatorioCICC() {
+  const data = document.getElementById('rel-data').value;
+  if (!data) { alert('Selecione a data do relatório.'); return; }
+
+  const btn = document.getElementById('btn-gerar-rel');
+  const txt = document.getElementById('btn-gerar-txt');
+  const sp = document.getElementById('spinner-rel');
+  btn.disabled = true; txt.textContent = 'Buscando dados...'; sp.style.display = 'block';
+
+  try {
+    // Buscar dados das 3 planilhas
+    const resp = await fetch(`${APPS_SCRIPT_URL}?acao=dadosCICC&data=${data}`);
+    const dados = await resp.json();
+    if (dados.status !== 'ok') throw new Error(dados.message);
+    const texto = montarTextoCICC(dados, data);
+    document.getElementById('rel-texto').value = texto;
+    document.getElementById('rel-resultado').style.display = 'block';
+    document.getElementById('rel-resultado').scrollIntoView({ behavior: 'smooth' });
+  } catch(e) {
+    alert('Erro ao gerar relatório: ' + e.message);
+  } finally {
+    btn.disabled = false; txt.textContent = '📄 Gerar Relatório'; sp.style.display = 'none';
+  }
+}
+
+function montarTextoCICC(dados, dataISO) {
+  const [ano, mes, dia] = dataISO.split('-');
+  const dataFmt = `${dia}/${mes}/${ano}`;
+  const diaSemana = document.getElementById('rel-diaSemana').value;
+
+  // Custódia (manual)
+  const custInicio = document.getElementById('cust-inicio').value;
+  const custFinal = document.getElementById('cust-final').value;
+  const custDuracao = document.getElementById('cust-duracao').value || 'Plantão 24h';
+  const custServidor = document.getElementById('cust-servidor').value;
+  const custIniQtd = document.getElementById('cust-ini-qtd').value;
+  const custRecQtd = document.getElementById('cust-recebidos-qtd').value || '0';
+  const custRecNomes = document.getElementById('cust-recebidos-nomes').value.trim();
+  const custAud = document.getElementById('cust-audiencias').value.trim();
+  const custTransfQtd = document.getElementById('cust-transf-qtd').value || '0';
+  const custTransfNomes = document.getElementById('cust-transf-nomes').value.trim();
+  const custFinalQtd = document.getElementById('cust-final-qtd').value;
+
+  const formatarNomes = (txt) => txt ? txt.split('\n').filter(l=>l.trim()).map(l => l.trim()).join(';\n') + ';' : '';
+
+  // Helper para formatar quantidade com zero pad
+  const pad = (n) => String(parseInt(n)||0).padStart(2,'0');
+
+  // ===== SEÇÃO A — RESUMOS =====
+  let linhas = [];
+
+  linhas.push('*POLÍCIA CIVIL*');
+  linhas.push('*15ªDSPC/PATOS*');
+  linhas.push('');
+  linhas.push('*PRODUTIVIDADE DAS UNIDADES DA POLICIA CIVIL NA ÁREA DA 15ªDSPC/PATOS*');
+  linhas.push('');
+  linhas.push('*A) RESUMOS:*');
+  linhas.push('');
+
+  // I — Plantão Extraordinário
+  linhas.push('*I) PRODUTIVIDADE NO PLANTÃO EXTRAORDINÁRIO:*');
+  linhas.push('');
+
+  const polos = dados.plantao || {};
+  const nomesPolos = { 'Central - Patos': 'a) Central de Policia de Patos', 'Teixeira': 'b) Delegacia de Teixeira', 'DHE': 'c) Delegacia de Homicídios e Entorpecentes de Patos' };
+  const letrasPolos = { 'Central - Patos': 'a', 'Teixeira': 'b', 'DHE': 'c' };
+
+  Object.keys(nomesPolos).forEach(polo => {
+    const reg = polos[polo];
+    const inicio = reg?.horario?.split('|')[0]?.replace('Início:','').trim() || '';
+    const fim = reg?.horario?.split('|')[1]?.replace('Final:','').trim() || '';
+    if (inicio) {
+      linhas.push(`*INÍCIO: ${inicio}*`);
+      linhas.push(`*TÉRMINO: ${fim}*`);
+      linhas.push(reg?.duracao || 'Plantão 24h');
+    }
+    linhas.push('');
+    linhas.push(`*${nomesPolos[polo]}:*`);
+
+    if (!reg || reg.semOcorrencias) {
+      linhas.push('Sem ocorrências');
+    } else {
+      let i = 1;
+      const procs = reg.procedimentos || {};
+      const nomesProcResumido = {
+        bos:'BOs', apfs:'APFs', tcos:'TCOs', bocs:'BOCs', med_prot:'Medidas Protetivas',
+        req_ecd:'Requisições de Exame de Corpo de Delito', oitivas:'Oitivas',
+        atendimentos:'Atendimentos', outras_ocor:'Outras Ocorrências'
+      };
+      Object.entries(procs).forEach(([k,v]) => {
+        if (parseInt(v.total) > 0 && nomesProcResumido[k]) {
+          linhas.push(`${i++}) ${nomesProcResumido[k]}: ${pad(v.total)}`);
+        }
+      });
+    }
+    linhas.push('');
+    linhas.push('Obs.: vide detalhamento no final deste relatório.');
+    linhas.push('');
+  });
+
+  // II — DHE separado se necessário (já incluído acima)
+
+  // III — Custódia
+  linhas.push('*III) PRODUTIVIDADE DO SETOR DE CUSTÓDIA DA CENTRAL DE POLÍCIA DE PATOS:*');
+  linhas.push('');
+  if (custInicio) linhas.push(`*INÍCIO: ${custInicio}*`);
+  if (custFinal) linhas.push(`*FINAL: ${custFinal}*`);
+  linhas.push(custDuracao);
+  if (custServidor) linhas.push(`Servidor Responsável pelo plantão: ${custServidor.toUpperCase()}`);
+  linhas.push('');
+  linhas.push('1) Situação Inicial da Carceragem:');
+  linhas.push(`O plantão foi iniciado às ${custInicio || '08h00'}, com ${custIniQtd || '00 presos'} custodiado(s) nas dependências da carceragem.`);
+  linhas.push('');
+  linhas.push(`2) Presos Recebidos Durante o Plantão: ${pad(custRecQtd)}`);
+  if (custRecNomes) linhas.push(formatarNomes(custRecNomes));
+  linhas.push('');
+  linhas.push('3) Audiências de Custódia:');
+  if (custAud) linhas.push(formatarNomes(custAud));
+  else linhas.push('Nenhuma.');
+  linhas.push('');
+  linhas.push(`4) Transferências para Unidades Prisionais: ${pad(custTransfQtd)}`);
+  if (custTransfNomes) linhas.push(formatarNomes(custTransfNomes));
+  linhas.push('');
+  linhas.push(`5) Situação Final da Carceragem: ${custFinalQtd || '00 custodiados'}.`);
+  linhas.push('');
+
+  // IV — Setor de B.O.
+  linhas.push('*IV) PRODUTIVIDADE DO SETOR DE BOLETIM DE OCORRÊNCIA DA CENTRAL DE POLICIA (08h às 18h – SEG/SEX):*');
+  linhas.push('');
+  linhas.push(`*08h às 18h de ${dataFmt} (${diaSemana})*`);
+  const totalBO = (dados.bo?.manha?.total || 0) + (dados.bo?.tarde?.total || 0);
+  linhas.push(`1) BOLETIM DE OCORRÊNCIA: ${pad(totalBO)}`);
+  linhas.push('');
+  linhas.push('Obs.: vide detalhamento no final deste relatório.');
+  linhas.push('');
+
+  // V — Expediente
+  linhas.push('*V) PRODUTIVIDADE DAS UNIDADES DURANTE O EXPEDIENTE NORMAL DE TRABALHO (08h às 18h - SEG/SEX):*');
+  linhas.push('');
+  linhas.push(`DATA: ${dataFmt}, ${diaSemana}, 08h às 18h.`);
+  linhas.push('');
+
+  const exp = dados.expediente || {};
+  const totaisExp = calcularTotaisExp(exp);
+  const nomesExpResumo = [
+    ['bos','BOs'], ['apfs','APFs'], ['aafai','AAFAIs'], ['tcos','TCOs'], ['bocs','BOCs'],
+    ['med_prot','Medidas Protetivas'], ['repr_prisao','Representações por Prisão'],
+    ['repr_busca','Representações por Buscas'], ['pris_flagrante','Prisões em Flagrante'],
+    ['pris_mandado','Prisões por Cumprimento de Mandados'], ['req_exames','Requisições de Exames'],
+    ['oitivas','Oitivas'], ['ord_missao','Ordens de Missão Expedidas'], ['bos_ip','BOs Transformados em IP'],
+    ['cotas_min','Cotas Ministeriais Cumpridas Lançadas no PJE'], ['prot_pje','Protocolados no PJE'],
+    ['intimacoes','Intimações Cumpridas'], ['oficios','Ofícios Confeccionados'],
+    ['despachos','Despachos e Deliberações'], ['rel_missao','Relatórios de Missão'],
+    ['cond_presos','Condução de Presos'], ['armas','Armas Apreendidas'], ['drogas','Drogas Apreendidas'],
+    ['veiculos','Veículos Encaminhados/Devolvidos'], ['aud_custodia','Audiências de Custódia'],
+    ['operacoes','Participação em Operações Policiais'], ['diligencias','Diligências Diversas'],
+    ['atendimentos','Atendimentos Diversos']
+  ];
+
+  let numExp = 1;
+  nomesExpResumo.forEach(([k, nome]) => {
+    const total = totaisExp[k] || 0;
+    if (total > 0) linhas.push(`${numExp++}) ${nome}: ${pad(total)}`);
+  });
+  linhas.push('');
+  linhas.push('Obs.: vide detalhamento no final deste relatório.');
+  linhas.push('');
+
+  // ===== SEÇÃO B — DETALHAMENTO =====
+  linhas.push('*B) DETALHAMENTO DAS OCORRÊNCIAS:*');
+  linhas.push('');
+
+  // B-I — Plantão
+  linhas.push('*I) PLANTÃO EXTRAORDINÁRIO*');
+  linhas.push('');
+
+  Object.entries(nomesPolos).forEach(([polo, nomeCompleto]) => {
+    const reg = polos[polo];
+    const inicio = reg?.horario?.split('|')[0]?.replace('Início:','').trim() || '';
+    const fim = reg?.horario?.split('|')[1]?.replace('Final:','').trim() || '';
+
+    linhas.push(`*${nomeCompleto.replace(/^[a-z]\) /i,'').toUpperCase().trim() === 'CENTRAL DE POLICIA DE PATOS' ? 'a) CENTRAL DE POLICIA DE PATOS' : nomeCompleto.toUpperCase()}*`);
+    if (inicio) {
+      linhas.push(`*INÍCIO: ${inicio}*`);
+      linhas.push(`*TÉRMINO: ${fim}*`);
+    }
+    linhas.push('');
+
+    if (!reg || reg.semOcorrencias) {
+      linhas.push('Sem ocorrências');
+    } else {
+      const procs = reg.procedimentos || {};
+      const nomesDetPla = {
+        bos:'BOs', apfs:'APFs', tcos:'TCOs', bocs:'BOCs', med_prot:'Medidas Protetivas',
+        req_ecd:'Requisições de Exame de Corpo de Delito', oitivas:'Oitivas',
+        atendimentos:'Atendimentos', outras_ocor:'Outras Ocorrências'
+      };
+      let i = 1;
+      Object.entries(procs).forEach(([k, v]) => {
+        if (parseInt(v.total) > 0 && nomesDetPla[k]) {
+          linhas.push(`${i++}) ${nomesDetPla[k]}: ${pad(v.total)}`);
+          (v.linhas || []).forEach(l => linhas.push(`${pad(l.quantidade)} ${l.crime||l['descrição']||''} (${l.cidade||''})`));
+        }
+      });
+    }
+    linhas.push('');
+  });
+
+  // B-II — Setor de B.O.
+  linhas.push('*b) SETOR BOLETIM DE OCORRÊNCIAS*');
+  linhas.push('');
+  ['manha','tarde'].forEach(turno => {
+    const t = dados.bo?.[turno];
+    if (!t) return;
+    const horTurno = turno === 'manha' ? '08h às 13h' : '13h às 18h';
+    linhas.push(`*${horTurno} de ${dataFmt} (${diaSemana})*`);
+    linhas.push(`1) BOLETIM DE OCORRÊNCIA: ${pad(t.total)}`);
+    (t.linhas || []).forEach(l => {
+      linhas.push(`${l.crime||''} (${l.delegacia||''}): ${pad(l.quantidade)}`);
+    });
+    linhas.push('');
+  });
+
+  // B-III — Expediente
+  linhas.push(`*c) PRODUTIVIDADE DAS UNIDADES DURANTE O EXPEDIENTE NORMAL DE TRABALHO (08h às 18h - SEG/SEX):*`);
+  linhas.push('');
+
+  let numDetExp = 1;
+  nomesExpResumo.forEach(([k, nome]) => {
+    const total = totaisExp[k] || 0;
+    if (total === 0) return;
+    linhas.push(`${numDetExp++}) ${nome}: ${pad(total)}`);
+    // Detalhar por delegacia
+    Object.entries(exp).forEach(([del, procs]) => {
+      const p = procs[k];
+      if (!p || !p.linhas?.length) return;
+      p.linhas.forEach(l => {
+        const qtd = parseInt(l.quantidade) || 0;
+        if (qtd === 0) return;
+        const crime = l.crime || l['descrição'] || l['tipo (depoimento/declaração/interrogatório)'] || l['tipo de crime'] || '';
+        const cidade = l.cidade || del;
+        linhas.push(`${pad(qtd)} ${crime ? crime + ' ' : ''}(${cidade}-PB)`);
+      });
+    });
+    linhas.push('');
+  });
+
+  linhas.push('');
+  linhas.push('Assessoria de Estatística 15ªDSPC/Patos');
+
+  return linhas.join('\n');
+}
+
+function calcularTotaisExp(exp) {
+  const totais = {};
+  Object.values(exp).forEach(procs => {
+    Object.entries(procs).forEach(([k, v]) => {
+      if (!totais[k]) totais[k] = 0;
+      totais[k] += parseInt(v.total) || 0;
+    });
+  });
+  return totais;
+}
+
+function copiarRelatorio() {
+  const txt = document.getElementById('rel-texto');
+  txt.select();
+  document.execCommand('copy');
+  const ok = document.getElementById('rel-copiado');
+  ok.style.display = 'block';
+  setTimeout(() => ok.style.display = 'none', 2000);
+}
+
+// ============================================================
 // PRESENÇA — ENVIOS DO DIA
 // ============================================================
 let diaPresenca = 'hoje';
@@ -1736,36 +2119,72 @@ function renderPresenca(escrivaes, envios, dataStr) {
   const nomeMod = { expediente: 'Exp', plantao: 'Pla', bo: 'B.O.' };
   const classeMod = { expediente: 'mod-exp', plantao: 'mod-pla', bo: 'mod-bo' };
 
-  // Cards — primeiro os que enviaram, depois os que não enviaram
-  const ordenados = [...escrivaes].sort((a,b) => {
-    const aEnviou = !!envios[a.nome];
-    const bEnviou = !!envios[b.nome];
-    if (aEnviou && !bEnviou) return -1;
-    if (!aEnviou && bEnviou) return 1;
-    return a.nome.localeCompare(b.nome);
-  });
-
-  document.getElementById('presenca-grid').innerHTML = ordenados.map(e => {
+  const renderCard = (e) => {
     const enviou = envios[e.nome];
     const delegacias = Array.isArray(e.delegacias) ? e.delegacias : [e.delegacia];
     const inicial = e.nome.charAt(0).toUpperCase();
     const mods = enviou ? Array.from(enviou.modalidades) : [];
     const badgesMod = mods.map(m => `<span class="presenca-mod ${classeMod[m]||''}">${nomeMod[m]||m}</span>`).join('');
-
     return `<div class="presenca-card ${enviou ? 'enviou' : 'nao-enviou'}">
       <div class="presenca-avatar ${enviou ? 'ok' : 'nok'}">${inicial}</div>
       <div class="presenca-info">
         <div class="presenca-nome">${e.nome}</div>
         <div class="presenca-del">${delegacias.join(', ')}</div>
         <div class="presenca-envios">
-          ${enviou
-            ? `<span class="presenca-badge-ok">✓ Enviou</span>`
-            : `<span class="presenca-badge-nok">✗ Não enviou</span>`}
+          ${enviou ? `<span class="presenca-badge-ok">✓ Enviou</span>` : `<span class="presenca-badge-nok">✗ Não enviou</span>`}
         </div>
         ${mods.length ? `<div class="presenca-mods">${badgesMod}</div>` : ''}
       </div>
     </div>`;
-  }).join('');
+  };
+
+  const renderGrupo = (titulo, cor, lista) => {
+    if (!lista.length) return '';
+    const enviaram = lista.filter(e => envios[e.nome]);
+    const naoEnv = lista.filter(e => !envios[e.nome]);
+    const ordenados = [...enviaram.sort((a,b) => a.nome.localeCompare(b.nome)),
+                       ...naoEnv.sort((a,b) => a.nome.localeCompare(b.nome))];
+    return `
+      <div class="presenca-grupo">
+        <div class="presenca-grupo-header" style="border-left:4px solid ${cor};">
+          <span style="color:${cor};">${titulo}</span>
+          <span class="presenca-grupo-stats">
+            <span style="color:var(--verde);font-weight:600;">${enviaram.length} enviaram</span>
+            <span style="color:var(--texto-leve);margin:0 6px;">·</span>
+            <span style="color:var(--vermelho);font-weight:600;">${naoEnv.length} não enviaram</span>
+          </span>
+        </div>
+        <div class="presenca-grid">${ordenados.map(renderCard).join('')}</div>
+      </div>`;
+  };
+
+  // Separar por modalidade principal
+  const soExp = escrivaes.filter(e => {
+    const mods = e.modalidades || ['expediente','plantao','bo'];
+    return mods.includes('expediente') && !mods.includes('plantao') && !mods.includes('bo');
+  });
+  const soPla = escrivaes.filter(e => {
+    const mods = e.modalidades || ['expediente','plantao','bo'];
+    return mods.includes('plantao') && !mods.includes('expediente');
+  });
+  const soBO = escrivaes.filter(e => {
+    const mods = e.modalidades || ['expediente','plantao','bo'];
+    return mods.includes('bo') && !mods.includes('expediente') && !mods.includes('plantao');
+  });
+  const multiplos = escrivaes.filter(e => {
+    const mods = e.modalidades || ['expediente','plantao','bo'];
+    const temExp = mods.includes('expediente');
+    const temPla = mods.includes('plantao');
+    const temBO = mods.includes('bo');
+    return (temExp && temPla) || (temExp && temBO) || (temPla && temBO);
+  });
+
+  document.getElementById('presenca-grid').innerHTML = `
+    ${renderGrupo('📋 EXPEDIENTE', 'var(--azul)', soExp)}
+    ${renderGrupo('🕐 PLANTÃO', 'var(--verde)', soPla)}
+    ${renderGrupo('📄 SETOR DE B.O.', 'var(--dourado)', soBO)}
+    ${multiplos.length ? renderGrupo('🔀 MÚLTIPLAS MODALIDADES', '#6a0dad', multiplos) : ''}
+  `;
 }
 
 // ============================================================
