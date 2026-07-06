@@ -21,7 +21,7 @@
   --verde: #1a7a4a;
   --vermelho: #b02020;
 }
- 
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Inter', sans-serif; background: var(--cinza); color: var(--texto); min-height: 100vh; }
 
@@ -586,6 +586,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <button class="btn-novo" style="background:var(--dourado);color:var(--azul);" onclick="mostrarTela('consulta')">📊 Consultas e Dashboard</button>
           <button class="btn-novo" style="background:#6a0dad;color:white;" onclick="mostrarTela('relatorio')">📄 Relatório CICC</button>
           <button class="btn-novo" style="background:#c0392b;color:white;" onclick="mostrarTela('relatorio-area')">🗂 Relatório de Área</button>
+          <button class="btn-novo" style="background:#27ae60;color:white;" onclick="mostrarTela('relatorio-semanal')">📊 Rel. Resumido Semanal (Janielson)</button>
           <button class="btn-novo" onclick="abrirModalEscrivao()">+ Novo Escrivão</button>
         </div>
       </div>
@@ -602,6 +603,41 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           </thead>
           <tbody id="tbody-escrivaes"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- TELA RELATÓRIO SEMANAL -->
+    <div id="tela-relatorio-semanal" class="tela" style="flex-direction:column; padding:28px 32px; max-width:700px; margin:0 auto; width:100%;">
+      <div class="admin-header">
+        <h2>📊 RELATÓRIO RESUMIDO SEMANAL</h2>
+        <button class="btn-voltar" onclick="mostrarTela('admin')">← Voltar</button>
+      </div>
+
+      <div style="background:var(--branco);border:1.5px solid var(--cinza-borda);border-radius:10px;padding:24px;margin-bottom:20px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="fm-item">
+            <label>Data Início</label>
+            <input type="date" id="rsem-ini" />
+          </div>
+          <div class="fm-item">
+            <label>Data Fim</label>
+            <input type="date" id="rsem-fim" />
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-enviar" onclick="gerarRelatorioSemanal()" id="btn-gerar-sem">
+        <span id="btn-sem-txt">📊 Gerar Relatório</span>
+        <div class="spinner" id="spinner-sem"></div>
+      </button>
+
+      <div id="rsem-resultado" style="display:none;margin-top:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <strong style="font-size:14px;color:var(--azul);">Relatório gerado:</strong>
+          <button class="btn-exportar" onclick="copiarRelatorioSemanal()">📋 Copiar</button>
+        </div>
+        <textarea id="rsem-texto" rows="20" readonly style="width:100%;padding:16px;border:1.5px solid var(--cinza-borda);border-radius:8px;font-size:13px;font-family:monospace;line-height:1.9;background:var(--cinza);color:var(--texto);resize:vertical;"></textarea>
+        <div id="rsem-copiado" style="display:none;text-align:center;color:var(--verde);font-weight:600;margin-top:8px;">✓ Copiado!</div>
       </div>
     </div>
 
@@ -1072,6 +1108,8 @@ const CAMPOS_EXP = [
   { id:'armas', titulo:'Armas Apreendidas', sub:['quantidade','descrição','crime','cidade'] },
   { id:'drogas', titulo:'Drogas Apreendidas', sub:['quantidade','descrição','cidade'] },
   { id:'veiculos', titulo:'Veículos Encaminhados ao Fórum/DETRAN ou Devolvidos', sub:['quantidade','descrição do veículo','placa','cidade'] },
+  { id:'veiculos_apreendidos', titulo:'Veículos Apreendidos', sub:['quantidade','descrição do veículo','placa','cidade'] },
+  { id:'veiculos_recuperados', titulo:'Veículos Recuperados', sub:['quantidade','descrição do veículo','placa','cidade'] },
   { id:'aud_custodia', titulo:'Audiências de Custódia', sub:['quantidade','crime','cidade'] },
   { id:'operacoes', titulo:'Participação em Operações Policiais (pela equipe da DP)', sub:['quantidade','nome da operação','crime','cidade'] },
   { id:'diligencias', titulo:'Diligências Diversas', sub:['quantidade','descrição','crime','cidade'] },
@@ -1087,6 +1125,8 @@ const CAMPOS_PLA = [
   { id:'atendimentos', titulo:'Atendimentos', sub:['quantidade','descrição'] },
   { id:'oitivas', titulo:'Oitivas', sub:['quantidade','tipo (depoimento/declaração/interrogatório)'] },
   { id:'req_ecd', titulo:'Confecção de Requisições de Exames de Corpo de Delito', sub:['quantidade','tipo de exame','crime','cidade'] },
+  { id:'veiculos_apreendidos', titulo:'Veículos Apreendidos', sub:['quantidade','descrição do veículo','placa','cidade'] },
+  { id:'veiculos_recuperados', titulo:'Veículos Recuperados', sub:['quantidade','descrição do veículo','placa','cidade'] },
   { id:'outras_ocor', titulo:'Outras Ocorrências', sub:['quantidade','descrição','cidade'] },
 ];
 
@@ -1288,10 +1328,11 @@ function mostrarTela(id) {
   if (id === 'presenca') iniciarPresenca();
   if (id === 'relatorio') iniciarRelatorio();
   if (id === 'relatorio-area') iniciarRelatorioArea();
+  if (id === 'relatorio-semanal') iniciarRelatorioSemanal();
 }
 
 function esconderTodasTelas() {
-  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta','tela-presenca','tela-relatorio','tela-relatorio-area'].forEach(id => {
+  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta','tela-presenca','tela-relatorio','tela-relatorio-area','tela-relatorio-semanal'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.classList.remove('ativa'); el.style.display = 'none'; }
   });
@@ -1318,9 +1359,13 @@ function atualizarBosIP(sel) {
 }
 
 function toggleCrimeOutro(sel) {
-  const outro = sel.parentElement.querySelector('.crime-bo-outro');
-  outro.style.display = sel.value === 'Outros' ? 'block' : 'none';
-  if (sel.value !== 'Outros') outro.value = '';
+  // O input .crime-bo-outro está no .c-grupo (pai do pai do select)
+  const grupo = sel.closest('.c-grupo');
+  const outro = grupo ? grupo.querySelector('.crime-bo-outro') : sel.parentElement.querySelector('.crime-bo-outro');
+  if (outro) {
+    outro.style.display = sel.value === 'Outros' ? 'block' : 'none';
+    if (sel.value !== 'Outros') outro.value = '';
+  }
 }
 
 function toggleCustServidor() {
@@ -1631,6 +1676,16 @@ function coletarDados() {
           obj[sub] = textInputs[subIdx]?.value || '';
         }
       });
+
+      // Para veículos: concatenar descrição + placa no campo "crime" (Opção A)
+      if (['veiculos','veiculos_apreendidos','veiculos_recuperados'].includes(campo.id)) {
+        const desc = obj['descrição do veículo'] || '';
+        const placa = obj['placa'] || '';
+        obj['crime'] = [desc, placa].filter(v => v).join(' / ');
+        delete obj['descrição do veículo'];
+        delete obj['placa'];
+      }
+
       const qtd = parseInt(obj['quantidade'] || '0');
       if (qtd > 0) resultado.campos[campo.id].push(obj);
     });
@@ -1784,7 +1839,7 @@ function renderRegistros(registros) {
     oitivas:'Oitivas', ord_missao:'Ordens de Missão', bos_ip:'BOs → IP/TCO/BOC', cotas_min:'Cotas Ministeriais',
     prot_pje:'Protocolados PJE', intimacoes:'Intimações', oficios:'Ofícios', despachos:'Despachos',
     rel_missao:'Relatórios Missão', cond_presos:'Condução Presos', armas:'Armas Apreendidas',
-    drogas:'Drogas Apreendidas', veiculos:'Veículos', aud_custodia:'Audiências Custódia',
+    drogas:'Drogas Apreendidas', veiculos:'Veículos Enc./DETRAN', veiculos_apreendidos:'Veículos Apreendidos', veiculos_recuperados:'Veículos Recuperados', aud_custodia:'Audiências Custódia',
     operacoes:'Operações Policiais', diligencias:'Diligências', atendimentos:'Atendimentos',
     outras_ocor:'Outras Ocorrências', req_ecd:'Req. Exames Corpo Delito'
   };
@@ -1936,6 +1991,86 @@ async function excluirEscrivao(nome) {
 // ============================================================
 let feedbackSucesso = false;
 // ============================================================
+// RELATÓRIO RESUMIDO SEMANAL (JANIELSON)
+// ============================================================
+function iniciarRelatorioSemanal() {
+  const agora = new Date();
+  // Semana atual: segunda a hoje
+  const diaSemana = agora.getDay();
+  const diasAtrasSegunda = diaSemana === 0 ? 6 : diaSemana - 1;
+  const segunda = new Date(agora);
+  segunda.setDate(agora.getDate() - diasAtrasSegunda);
+  const fmtISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  document.getElementById('rsem-ini').value = fmtISO(segunda);
+  document.getElementById('rsem-fim').value = fmtISO(agora);
+  document.getElementById('rsem-resultado').style.display = 'none';
+}
+
+async function gerarRelatorioSemanal() {
+  const ini = document.getElementById('rsem-ini').value;
+  const fim = document.getElementById('rsem-fim').value;
+  if (!ini || !fim) { alert('Selecione as datas.'); return; }
+
+  const btn = document.getElementById('btn-gerar-sem');
+  const txt = document.getElementById('btn-sem-txt');
+  const sp = document.getElementById('spinner-sem');
+  btn.disabled = true; txt.textContent = 'Buscando...'; sp.style.display = 'block';
+
+  try {
+    const resp = await fetch(`${APPS_SCRIPT_URL}?acao=consultar&dataIni=${ini}&dataFim=${fim}&escrivao=&modalidade=&delegacia=`);
+    const data = await resp.json();
+    if (data.status !== 'ok') throw new Error(data.message);
+    const texto = montarTextoSemanal(data.registros || [], ini, fim);
+    document.getElementById('rsem-texto').value = texto;
+    document.getElementById('rsem-resultado').style.display = 'block';
+    document.getElementById('rsem-resultado').scrollIntoView({ behavior: 'smooth' });
+  } catch(e) {
+    alert('Erro: ' + e.message);
+  } finally {
+    btn.disabled = false; txt.textContent = '📊 Gerar Relatório'; sp.style.display = 'none';
+  }
+}
+
+function montarTextoSemanal(registros, ini, fim) {
+  // Somar totais por procedimento
+  const totais = {};
+  registros.forEach(r => {
+    const proc = r.procedimento || '';
+    if (proc === 'SEM OCORRÊNCIAS') return;
+    const qtd = parseInt(r.quantidade) || 0;
+    if (qtd === 0) return;
+    if (!totais[proc]) totais[proc] = 0;
+    totais[proc] += qtd;
+  });
+
+  const pad = n => String(parseInt(n)||0).padStart(2,'0');
+
+  const linhas = [];
+  linhas.push('*Ações realizadas pela PC na Área da 15° DSPC/ Patos-PB*');
+  linhas.push('');
+  linhas.push(`Armas de fogo: ${pad(totais['armas'] || 0)}`);
+  linhas.push(`Drogas apreendidas: ${pad(totais['drogas'] || 0)}`);
+  linhas.push(`Veículos apreendidos: ${pad(totais['veiculos_apreendidos'] || 0)}`);
+  linhas.push(`Veículos recuperados: ${pad(totais['veiculos_recuperados'] || 0)}`);
+  linhas.push(`Pessoas conduzidas a DP: ${pad(totais['cond_presos'] || 0)}`);
+  linhas.push(`Prisões em Flagrante: ${pad(totais['pris_flagrante'] || 0)}`);
+  linhas.push(`Medidas Protetivas: ${pad(totais['med_prot'] || 0)}`);
+  linhas.push(`Presos por Mandados: ${pad(totais['pris_mandado'] || 0)}`);
+  linhas.push(`Mandado de Busca: ${pad(totais['repr_busca'] || 0)}`);
+
+  return linhas.join('\n');
+}
+
+function copiarRelatorioSemanal() {
+  const txt = document.getElementById('rsem-texto');
+  txt.select();
+  document.execCommand('copy');
+  const ok = document.getElementById('rsem-copiado');
+  ok.style.display = 'block';
+  setTimeout(() => ok.style.display = 'none', 2000);
+}
+
+// ============================================================
 // RELATÓRIO DE ÁREA
 // ============================================================
 const AREAS = [
@@ -1964,7 +2099,7 @@ const NOMES_PROC_AREA = {
   intimacoes: 'INTIMAÇÕES', oficios: 'OFÍCIOS', despachos: 'DESPACHOS',
   rel_missao: 'RELATÓRIOS DE MISSÃO', cond_presos: 'CONDUÇÃO DE PRESOS',
   armas: 'ARMAS APREENDIDAS', drogas: 'DROGAS APREENDIDAS',
-  veiculos: 'VEÍCULOS', aud_custodia: 'AUDIÊNCIAS DE CUSTÓDIA',
+  veiculos: 'VEÍCULOS ENC./DETRAN', veiculos_apreendidos: 'VEÍCULOS APREENDIDOS', veiculos_recuperados: 'VEÍCULOS RECUPERADOS', aud_custodia: 'AUDIÊNCIAS DE CUSTÓDIA',
   operacoes: 'OPERAÇÕES', diligencias: 'DILIGÊNCIAS',
   atendimentos: 'ATENDIMENTOS DIVERSOS'
 };
@@ -2254,7 +2389,7 @@ function montarTextoCICC(dados, dataISO) {
     ['intimacoes','Intimações Cumpridas'], ['oficios','Ofícios Confeccionados'],
     ['despachos','Despachos e Deliberações'], ['rel_missao','Relatórios de Missão'],
     ['cond_presos','Condução de Presos'], ['armas','Armas Apreendidas'], ['drogas','Drogas Apreendidas'],
-    ['veiculos','Veículos Encaminhados/Devolvidos'], ['aud_custodia','Audiências de Custódia'],
+    ['veiculos','Veículos Encaminhados/Devolvidos'], ['veiculos_apreendidos','Veículos Apreendidos'], ['veiculos_recuperados','Veículos Recuperados'], ['aud_custodia','Audiências de Custódia'],
     ['operacoes','Participação em Operações Policiais'], ['diligencias','Diligências Diversas'],
     ['atendimentos','Atendimentos Diversos']
   ];
