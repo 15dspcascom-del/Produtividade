@@ -487,6 +487,31 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 .mod-pla { background: rgba(26,122,74,0.1); color: var(--verde); }
 .mod-bo { background: rgba(200,168,75,0.15); color: #8a6d00; }
 
+/* ===== DETALHAMENTO SEMANAL ===== */
+.det-grupo {
+  background: var(--branco); border: 1.5px solid var(--cinza-borda);
+  border-radius: 10px; margin-bottom: 14px; overflow: hidden;
+}
+.det-grupo-header {
+  background: var(--azul); color: white; padding: 11px 16px;
+  font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 700;
+  letter-spacing: 0.5px; display: flex; align-items: center; justify-content: space-between;
+}
+.det-grupo-total {
+  background: var(--dourado); color: var(--azul);
+  padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 700;
+}
+.det-item {
+  padding: 10px 16px; border-bottom: 1px solid var(--cinza-borda);
+  font-size: 12px; color: var(--texto); line-height: 1.5;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.det-item:last-child { border-bottom: none; }
+.det-data { color: var(--texto-leve); white-space: nowrap; font-weight: 600; flex-shrink: 0; }
+.det-info { flex: 1; }
+.det-info strong { color: var(--azul); }
+.det-empty { padding: 16px; text-align: center; color: var(--texto-leve); font-size: 13px; }
+
 /* ===== TELA DE CONSULTA ===== */
 .consulta-filtros {
   display: grid; grid-template-columns: repeat(6,1fr); gap: 14px;
@@ -638,6 +663,14 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         </div>
         <textarea id="rsem-texto" rows="20" readonly style="width:100%;padding:16px;border:1.5px solid var(--cinza-borda);border-radius:8px;font-size:13px;font-family:monospace;line-height:1.9;background:var(--cinza);color:var(--texto);resize:vertical;"></textarea>
         <div id="rsem-copiado" style="display:none;text-align:center;color:var(--verde);font-weight:600;margin-top:8px;">✓ Copiado!</div>
+
+        <!-- Detalhamento -->
+        <div id="rsem-detalhamento" style="margin-top:28px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid var(--cinza-borda);">
+            <strong style="font-size:14px;color:var(--azul);">📋 Origem dos dados:</strong>
+          </div>
+          <div id="rsem-det-corpo"></div>
+        </div>
       </div>
     </div>
 
@@ -2022,6 +2055,7 @@ async function gerarRelatorioSemanal() {
     if (data.status !== 'ok') throw new Error(data.message);
     const texto = montarTextoSemanal(data.registros || [], ini, fim);
     document.getElementById('rsem-texto').value = texto;
+    renderDetalhamentoSemanal(data.registros || []);
     document.getElementById('rsem-resultado').style.display = 'block';
     document.getElementById('rsem-resultado').scrollIntoView({ behavior: 'smooth' });
   } catch(e) {
@@ -2059,6 +2093,69 @@ function montarTextoSemanal(registros, ini, fim) {
   linhas.push(`Mandado de Busca: ${pad(totais['repr_busca'] || 0)}`);
 
   return linhas.join('\n');
+}
+
+function renderDetalhamentoSemanal(registros) {
+  const corpo = document.getElementById('rsem-det-corpo');
+
+  // Mapeamento dos procedimentos que aparecem no relatório
+  const camposRelatorio = {
+    armas:              'Armas de fogo',
+    drogas:             'Drogas apreendidas',
+    veiculos_apreendidos: 'Veículos apreendidos',
+    veiculos_recuperados: 'Veículos recuperados',
+    cond_presos:        'Pessoas conduzidas a DP',
+    pris_flagrante:     'Prisões em Flagrante',
+    med_prot:           'Medidas Protetivas',
+    pris_mandado:       'Presos por Mandados',
+    repr_busca:         'Mandado de Busca',
+  };
+
+  // Agrupar registros por procedimento
+  const grupos = {};
+  registros.forEach(r => {
+    const proc = r.procedimento || '';
+    if (!camposRelatorio[proc]) return;
+    const qtd = parseInt(r.quantidade) || 0;
+    if (qtd === 0) return;
+    if (!grupos[proc]) grupos[proc] = [];
+    grupos[proc].push(r);
+  });
+
+  let html = '';
+  Object.entries(camposRelatorio).forEach(([proc, nome]) => {
+    const itens = grupos[proc] || [];
+    const total = itens.reduce((s, r) => s + (parseInt(r.quantidade)||0), 0);
+
+    html += `<div class="det-grupo">
+      <div class="det-grupo-header">
+        <span>${nome}</span>
+        <span class="det-grupo-total">Total: ${String(total).padStart(2,'0')}</span>
+      </div>`;
+
+    if (itens.length === 0) {
+      html += `<div class="det-empty">Nenhum registro no período.</div>`;
+    } else {
+      itens.forEach(r => {
+        const dataFmt = formatarDataBR(r.data);
+        const crime = r.crime && r.crime !== '—' ? ` — ${r.crime}` : '';
+        const cidade = r.cidade && r.cidade !== '—' ? r.cidade : r.delegacia;
+        html += `<div class="det-item">
+          <span class="det-data">${dataFmt}</span>
+          <span class="det-info">
+            <strong>${String(parseInt(r.quantidade)||0).padStart(2,'0')}</strong>
+            em <strong>${cidade}</strong>${crime}
+            · Delegacia: <strong>${r.delegacia}</strong>
+            · Escrivão: <strong>${r.escrivao}</strong>
+            · Registrado em: ${r.horaRegistro || '—'}
+          </span>
+        </div>`;
+      });
+    }
+    html += `</div>`;
+  });
+
+  corpo.innerHTML = html;
 }
 
 function copiarRelatorioSemanal() {
