@@ -276,8 +276,14 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
   border-radius: 6px; font-size: 13px; font-family: 'Inter', sans-serif; color: var(--texto);
   transition: border-color 0.2s;
 }
-.c-grupo input:focus, .c-grupo select:focus, .c-grupo textarea:focus {
-  outline: none; border-color: var(--azul-claro); box-shadow: 0 0 0 2px rgba(26,58,107,0.07);
+.c-grupo input.campo-invalido,
+.c-grupo select.campo-invalido {
+  border-color: var(--vermelho) !important;
+  background: rgba(176,32,32,0.04);
+}
+.c-grupo input.campo-invalido:focus,
+.c-grupo select.campo-invalido:focus {
+  box-shadow: 0 0 0 2px rgba(176,32,32,0.12);
 }
 
 /* Botão de quantidade */
@@ -1183,7 +1189,7 @@ function _abrirFormularioReal(modalidade) {
   document.getElementById('tela-formulario').style.display = 'flex';
 
   const titulosMap = { expediente:'EXPEDIENTE', plantao:'PLANTÃO', bo:'SETOR DE B.O.' };
-  const subMap = { expediente:'28 procedimentos', plantao:'9 procedimentos', bo:'Boletins por turno' };
+  const subMap = { expediente:'', plantao:'', bo:'' };
   document.getElementById('form-titulo').textContent = titulosMap[modalidade];
   document.getElementById('form-sub').textContent = subMap[modalidade];
   const nomeDel = modalidade === 'plantao' ? '' : (usuarioLogado.delegacia || '');
@@ -1329,6 +1335,14 @@ function getDiaSemana(dataISO) {
   const dias = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
   const [y,m,d] = dataISO.split('-').map(Number);
   return dias[new Date(y, m-1, d).getDay()];
+}
+
+function formatarDataBR(dataISO) {
+  if (!dataISO) return '';
+  // Aceita yyyy-MM-dd ou já dd/MM/yyyy
+  if (/^\d{2}\/\d{2}\/\d{4}/.test(dataISO)) return dataISO;
+  const [y,m,d] = dataISO.split('-');
+  return `${d}/${m}/${y}`;
 }
 
 function togglePoloOutro() {
@@ -1483,15 +1497,42 @@ document.addEventListener('click', function(e) {
     e.preventDefault();
     const delta = parseInt(btn.getAttribute('data-delta') || '0');
     const input = btn.parentElement.querySelector('.qtd-input');
-    if (input) input.value = Math.max(0, parseInt(input.value || 0) + delta);
+    if (input) {
+      input.value = Math.max(0, parseInt(input.value || 0) + delta);
+      // Highlight campos obrigatórios quando quantidade > 0
+      atualizarCamposObrigatorios(btn.closest('.c-row'));
+    }
   }
 });
 
-// Listener para "Outros" no select de cidade
+function atualizarCamposObrigatorios(row) {
+  if (!row) return;
+  const qtdInput = row.querySelector('.qtd-input');
+  const qtd = parseInt(qtdInput?.value || 0);
+  const campos = row.querySelectorAll('input:not(.qtd-input), select');
+  campos.forEach(campo => {
+    if (qtd > 0 && !campo.value.trim()) {
+      campo.classList.add('campo-invalido');
+    } else {
+      campo.classList.remove('campo-invalido');
+    }
+  });
+}
+
+// Remover highlight quando o campo for preenchido
+document.addEventListener('input', function(e) {
+  if (e.target.classList.contains('campo-invalido') && e.target.value.trim()) {
+    e.target.classList.remove('campo-invalido');
+  }
+});
 document.addEventListener('change', function(e) {
+  if (e.target.classList.contains('campo-invalido') && e.target.value.trim()) {
+    e.target.classList.remove('campo-invalido');
+  }
   if (e.target.classList.contains('cidade-sel')) {
     const outro = e.target.parentElement.querySelector('.cidade-outro');
     if (outro) outro.style.display = e.target.value === 'Outros' ? 'block' : 'none';
+    atualizarCamposObrigatorios(e.target.closest('.c-row'));
   }
 });
 
@@ -1585,19 +1626,27 @@ function coletarDados() {
 function validarCampos(dados) {
   const campos = modalidadeAtual === 'expediente' ? CAMPOS_EXP : modalidadeAtual === 'plantao' ? CAMPOS_PLA : CAMPOS_BO;
   const erros = [];
+
+  // Limpar highlights anteriores
+  document.querySelectorAll('.campo-invalido').forEach(el => el.classList.remove('campo-invalido'));
+
   campos.forEach(campo => {
-    const itens = dados.campos[campo.id] || [];
-    itens.forEach((obj, idx) => {
-      const qtd = parseInt(obj['quantidade'] || '0');
+    const linhas = document.querySelectorAll(`#linhas-${campo.id} .c-row`);
+    linhas.forEach(linha => {
+      const qtdInput = linha.querySelector('.qtd-input');
+      const qtd = parseInt(qtdInput?.value || 0);
       if (qtd === 0) return;
-      campo.sub.forEach(sub => {
-        if (sub === 'quantidade') return;
-        const val = obj[sub] || '';
-        if (!val.trim()) erros.push(`"${campo.titulo}" — linha ${idx+1}: campo "${sub}" obrigatório`);
+      const camposLinha = linha.querySelectorAll('input:not(.qtd-input), select');
+      camposLinha.forEach(el => {
+        if (!el.value.trim() && el.style.display !== 'none') {
+          el.classList.add('campo-invalido');
+          erros.push(`"${campo.titulo}": campo obrigatório não preenchido`);
+        }
       });
     });
   });
-  return erros;
+
+  return [...new Set(erros)]; // deduplicar
 }
 
 async function enviar() {
@@ -1730,7 +1779,7 @@ function renderRegistros(registros) {
     const proc = r['PROCEDIMENTO'] || 'Boletim de Ocorrência';
     const titulo = nomeProc[proc] || proc;
     html += `<div class="registro-card">
-      <div class="registro-card-titulo">${titulo} ${r['DATA'] ? `— ${r['DATA']}` : ''}</div>
+      <div class="registro-card-titulo">${titulo} ${r['DATA'] ? `— ${formatarDataBR(r['DATA'])}` : ''}</div>
       <div class="registro-card-linha">
         ${r['QUANTIDADE'] ? `<span><b>Qtd:</b> ${r['QUANTIDADE']}</span>` : ''}
         ${r['CRIME'] ? `<span><b>Crime:</b> ${r['CRIME']}</span>` : ''}
@@ -2542,7 +2591,7 @@ function renderConsulta(registros) {
   const tbody = document.getElementById('consulta-tbody');
   tbody.innerHTML = registros.map(r => `
     <tr>
-      <td>${r.data || '—'}</td>
+      <td>${formatarDataBR(r.data) || '—'}</td>
       <td>${r.horario || r.turno || '—'}</td>
       <td>${r.delegacia || '—'}</td>
       <td>${r.escrivao || '—'}</td>
