@@ -6,7 +6,7 @@
 <title>15ª DSPC — Sistema de Produtividade</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@600;700&display=swap');
- 
+
 :root {
   --azul: #0a1628;
   --azul-medio: #102040;
@@ -1061,7 +1061,7 @@ const CAMPOS_EXP = [
   { id:'req_exames', titulo:'Requisições de Exames', sub:['quantidade','tipo de crime','cidade'] },
   { id:'oitivas', titulo:'Oitivas', sub:['quantidade','tipo (depoimento/declaração/interrogatório)','cidade'] },
   { id:'ord_missao', titulo:'Ordens de Missão Expedidas', sub:['quantidade','cidade'] },
-  { id:'bos_ip', titulo:'BOs Transformados em IP', sub:['quantidade','crime','cidade'] },
+  { id:'bos_ip', titulo:'BOs Transformados em IP/TCO/BOC', sub:['quantidade','crime','cidade'] },
   { id:'cotas_min', titulo:'Cotas Ministeriais Cumpridas Lançadas no PJE', sub:['quantidade'] },
   { id:'prot_pje', titulo:'Protocolados no PJE', sub:['quantidade','procedimento','crime'] },
   { id:'intimacoes', titulo:'Intimações Cumpridas', sub:['quantidade'] },
@@ -1313,6 +1313,10 @@ function toggleProcOutro(sel) {
   if (sel.value !== 'Outros') outro.value = '';
 }
 
+function atualizarBosIP(sel) {
+  // Apenas garante que o tipo foi selecionado — o crime fica no select ao lado
+}
+
 function toggleCrimeOutro(sel) {
   const outro = sel.parentElement.querySelector('.crime-bo-outro');
   outro.style.display = sel.value === 'Outros' ? 'block' : 'none';
@@ -1461,14 +1465,22 @@ function renderInput(sub, campoId) {
   }
   if (sub === 'crime' && campoId === 'bos_ip') {
     return `<div class="c-grupo">
-      <label>CRIME</label>
-      <select class="crime-bo-sel" onchange="toggleCrimeOutro(this)">
-        <option value="">Selecione...</option>
-        <option>Ameaça</option>
-        <option>Estelionato</option>
-        <option>Lesão Corporal</option>
-        <option value="Outros">Outros</option>
-      </select>
+      <label>TIPO / CRIME</label>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <select class="bos-tipo-sel" onchange="atualizarBosIP(this)" style="flex:0 0 90px;">
+          <option value="">Tipo...</option>
+          <option>IP</option>
+          <option>TCO</option>
+          <option>BOC</option>
+        </select>
+        <select class="crime-bo-sel" onchange="toggleCrimeOutro(this)" style="flex:1;">
+          <option value="">Crime...</option>
+          <option>Ameaça</option>
+          <option>Estelionato</option>
+          <option>Lesão Corporal</option>
+          <option value="Outros">Outros</option>
+        </select>
+      </div>
       <input type="text" class="crime-bo-outro" placeholder="Digite o crime" style="display:none;margin-top:4px;" />
     </div>`;
   }
@@ -1607,9 +1619,12 @@ function coletarDados() {
           const outro = linha.querySelector('.proc-pje-outro');
           obj[sub] = sel?.value === 'Outros' ? (outro?.value || 'Outros') : (sel?.value || '');
         } else if (sub === 'crime' && campo.id === 'bos_ip') {
-          const sel = linha.querySelector('.crime-bo-sel');
-          const outro = linha.querySelector('.crime-bo-outro');
-          obj[sub] = sel?.value === 'Outros' ? (outro?.value || 'Outros') : (sel?.value || '');
+          const tipoSel = linha.querySelector('.bos-tipo-sel');
+          const crimeSel = linha.querySelector('.crime-bo-sel');
+          const crimeOutro = linha.querySelector('.crime-bo-outro');
+          const tipo = tipoSel?.value || '';
+          const crime = crimeSel?.value === 'Outros' ? (crimeOutro?.value || 'Outros') : (crimeSel?.value || '');
+          obj[sub] = tipo && crime ? `${tipo} - ${crime}` : (tipo || crime || '');
         } else {
           const textInputs = Array.from(linha.querySelectorAll('input:not(.qtd-input):not(.cidade-outro):not(.proc-pje-outro):not(.crime-bo-outro)'));
           const subIdx = campo.sub.filter((s,i) => i < campo.sub.indexOf(sub) && !['quantidade','cidade','tipo (depoimento/declaração/interrogatório)'].includes(s) && !(s === 'procedimento' && campo.id === 'prot_pje') && !(s === 'crime' && campo.id === 'bos_ip')).length;
@@ -1766,7 +1781,7 @@ function renderRegistros(registros) {
     bos:'BOs', apfs:'APFs', aafai:'AAFAIs', tcos:'TCOs', bocs:'BOCs',
     med_prot:'Medidas Protetivas', repr_prisao:'Repr. Prisão', repr_busca:'Repr. Buscas',
     pris_flagrante:'Prisões Flagrante', pris_mandado:'Prisões Mandado', req_exames:'Req. Exames',
-    oitivas:'Oitivas', ord_missao:'Ordens de Missão', bos_ip:'BOs → IP', cotas_min:'Cotas Ministeriais',
+    oitivas:'Oitivas', ord_missao:'Ordens de Missão', bos_ip:'BOs → IP/TCO/BOC', cotas_min:'Cotas Ministeriais',
     prot_pje:'Protocolados PJE', intimacoes:'Intimações', oficios:'Ofícios', despachos:'Despachos',
     rel_missao:'Relatórios Missão', cond_presos:'Condução Presos', armas:'Armas Apreendidas',
     drogas:'Drogas Apreendidas', veiculos:'Veículos', aud_custodia:'Audiências Custódia',
@@ -1944,7 +1959,7 @@ const NOMES_PROC_AREA = {
   repr_busca: 'REPRESENTAÇÕES POR BUSCAS', pris_flagrante: 'PRISÕES EM FLAGRANTE',
   pris_mandado: 'CUMPRIMENTO DE MANDADO DE PRISÃO',
   req_exames: 'REQUISIÇÕES DE EXAMES', oitivas: 'OITIVAS',
-  ord_missao: 'ORDENS DE MISSÃO', bos_ip: 'BOs TRANSFORMADOS EM IP',
+  ord_missao: 'ORDENS DE MISSÃO', bos_ip: 'BOs TRANSFORMADOS EM IP/TCO/BOC',
   cotas_min: 'COTAS AO MINISTÉRIO PÚBLICO', prot_pje: 'PROTOCOLOS PJE',
   intimacoes: 'INTIMAÇÕES', oficios: 'OFÍCIOS', despachos: 'DESPACHOS',
   rel_missao: 'RELATÓRIOS DE MISSÃO', cond_presos: 'CONDUÇÃO DE PRESOS',
@@ -2234,7 +2249,7 @@ function montarTextoCICC(dados, dataISO) {
     ['med_prot','Medidas Protetivas'], ['repr_prisao','Representações por Prisão'],
     ['repr_busca','Representações por Buscas'], ['pris_flagrante','Prisões em Flagrante'],
     ['pris_mandado','Prisões por Cumprimento de Mandados'], ['req_exames','Requisições de Exames'],
-    ['oitivas','Oitivas'], ['ord_missao','Ordens de Missão Expedidas'], ['bos_ip','BOs Transformados em IP'],
+    ['oitivas','Oitivas'], ['ord_missao','Ordens de Missão Expedidas'], ['bos_ip','BOs Transformados em IP/TCO/BOC'],
     ['cotas_min','Cotas Ministeriais Cumpridas Lançadas no PJE'], ['prot_pje','Protocolados no PJE'],
     ['intimacoes','Intimações Cumpridas'], ['oficios','Ofícios Confeccionados'],
     ['despachos','Despachos e Deliberações'], ['rel_missao','Relatórios de Missão'],
