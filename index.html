@@ -672,7 +672,15 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           </div>
           <div class="fm-item">
             <label>Servidor Responsável</label>
-            <input type="text" id="cust-servidor" placeholder="Nome do servidor" />
+            <select id="cust-servidor-sel" onchange="toggleCustServidor()">
+              <option value="">Selecione...</option>
+              <option value="IZAU">Izau</option>
+              <option value="RAFAEL">Rafael</option>
+              <option value="MARCOS">Marcos</option>
+              <option value="ELYSSOM">Elyssom</option>
+              <option value="Outro">Outro</option>
+            </select>
+            <input type="text" id="cust-servidor" placeholder="Digite o nome" style="display:none;margin-top:6px;" />
           </div>
           <div class="fm-item">
             <label>Presos no início</label>
@@ -1293,6 +1301,36 @@ function voltarSelecao() {
 // FORMULÁRIO
 // ============================================================
 
+function toggleProcOutro(sel) {
+  const outro = sel.parentElement.querySelector('.proc-pje-outro');
+  outro.style.display = sel.value === 'Outros' ? 'block' : 'none';
+  if (sel.value !== 'Outros') outro.value = '';
+}
+
+function toggleCrimeOutro(sel) {
+  const outro = sel.parentElement.querySelector('.crime-bo-outro');
+  outro.style.display = sel.value === 'Outros' ? 'block' : 'none';
+  if (sel.value !== 'Outros') outro.value = '';
+}
+
+function toggleCustServidor() {
+  const sel = document.getElementById('cust-servidor-sel');
+  const input = document.getElementById('cust-servidor');
+  if (sel.value === 'Outro') {
+    input.style.display = 'block';
+    input.value = '';
+  } else {
+    input.style.display = 'none';
+    input.value = sel.value;
+  }
+}
+
+function getDiaSemana(dataISO) {
+  const dias = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  const [y,m,d] = dataISO.split('-').map(Number);
+  return dias[new Date(y, m-1, d).getDay()];
+}
+
 function togglePoloOutro() {
   const sel = document.getElementById('plantao-local');
   const outro = document.getElementById('plantao-local-outro');
@@ -1395,15 +1433,29 @@ function renderInput(sub, campoId) {
   if (sub === 'procedimento' && campoId === 'prot_pje') {
     return `<div class="c-grupo">
       <label>PROCEDIMENTO</label>
-      <select>
+      <select class="proc-pje-sel" onchange="toggleProcOutro(this)">
         <option value="">Selecione...</option>
         <option>TCO</option>
         <option>IP</option>
         <option>BO</option>
         <option>BOC</option>
         <option>APF</option>
-        <option>Outros</option>
+        <option value="Outros">Outros</option>
       </select>
+      <input type="text" class="proc-pje-outro" placeholder="Especifique o procedimento" style="display:none;margin-top:4px;" />
+    </div>`;
+  }
+  if (sub === 'crime' && campoId === 'bos_ip') {
+    return `<div class="c-grupo">
+      <label>CRIME</label>
+      <select class="crime-bo-sel" onchange="toggleCrimeOutro(this)">
+        <option value="">Selecione...</option>
+        <option>Ameaça</option>
+        <option>Estelionato</option>
+        <option>Lesão Corporal</option>
+        <option value="Outros">Outros</option>
+      </select>
+      <input type="text" class="crime-bo-outro" placeholder="Digite o crime" style="display:none;margin-top:4px;" />
     </div>`;
   }
   const ph = sub.charAt(0).toUpperCase() + sub.slice(1);
@@ -1507,16 +1559,19 @@ function coletarDados() {
           const outro = linha.querySelector('.cidade-outro');
           obj[sub] = sel?.value === 'Outros' ? (outro?.value || 'Outros') : (sel?.value || '');
         } else if (sub === 'tipo (depoimento/declaração/interrogatório)') {
-          const selects = linha.querySelectorAll('select');
-          obj[sub] = selects[0]?.value || '';
+          const sel = linha.querySelector('select');
+          obj[sub] = sel?.value || '';
         } else if (sub === 'procedimento' && campo.id === 'prot_pje') {
-          const selects = linha.querySelectorAll('select');
-          obj[sub] = selects[0]?.value || '';
+          const sel = linha.querySelector('.proc-pje-sel');
+          const outro = linha.querySelector('.proc-pje-outro');
+          obj[sub] = sel?.value === 'Outros' ? (outro?.value || 'Outros') : (sel?.value || '');
+        } else if (sub === 'crime' && campo.id === 'bos_ip') {
+          const sel = linha.querySelector('.crime-bo-sel');
+          const outro = linha.querySelector('.crime-bo-outro');
+          obj[sub] = sel?.value === 'Outros' ? (outro?.value || 'Outros') : (sel?.value || '');
         } else {
-          // pega inputs de texto na ordem, pulando qtd-input e selects já mapeados
-          const textInputs = Array.from(linha.querySelectorAll('input:not(.qtd-input):not(.cidade-outro)'));
-          const selects = Array.from(linha.querySelectorAll('select:not(.cidade-sel)'));
-          const subIdx = campo.sub.filter((s,idx) => idx < campo.sub.indexOf(sub) && s !== 'quantidade' && s !== 'cidade' && s !== 'tipo (depoimento/declaração/interrogatório)' && !(s === 'procedimento' && campo.id === 'prot_pje')).length;
+          const textInputs = Array.from(linha.querySelectorAll('input:not(.qtd-input):not(.cidade-outro):not(.proc-pje-outro):not(.crime-bo-outro)'));
+          const subIdx = campo.sub.filter((s,i) => i < campo.sub.indexOf(sub) && !['quantidade','cidade','tipo (depoimento/declaração/interrogatório)'].includes(s) && !(s === 'procedimento' && campo.id === 'prot_pje') && !(s === 'crime' && campo.id === 'bos_ip')).length;
           obj[sub] = textInputs[subIdx]?.value || '';
         }
       });
@@ -1527,8 +1582,34 @@ function coletarDados() {
   return resultado;
 }
 
+function validarCampos(dados) {
+  const campos = modalidadeAtual === 'expediente' ? CAMPOS_EXP : modalidadeAtual === 'plantao' ? CAMPOS_PLA : CAMPOS_BO;
+  const erros = [];
+  campos.forEach(campo => {
+    const itens = dados.campos[campo.id] || [];
+    itens.forEach((obj, idx) => {
+      const qtd = parseInt(obj['quantidade'] || '0');
+      if (qtd === 0) return;
+      campo.sub.forEach(sub => {
+        if (sub === 'quantidade') return;
+        const val = obj[sub] || '';
+        if (!val.trim()) erros.push(`"${campo.titulo}" — linha ${idx+1}: campo "${sub}" obrigatório`);
+      });
+    });
+  });
+  return erros;
+}
+
 async function enviar() {
   const dados = coletarDados();
+
+  // Validação de campos obrigatórios
+  const erros = validarCampos(dados);
+  if (erros.length > 0) {
+    alert('Preencha os campos obrigatórios:\n\n' + erros.slice(0,5).join('\n') + (erros.length > 5 ? `\n...e mais ${erros.length-5} campos` : ''));
+    return;
+  }
+
   const btn = document.getElementById('btn-enviar');
   const txt = document.getElementById('btn-txt');
   const sp = document.getElementById('spinner');
@@ -1830,9 +1911,11 @@ function iniciarRelatorioArea() {
   const agora = new Date();
   const hoje = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
   document.getElementById('rarea-data').value = hoje;
-  const diasSemana = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
-  document.getElementById('rarea-diaSemana').value = diasSemana[agora.getDay()];
+  document.getElementById('rarea-diaSemana').value = getDiaSemana(hoje);
   document.getElementById('rarea-resultado').style.display = 'none';
+  document.getElementById('rarea-data').addEventListener('change', function() {
+    if (this.value) document.getElementById('rarea-diaSemana').value = getDiaSemana(this.value);
+  });
 }
 
 async function gerarRelatorioArea() {
@@ -1885,6 +1968,7 @@ function montarTextoArea(dados, dataISO) {
     area.delegacias.forEach((del, idx) => {
       const letra = LETRAS[idx];
       linhas.push(`*${letra}) ${del.toUpperCase()}:*`);
+      linhas.push('');
 
       const procs = exp[del];
       if (!procs || Object.keys(procs).length === 0) {
@@ -1916,7 +2000,7 @@ function montarTextoArea(dados, dataISO) {
         } else {
           linhas.push(`${nome}: ${pad(total)}`);
         }
-        linhas.push(''); // linha em branco após cada procedimento
+        linhas.push('');
       });
 
       if (!temAlgo) { linhas.push('Sem ocorrências'); linhas.push(''); }
@@ -1943,9 +2027,11 @@ function iniciarRelatorio() {
   const agora = new Date();
   const hoje = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
   document.getElementById('rel-data').value = hoje;
-  const diasSemana = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
-  document.getElementById('rel-diaSemana').value = diasSemana[agora.getDay()];
+  document.getElementById('rel-diaSemana').value = getDiaSemana(hoje);
   document.getElementById('rel-resultado').style.display = 'none';
+  document.getElementById('rel-data').addEventListener('change', function() {
+    if (this.value) document.getElementById('rel-diaSemana').value = getDiaSemana(this.value);
+  });
 }
 
 async function gerarRelatorioCICC() {
@@ -1982,7 +2068,9 @@ function montarTextoCICC(dados, dataISO) {
   const custInicio = document.getElementById('cust-inicio').value;
   const custFinal = document.getElementById('cust-final').value;
   const custDuracao = document.getElementById('cust-duracao').value || 'Plantão 24h';
-  const custServidor = document.getElementById('cust-servidor').value;
+  const custServidor = document.getElementById('cust-servidor-sel').value === 'Outro'
+    ? document.getElementById('cust-servidor').value
+    : document.getElementById('cust-servidor-sel').value;
   const custIniQtd = document.getElementById('cust-ini-qtd').value;
   const custRecQtd = document.getElementById('cust-recebidos-qtd').value || '0';
   const custRecNomes = document.getElementById('cust-recebidos-nomes').value.trim();
