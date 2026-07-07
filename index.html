@@ -487,6 +487,16 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 .mod-pla { background: rgba(26,122,74,0.1); color: var(--verde); }
 .mod-bo { background: rgba(200,168,75,0.15); color: #8a6d00; }
 
+/* ===== DASHBOARD ===== */
+.dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.dashboard-kpis { grid-column: 1/-1; display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+.dashboard-kpi { background: var(--branco); border: 1.5px solid var(--cinza-borda); border-radius: 10px; padding: 16px; text-align: center; }
+.dashboard-kpi .kpi-valor { font-family: 'Rajdhani', sans-serif; font-size: 32px; font-weight: 700; line-height: 1; }
+.dashboard-kpi .kpi-label { font-size: 11px; color: var(--texto-leve); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 5px; }
+.dashboard-card { background: var(--branco); border: 1.5px solid var(--cinza-borda); border-radius: 10px; padding: 20px; }
+.dashboard-card-titulo { font-size: 13px; font-weight: 600; color: var(--azul); margin-bottom: 16px; letter-spacing: 0.3px; }
+@media (max-width:640px) { .dashboard-grid { grid-template-columns: 1fr; } .dashboard-kpis { grid-template-columns: 1fr 1fr; } .dashboard-card { grid-column: 1; } }
+
 /* ===== DETALHAMENTO SEMANAL ===== */
 .det-grupo {
   background: var(--branco); border: 1.5px solid var(--cinza-borda);
@@ -535,6 +545,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 .consulta-tabela td { padding: 9px 14px; color: var(--texto); }
 @media (max-width:768px) { .consulta-filtros { grid-template-columns: 1fr 1fr; } .kpi-grid { grid-template-columns: 1fr 1fr; } }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -728,6 +739,52 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         </div>
         <textarea id="rarea-texto" rows="50" readonly style="width:100%;padding:16px;border:1.5px solid var(--cinza-borda);border-radius:8px;font-size:13px;font-family:monospace;line-height:1.7;background:var(--cinza);color:var(--texto);resize:vertical;"></textarea>
         <div id="rarea-copiado" style="display:none;text-align:center;color:var(--verde);font-weight:600;margin-top:8px;">✓ Copiado!</div>
+      </div>
+
+      <!-- Resumo do período (só aparece na aba Por Período) -->
+      <div id="rarea-resumo" style="display:none;margin-top:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-top:2px solid var(--cinza-borda);padding-top:20px;">
+          <strong style="font-size:14px;color:var(--azul);">📋 Relatório Resumido do Período:</strong>
+          <button class="btn-exportar" onclick="copiarResumoArea()">📋 Copiar Resumo</button>
+        </div>
+        <textarea id="rarea-resumo-texto" rows="20" readonly style="width:100%;padding:16px;border:1.5px solid var(--cinza-borda);border-radius:8px;font-size:13px;font-family:monospace;line-height:1.9;background:var(--cinza);color:var(--texto);resize:vertical;"></textarea>
+        <div id="rarea-resumo-copiado" style="display:none;text-align:center;color:var(--verde);font-weight:600;margin-top:8px;">✓ Copiado!</div>
+
+        <!-- Botão Dashboard -->
+        <div style="margin-top:20px;text-align:center;">
+          <button class="btn-enviar" style="max-width:320px;background:#6a0dad;" onclick="gerarDashboardArea()" id="btn-dashboard-area">
+            📊 Gerar Dashboard Ilustrado
+          </button>
+        </div>
+      </div>
+
+      <!-- Dashboard -->
+      <div id="rarea-dashboard" style="display:none;margin-top:24px;padding-top:20px;border-top:2px solid var(--cinza-borda);">
+        <strong style="font-size:14px;color:var(--azul);display:block;margin-bottom:20px;">📊 Dashboard do Período</strong>
+        <div class="dashboard-grid">
+          <!-- KPIs -->
+          <div class="dashboard-kpis" id="dash-kpis"></div>
+          <!-- Gráfico barras: procedimentos -->
+          <div class="dashboard-card" style="grid-column:1/-1;">
+            <div class="dashboard-card-titulo">Procedimentos mais registrados</div>
+            <canvas id="chart-procs" height="100"></canvas>
+          </div>
+          <!-- Gráfico pizza: por área -->
+          <div class="dashboard-card">
+            <div class="dashboard-card-titulo">Registros por Área</div>
+            <canvas id="chart-areas" height="200"></canvas>
+          </div>
+          <!-- Gráfico barras: ranking delegacias -->
+          <div class="dashboard-card">
+            <div class="dashboard-card-titulo">Top Delegacias mais ativas</div>
+            <canvas id="chart-delegacias" height="200"></canvas>
+          </div>
+          <!-- Gráfico linha: evolução diária -->
+          <div class="dashboard-card" style="grid-column:1/-1;">
+            <div class="dashboard-card-titulo">Evolução diária de registros</div>
+            <canvas id="chart-linha" height="80"></canvas>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -2278,11 +2335,21 @@ async function gerarRelatorioArea() {
       const dados = await resp.json();
       if (dados.status !== 'ok') throw new Error(dados.message);
       texto = montarTextoArea(dados, data);
+      document.getElementById('rarea-resumo').style.display = 'none';
+      document.getElementById('rarea-dashboard').style.display = 'none';
     } else {
       const ini = document.getElementById('rarea-data-ini').value;
       const fim = document.getElementById('rarea-data-fim').value;
       if (!ini || !fim) { alert('Selecione as datas.'); return; }
-      texto = await gerarAreaPeriodo(ini, fim);
+      const resultado = await gerarAreaPeriodo(ini, fim);
+      texto = resultado.texto;
+      // Mostrar resumo
+      document.getElementById('rarea-resumo-texto').value = resultado.resumo;
+      document.getElementById('rarea-resumo').style.display = 'block';
+      document.getElementById('rarea-dashboard').style.display = 'none';
+      // Guardar dados para o dashboard
+      window._dadosDashboard = resultado.dadosRaw;
+      window._periodoDash = { ini, fim };
     }
 
     document.getElementById('rarea-texto').value = texto;
@@ -2300,9 +2367,11 @@ async function gerarAreaPeriodo(ini, fim) {
   const data = await resp.json();
   if (data.status !== 'ok') throw new Error(data.message);
 
-  // Agregar registros por delegacia e procedimento
+  const registros = data.registros || [];
+
+  // Agregar por delegacia e procedimento
   const exp = {};
-  (data.registros || []).forEach(r => {
+  registros.forEach(r => {
     if (r.procedimento === 'SEM OCORRÊNCIAS') return;
     const qtd = parseInt(r.quantidade) || 0;
     if (qtd === 0) return;
@@ -2310,13 +2379,15 @@ async function gerarAreaPeriodo(ini, fim) {
     if (!exp[del]) exp[del] = {};
     if (!exp[del][r.procedimento]) exp[del][r.procedimento] = { total: 0, linhas: [] };
     exp[del][r.procedimento].total += qtd;
-    exp[del][r.procedimento].linhas.push({ quantidade: String(qtd), crime: r.crime || '', cidade: r.cidade || del });
+    exp[del][r.procedimento].linhas.push({ quantidade: String(qtd), crime: r.crime || '', cidade: r.cidade || del, data: r.data });
   });
 
   const [yIni,mIni,dIni] = ini.split('-');
   const [yFim,mFim,dFim] = fim.split('-');
   const periodoFmt = `${dIni}/${mIni}/${yIni} a ${dFim}/${mFim}/${yFim}`;
+  const pad = n => String(parseInt(n)||0).padStart(2,'0');
 
+  // ===== TEXTO COMPLETO =====
   const linhas = [];
   linhas.push('*POLÍCIA CIVIL*');
   linhas.push('');
@@ -2328,8 +2399,6 @@ async function gerarAreaPeriodo(ini, fim) {
   linhas.push('');
   linhas.push(`*DATA: ${periodoFmt}*`);
   linhas.push('');
-
-  const pad = n => String(parseInt(n)||0).padStart(2,'0');
 
   AREAS.forEach(area => {
     linhas.push(`*ÁREA ${area.num}*:`);
@@ -2350,7 +2419,6 @@ async function gerarAreaPeriodo(ini, fim) {
         if (!p || parseInt(p.total) === 0) return;
         temAlgo = true;
         const total = parseInt(p.total);
-        // Agrupar detalhes iguais
         const detalhes = [];
         p.linhas.forEach(l => {
           const qtd = parseInt(l.quantidade) || 0;
@@ -2359,19 +2427,37 @@ async function gerarAreaPeriodo(ini, fim) {
           const cidade = l.cidade || '';
           if (crime) detalhes.push(`${pad(qtd)} ${crime}${cidade && cidade !== del ? ' (' + cidade + ')' : ''}`);
         });
-        if (detalhes.length > 0) {
-          linhas.push(`${nome}: ${pad(total)} (${detalhes.join('; ')})`);
-        } else {
-          linhas.push(`${nome}: ${pad(total)}`);
-        }
+        linhas.push(detalhes.length > 0 ? `${nome}: ${pad(total)} (${detalhes.join('; ')})` : `${nome}: ${pad(total)}`);
         linhas.push('');
       });
       if (!temAlgo) { linhas.push('Sem ocorrências no período'); linhas.push(''); }
     });
   });
-
   linhas.push('Assessoria de Estatística 15aDSPC/Patos');
-  return linhas.join('\n');
+
+  // ===== RESUMO =====
+  const totaisGerais = {};
+  Object.values(exp).forEach(procs => {
+    Object.entries(procs).forEach(([k, v]) => {
+      if (!totaisGerais[k]) totaisGerais[k] = 0;
+      totaisGerais[k] += parseInt(v.total) || 0;
+    });
+  });
+
+  const resumoLinhas = [];
+  resumoLinhas.push('*POLÍCIA CIVIL*');
+  resumoLinhas.push('*15ª DSPC/PATOS*');
+  resumoLinhas.push('');
+  resumoLinhas.push(`*RESUMO DO PERÍODO: ${periodoFmt}*`);
+  resumoLinhas.push('');
+  Object.entries(NOMES_PROC_AREA).forEach(([k, nome]) => {
+    const total = totaisGerais[k] || 0;
+    if (total > 0) resumoLinhas.push(`${nome}: ${pad(total)}`);
+  });
+  resumoLinhas.push('');
+  resumoLinhas.push('Assessoria de Estatística 15aDSPC/Patos');
+
+  return { texto: linhas.join('\n'), resumo: resumoLinhas.join('\n'), dadosRaw: { exp, registros, periodoFmt } };
 }
 
 function montarTextoArea(dados, dataISO) {
@@ -2441,6 +2527,115 @@ function montarTextoArea(dados, dataISO) {
 
   linhas.push('Assessoria de Estatística 15aDSPC/Patos');
   return linhas.join('\n');
+}
+
+function copiarResumoArea() {
+  const txt = document.getElementById('rarea-resumo-texto');
+  txt.select(); document.execCommand('copy');
+  const ok = document.getElementById('rarea-resumo-copiado');
+  ok.style.display = 'block';
+  setTimeout(() => ok.style.display = 'none', 2000);
+}
+
+let _chartsInstances = {};
+
+function gerarDashboardArea() {
+  const dados = window._dadosDashboard;
+  if (!dados) return;
+  const { exp, registros, periodoFmt } = dados;
+  const pad = n => String(parseInt(n)||0).padStart(2,'0');
+
+  document.getElementById('rarea-dashboard').style.display = 'block';
+  document.getElementById('rarea-dashboard').scrollIntoView({ behavior: 'smooth' });
+
+  // Destruir charts anteriores
+  Object.values(_chartsInstances).forEach(c => c.destroy());
+  _chartsInstances = {};
+
+  // ===== KPIs =====
+  const totalRegistros = registros.filter(r => r.procedimento !== 'SEM OCORRÊNCIAS' && parseInt(r.quantidade) > 0).reduce((s,r) => s + (parseInt(r.quantidade)||0), 0);
+  const delegaciasAtivas = new Set(registros.filter(r => parseInt(r.quantidade) > 0).map(r => r.delegacia)).size;
+  const totalProcs = {};
+  registros.forEach(r => {
+    if (r.procedimento === 'SEM OCORRÊNCIAS') return;
+    const qtd = parseInt(r.quantidade) || 0;
+    if (qtd > 0) { totalProcs[r.procedimento] = (totalProcs[r.procedimento]||0) + qtd; }
+  });
+  const tiposAtivos = Object.keys(totalProcs).length;
+  const semOcor = registros.filter(r => r.procedimento === 'SEM OCORRÊNCIAS').length;
+
+  document.getElementById('dash-kpis').innerHTML = `
+    <div class="dashboard-kpi"><div class="kpi-valor" style="color:var(--azul);">${totalRegistros}</div><div class="kpi-label">Total de Procedimentos</div></div>
+    <div class="dashboard-kpi" style="border-color:var(--verde);"><div class="kpi-valor" style="color:var(--verde);">${delegaciasAtivas}</div><div class="kpi-label">Delegacias Ativas</div></div>
+    <div class="dashboard-kpi" style="border-color:var(--dourado);"><div class="kpi-valor" style="color:var(--dourado);">${tiposAtivos}</div><div class="kpi-label">Tipos de Procedimento</div></div>
+    <div class="dashboard-kpi" style="border-color:var(--vermelho);"><div class="kpi-valor" style="color:var(--vermelho);">${semOcor}</div><div class="kpi-label">Envios Sem Ocorrências</div></div>`;
+
+  // ===== GRÁFICO BARRAS: Top procedimentos =====
+  const procsOrdenados = Object.entries(totalProcs).sort((a,b) => b[1]-a[1]).slice(0,12);
+  const nomesProcs = procsOrdenados.map(([k]) => (NOMES_PROC_AREA[k] || k).replace(/\(.*?\)/g,'').trim().substring(0,30));
+  const valoresProcs = procsOrdenados.map(([,v]) => v);
+  const cores = ['#0a1628','#1a3a6b','#c8a84b','#1a7a4a','#b02020','#2980b9','#8e44ad','#e67e22','#16a085','#c0392b','#2c3e50','#27ae60'];
+
+  _chartsInstances.procs = new Chart(document.getElementById('chart-procs'), {
+    type: 'bar',
+    data: { labels: nomesProcs, datasets: [{ label: 'Quantidade', data: valoresProcs, backgroundColor: cores, borderRadius: 6 }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+  });
+
+  // ===== GRÁFICO PIZZA: por área =====
+  const totaisPorArea = AREAS.map(area => {
+    let total = 0;
+    area.delegacias.forEach(del => {
+      if (exp[del]) Object.values(exp[del]).forEach(p => total += parseInt(p.total)||0);
+    });
+    return { label: `Área ${area.num}`, value: total };
+  }).filter(a => a.value > 0);
+
+  _chartsInstances.areas = new Chart(document.getElementById('chart-areas'), {
+    type: 'doughnut',
+    data: {
+      labels: totaisPorArea.map(a => a.label),
+      datasets: [{ data: totaisPorArea.map(a => a.value), backgroundColor: cores, borderWidth: 2 }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } }
+  });
+
+  // ===== GRÁFICO BARRAS: Top delegacias =====
+  const totaisDel = Object.entries(exp).map(([del, procs]) => {
+    const total = Object.values(procs).reduce((s,p) => s + (parseInt(p.total)||0), 0);
+    return { del, total };
+  }).sort((a,b) => b.total-a.total).slice(0,10);
+
+  _chartsInstances.delegacias = new Chart(document.getElementById('chart-delegacias'), {
+    type: 'bar',
+    data: {
+      labels: totaisDel.map(d => d.del),
+      datasets: [{ label: 'Total', data: totaisDel.map(d => d.total), backgroundColor: '#1a3a6b', borderRadius: 6 }]
+    },
+    options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+  });
+
+  // ===== GRÁFICO LINHA: Evolução diária =====
+  const porData = {};
+  registros.forEach(r => {
+    if (r.procedimento === 'SEM OCORRÊNCIAS') return;
+    const qtd = parseInt(r.quantidade) || 0;
+    if (qtd === 0) return;
+    const d = formatarDataBR(r.data);
+    porData[r.data] = (porData[r.data]||0) + qtd;
+  });
+  const datasOrdenadas = Object.keys(porData).sort();
+  const valoresDiarios = datasOrdenadas.map(d => porData[d]);
+  const labelsDias = datasOrdenadas.map(d => formatarDataBR(d));
+
+  _chartsInstances.linha = new Chart(document.getElementById('chart-linha'), {
+    type: 'line',
+    data: {
+      labels: labelsDias,
+      datasets: [{ label: 'Procedimentos', data: valoresDiarios, borderColor: '#0a1628', backgroundColor: 'rgba(10,22,40,0.08)', fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#c8a84b' }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
 }
 
 function copiarRelatorioArea() {
