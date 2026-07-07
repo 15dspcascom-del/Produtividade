@@ -488,14 +488,38 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 .mod-bo { background: rgba(200,168,75,0.15); color: #8a6d00; }
 
 /* ===== DASHBOARD ===== */
-.dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.dashboard-kpis { grid-column: 1/-1; display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+.dashboard-kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
 .dashboard-kpi { background: var(--branco); border: 1.5px solid var(--cinza-borda); border-radius: 10px; padding: 16px; text-align: center; }
 .dashboard-kpi .kpi-valor { font-family: 'Rajdhani', sans-serif; font-size: 32px; font-weight: 700; line-height: 1; }
 .dashboard-kpi .kpi-label { font-size: 11px; color: var(--texto-leve); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 5px; }
 .dashboard-card { background: var(--branco); border: 1.5px solid var(--cinza-borda); border-radius: 10px; padding: 20px; }
-.dashboard-card-titulo { font-size: 13px; font-weight: 600; color: var(--azul); margin-bottom: 16px; letter-spacing: 0.3px; }
-@media (max-width:640px) { .dashboard-grid { grid-template-columns: 1fr; } .dashboard-kpis { grid-template-columns: 1fr 1fr; } .dashboard-card { grid-column: 1; } }
+.dashboard-card-titulo { font-size: 12px; font-weight: 700; color: var(--azul); margin-bottom: 14px; letter-spacing: 0.3px; text-transform: uppercase; }
+
+/* Cards de área */
+.dash-area-bloco { margin-bottom: 20px; }
+.dash-area-header {
+  background: var(--azul); color: white; padding: 10px 18px;
+  border-radius: 8px 8px 0 0; font-family: 'Rajdhani', sans-serif;
+  font-size: 15px; font-weight: 700; letter-spacing: 1px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.dash-area-total { background: var(--dourado); color: var(--azul); padding: 2px 12px; border-radius: 12px; font-size: 13px; font-weight: 700; }
+.dash-area-delegacias { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 12px; padding: 12px; background: rgba(10,22,40,0.03); border: 1.5px solid var(--cinza-borda); border-top: none; border-radius: 0 0 8px 8px; }
+.dash-del-card { background: var(--branco); border: 1.5px solid var(--cinza-borda); border-radius: 8px; overflow: hidden; }
+.dash-del-card.tem-dados { border-color: var(--azul-claro); }
+.dash-del-card.sem-dados { opacity: 0.55; }
+.dash-del-nome { background: var(--azul-claro); color: white; padding: 7px 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between; }
+.dash-del-nome.vazio { background: var(--cinza-borda); color: var(--texto-leve); }
+.dash-del-total { background: white; color: var(--azul); padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+.dash-del-procs { padding: 10px 12px; }
+.dash-del-proc-item { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--cinza-borda); font-size: 11px; }
+.dash-del-proc-item:last-child { border-bottom: none; }
+.dash-del-proc-nome { color: var(--texto-leve); flex: 1; }
+.dash-del-proc-qtd { font-weight: 700; color: var(--azul); margin-left: 8px; background: rgba(10,22,40,0.07); padding: 1px 8px; border-radius: 10px; font-size: 11px; }
+.dash-del-proc-bar { height: 4px; background: var(--azul-claro); border-radius: 2px; margin-top: 2px; transition: width 0.5s; }
+.dash-del-vazio { padding: 12px; font-size: 11px; color: var(--texto-leve); font-style: italic; text-align: center; }
+
+@media (max-width:640px) { .dashboard-kpis { grid-template-columns: 1fr 1fr; } }
 
 /* ===== DETALHAMENTO SEMANAL ===== */
 .det-grupo {
@@ -760,31 +784,19 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 
       <!-- Dashboard -->
       <div id="rarea-dashboard" style="display:none;margin-top:24px;padding-top:20px;border-top:2px solid var(--cinza-borda);">
-        <strong style="font-size:14px;color:var(--azul);display:block;margin-bottom:20px;">📊 Dashboard do Período</strong>
-        <div class="dashboard-grid">
-          <!-- KPIs -->
-          <div class="dashboard-kpis" id="dash-kpis"></div>
-          <!-- Gráfico barras: procedimentos -->
-          <div class="dashboard-card" style="grid-column:1/-1;">
-            <div class="dashboard-card-titulo">Procedimentos mais registrados</div>
-            <canvas id="chart-procs" height="100"></canvas>
-          </div>
-          <!-- Gráfico pizza: por área -->
-          <div class="dashboard-card">
-            <div class="dashboard-card-titulo">Registros por Área</div>
-            <canvas id="chart-areas" height="200"></canvas>
-          </div>
-          <!-- Gráfico barras: ranking delegacias -->
-          <div class="dashboard-card">
-            <div class="dashboard-card-titulo">Top Delegacias mais ativas</div>
-            <canvas id="chart-delegacias" height="200"></canvas>
-          </div>
-          <!-- Gráfico linha: evolução diária -->
-          <div class="dashboard-card" style="grid-column:1/-1;">
-            <div class="dashboard-card-titulo">Evolução diária de registros</div>
-            <canvas id="chart-linha" height="80"></canvas>
-          </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <strong style="font-size:16px;color:var(--azul);font-family:'Rajdhani',sans-serif;letter-spacing:0.5px;">📊 DASHBOARD POR ÁREA</strong>
+          <span id="dash-periodo-label" style="font-size:12px;color:var(--texto-leve);font-weight:600;"></span>
         </div>
+        <!-- KPIs gerais -->
+        <div class="dashboard-kpis" id="dash-kpis" style="margin-bottom:24px;"></div>
+        <!-- Gráfico geral de procedimentos -->
+        <div class="dashboard-card" style="margin-bottom:24px;">
+          <div class="dashboard-card-titulo">📈 Evolução diária de registros no período</div>
+          <canvas id="chart-linha" height="80"></canvas>
+        </div>
+        <!-- Cards por área -->
+        <div id="dash-areas-corpo"></div>
       </div>
     </div>
 
@@ -2546,96 +2558,109 @@ function gerarDashboardArea() {
   const pad = n => String(parseInt(n)||0).padStart(2,'0');
 
   document.getElementById('rarea-dashboard').style.display = 'block';
+  document.getElementById('dash-periodo-label').textContent = periodoFmt;
   document.getElementById('rarea-dashboard').scrollIntoView({ behavior: 'smooth' });
 
   // Destruir charts anteriores
   Object.values(_chartsInstances).forEach(c => c.destroy());
   _chartsInstances = {};
 
-  // ===== KPIs =====
-  const totalRegistros = registros.filter(r => r.procedimento !== 'SEM OCORRÊNCIAS' && parseInt(r.quantidade) > 0).reduce((s,r) => s + (parseInt(r.quantidade)||0), 0);
-  const delegaciasAtivas = new Set(registros.filter(r => parseInt(r.quantidade) > 0).map(r => r.delegacia)).size;
-  const totalProcs = {};
+  // ===== KPIs GERAIS =====
+  const totalGeral = registros.filter(r => r.procedimento !== 'SEM OCORRÊNCIAS').reduce((s,r) => s + (parseInt(r.quantidade)||0), 0);
+  const delegaciasAtivas = new Set(registros.filter(r => parseInt(r.quantidade) > 0 && r.procedimento !== 'SEM OCORRÊNCIAS').map(r => r.delegacia)).size;
+  const totalProcsMap = {};
   registros.forEach(r => {
     if (r.procedimento === 'SEM OCORRÊNCIAS') return;
     const qtd = parseInt(r.quantidade) || 0;
-    if (qtd > 0) { totalProcs[r.procedimento] = (totalProcs[r.procedimento]||0) + qtd; }
+    if (qtd > 0) totalProcsMap[r.procedimento] = (totalProcsMap[r.procedimento]||0) + qtd;
   });
-  const tiposAtivos = Object.keys(totalProcs).length;
   const semOcor = registros.filter(r => r.procedimento === 'SEM OCORRÊNCIAS').length;
 
   document.getElementById('dash-kpis').innerHTML = `
-    <div class="dashboard-kpi"><div class="kpi-valor" style="color:var(--azul);">${totalRegistros}</div><div class="kpi-label">Total de Procedimentos</div></div>
+    <div class="dashboard-kpi"><div class="kpi-valor" style="color:var(--azul);">${totalGeral}</div><div class="kpi-label">Total de Procedimentos</div></div>
     <div class="dashboard-kpi" style="border-color:var(--verde);"><div class="kpi-valor" style="color:var(--verde);">${delegaciasAtivas}</div><div class="kpi-label">Delegacias Ativas</div></div>
-    <div class="dashboard-kpi" style="border-color:var(--dourado);"><div class="kpi-valor" style="color:var(--dourado);">${tiposAtivos}</div><div class="kpi-label">Tipos de Procedimento</div></div>
-    <div class="dashboard-kpi" style="border-color:var(--vermelho);"><div class="kpi-valor" style="color:var(--vermelho);">${semOcor}</div><div class="kpi-label">Envios Sem Ocorrências</div></div>`;
-
-  // ===== GRÁFICO BARRAS: Top procedimentos =====
-  const procsOrdenados = Object.entries(totalProcs).sort((a,b) => b[1]-a[1]).slice(0,12);
-  const nomesProcs = procsOrdenados.map(([k]) => (NOMES_PROC_AREA[k] || k).replace(/\(.*?\)/g,'').trim().substring(0,30));
-  const valoresProcs = procsOrdenados.map(([,v]) => v);
-  const cores = ['#0a1628','#1a3a6b','#c8a84b','#1a7a4a','#b02020','#2980b9','#8e44ad','#e67e22','#16a085','#c0392b','#2c3e50','#27ae60'];
-
-  _chartsInstances.procs = new Chart(document.getElementById('chart-procs'), {
-    type: 'bar',
-    data: { labels: nomesProcs, datasets: [{ label: 'Quantidade', data: valoresProcs, backgroundColor: cores, borderRadius: 6 }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-  });
-
-  // ===== GRÁFICO PIZZA: por área =====
-  const totaisPorArea = AREAS.map(area => {
-    let total = 0;
-    area.delegacias.forEach(del => {
-      if (exp[del]) Object.values(exp[del]).forEach(p => total += parseInt(p.total)||0);
-    });
-    return { label: `Área ${area.num}`, value: total };
-  }).filter(a => a.value > 0);
-
-  _chartsInstances.areas = new Chart(document.getElementById('chart-areas'), {
-    type: 'doughnut',
-    data: {
-      labels: totaisPorArea.map(a => a.label),
-      datasets: [{ data: totaisPorArea.map(a => a.value), backgroundColor: cores, borderWidth: 2 }]
-    },
-    options: { responsive: true, plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } }
-  });
-
-  // ===== GRÁFICO BARRAS: Top delegacias =====
-  const totaisDel = Object.entries(exp).map(([del, procs]) => {
-    const total = Object.values(procs).reduce((s,p) => s + (parseInt(p.total)||0), 0);
-    return { del, total };
-  }).sort((a,b) => b.total-a.total).slice(0,10);
-
-  _chartsInstances.delegacias = new Chart(document.getElementById('chart-delegacias'), {
-    type: 'bar',
-    data: {
-      labels: totaisDel.map(d => d.del),
-      datasets: [{ label: 'Total', data: totaisDel.map(d => d.total), backgroundColor: '#1a3a6b', borderRadius: 6 }]
-    },
-    options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
-  });
+    <div class="dashboard-kpi" style="border-color:var(--dourado);"><div class="kpi-valor" style="color:var(--dourado);">${Object.keys(totalProcsMap).length}</div><div class="kpi-label">Tipos de Procedimento</div></div>
+    <div class="dashboard-kpi" style="border-color:var(--vermelho);"><div class="kpi-valor" style="color:var(--vermelho);">${semOcor}</div><div class="kpi-label">Sem Ocorrências</div></div>`;
 
   // ===== GRÁFICO LINHA: Evolução diária =====
   const porData = {};
   registros.forEach(r => {
-    if (r.procedimento === 'SEM OCORRÊNCIAS') return;
-    const qtd = parseInt(r.quantidade) || 0;
-    if (qtd === 0) return;
-    const d = formatarDataBR(r.data);
-    porData[r.data] = (porData[r.data]||0) + qtd;
+    if (r.procedimento === 'SEM OCORRÊNCIAS' || !parseInt(r.quantidade)) return;
+    porData[r.data] = (porData[r.data]||0) + (parseInt(r.quantidade)||0);
   });
   const datasOrdenadas = Object.keys(porData).sort();
-  const valoresDiarios = datasOrdenadas.map(d => porData[d]);
-  const labelsDias = datasOrdenadas.map(d => formatarDataBR(d));
-
   _chartsInstances.linha = new Chart(document.getElementById('chart-linha'), {
     type: 'line',
     data: {
-      labels: labelsDias,
-      datasets: [{ label: 'Procedimentos', data: valoresDiarios, borderColor: '#0a1628', backgroundColor: 'rgba(10,22,40,0.08)', fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#c8a84b' }]
+      labels: datasOrdenadas.map(d => formatarDataBR(d)),
+      datasets: [{ label: 'Procedimentos', data: datasOrdenadas.map(d => porData[d]), borderColor: '#0a1628', backgroundColor: 'rgba(10,22,40,0.07)', fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#c8a84b' }]
     },
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
   });
+
+  // ===== CARDS POR ÁREA =====
+  // Calcular máximo para barras proporcionais
+  const maxQtd = Math.max(...Object.values(totalProcsMap), 1);
+
+  let html = '';
+  AREAS.forEach(area => {
+    // Total da área
+    let totalArea = 0;
+    area.delegacias.forEach(del => {
+      if (exp[del]) Object.values(exp[del]).forEach(p => totalArea += parseInt(p.total)||0);
+    });
+
+    html += `<div class="dash-area-bloco">
+      <div class="dash-area-header">
+        <span>ÁREA ${area.num}</span>
+        <span class="dash-area-total">${totalArea > 0 ? totalArea + ' registros' : 'Sem registros'}</span>
+      </div>
+      <div class="dash-area-delegacias">`;
+
+    area.delegacias.forEach(del => {
+      const procs = exp[del];
+      const temDados = procs && Object.keys(procs).length > 0;
+      const totalDel = temDados ? Object.values(procs).reduce((s,p) => s + (parseInt(p.total)||0), 0) : 0;
+
+      html += `<div class="dash-del-card ${temDados ? 'tem-dados' : 'sem-dados'}">
+        <div class="dash-del-nome ${temDados ? '' : 'vazio'}">
+          <span>${del.toUpperCase()}</span>
+          ${temDados ? `<span class="dash-del-total">${totalDel}</span>` : ''}
+        </div>`;
+
+      if (!temDados) {
+        html += `<div class="dash-del-vazio">Sem ocorrências</div>`;
+      } else {
+        html += `<div class="dash-del-procs">`;
+        // Ordenar por quantidade desc e mostrar só os que têm dados
+        const procsOrdenados = Object.entries(procs)
+          .filter(([,v]) => parseInt(v.total) > 0)
+          .sort((a,b) => parseInt(b[1].total) - parseInt(a[1].total));
+
+        procsOrdenados.forEach(([k, v]) => {
+          const nome = (NOMES_PROC_AREA[k] || k);
+          const qtd = parseInt(v.total) || 0;
+          const pct = Math.round((qtd / Math.max(totalDel,1)) * 100);
+          html += `<div class="dash-del-proc-item">
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span class="dash-del-proc-nome">${nome}</span>
+                <span class="dash-del-proc-qtd">${pad(qtd)}</span>
+              </div>
+              <div class="dash-del-proc-bar" style="width:${pct}%;"></div>
+            </div>
+          </div>`;
+        });
+        html += `</div>`;
+      }
+
+      html += `</div>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  document.getElementById('dash-areas-corpo').innerHTML = html;
 }
 
 function copiarRelatorioArea() {
