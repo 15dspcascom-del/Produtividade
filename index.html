@@ -681,7 +681,14 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         <button class="btn-voltar" onclick="mostrarTela('admin')">← Voltar</button>
       </div>
 
-      <div style="background:var(--branco);border:1.5px solid var(--cinza-borda);border-radius:10px;padding:24px;margin-bottom:20px;">
+      <!-- Abas -->
+      <div class="presenca-tabs" style="margin-bottom:20px;">
+        <button class="presenca-tab ativa" id="tab-area-diario" onclick="mudarTabArea('diario')">📅 Diário</button>
+        <button class="presenca-tab" id="tab-area-periodo" onclick="mudarTabArea('periodo')">📆 Por Período</button>
+      </div>
+
+      <!-- Filtros Diário -->
+      <div id="rarea-filtro-diario" style="background:var(--branco);border:1.5px solid var(--cinza-borda);border-radius:10px;padding:24px;margin-bottom:20px;">
         <div style="display:grid;grid-template-columns:200px 1fr;gap:20px;">
           <div class="fm-item">
             <label>Data do Relatório</label>
@@ -692,6 +699,21 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
             <input type="text" id="rarea-diaSemana" placeholder="ex: quarta-feira" />
           </div>
         </div>
+      </div>
+
+      <!-- Filtros Por Período -->
+      <div id="rarea-filtro-periodo" style="display:none;background:var(--branco);border:1.5px solid var(--cinza-borda);border-radius:10px;padding:24px;margin-bottom:20px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div class="fm-item">
+            <label>Data Início</label>
+            <input type="date" id="rarea-data-ini" />
+          </div>
+          <div class="fm-item">
+            <label>Data Fim</label>
+            <input type="date" id="rarea-data-fim" />
+          </div>
+        </div>
+        <p style="font-size:11px;color:var(--texto-leve);margin-top:12px;">O relatório consolidará todos os registros do período, somando as quantidades por delegacia.</p>
       </div>
 
       <button class="btn-enviar" onclick="gerarRelatorioArea()" id="btn-gerar-area">
@@ -2203,31 +2225,66 @@ const NOMES_PROC_AREA = {
 
 const LETRAS = ['a','b','c','d','e','f'];
 
+let tabAreaAtual = 'diario';
+
 function iniciarRelatorioArea() {
+  tabAreaAtual = 'diario';
+  document.getElementById('tab-area-diario').classList.add('ativa');
+  document.getElementById('tab-area-periodo').classList.remove('ativa');
+  document.getElementById('rarea-filtro-diario').style.display = 'block';
+  document.getElementById('rarea-filtro-periodo').style.display = 'none';
+  document.getElementById('rarea-resultado').style.display = 'none';
+
   const agora = new Date();
   const hoje = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
   document.getElementById('rarea-data').value = hoje;
   document.getElementById('rarea-diaSemana').value = getDiaSemana(hoje);
-  document.getElementById('rarea-resultado').style.display = 'none';
-  document.getElementById('rarea-data').addEventListener('change', function() {
+  document.getElementById('rarea-data').onchange = function() {
     if (this.value) document.getElementById('rarea-diaSemana').value = getDiaSemana(this.value);
-  });
+  };
+
+  // Período: semana atual
+  const diaSemana = agora.getDay();
+  const diasAtrasSegunda = diaSemana === 0 ? 6 : diaSemana - 1;
+  const segunda = new Date(agora);
+  segunda.setDate(agora.getDate() - diasAtrasSegunda);
+  const fmtISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  document.getElementById('rarea-data-ini').value = fmtISO(segunda);
+  document.getElementById('rarea-data-fim').value = fmtISO(agora);
+}
+
+function mudarTabArea(tab) {
+  tabAreaAtual = tab;
+  document.getElementById('tab-area-diario').classList.toggle('ativa', tab === 'diario');
+  document.getElementById('tab-area-periodo').classList.toggle('ativa', tab === 'periodo');
+  document.getElementById('rarea-filtro-diario').style.display = tab === 'diario' ? 'block' : 'none';
+  document.getElementById('rarea-filtro-periodo').style.display = tab === 'periodo' ? 'block' : 'none';
+  document.getElementById('rarea-resultado').style.display = 'none';
 }
 
 async function gerarRelatorioArea() {
-  const data = document.getElementById('rarea-data').value;
-  if (!data) { alert('Selecione a data.'); return; }
-
   const btn = document.getElementById('btn-gerar-area');
   const txt = document.getElementById('btn-area-txt');
   const sp = document.getElementById('spinner-area');
   btn.disabled = true; txt.textContent = 'Buscando dados...'; sp.style.display = 'block';
 
   try {
-    const resp = await fetch(`${APPS_SCRIPT_URL}?acao=dadosCICC&data=${data}`);
-    const dados = await resp.json();
-    if (dados.status !== 'ok') throw new Error(dados.message);
-    const texto = montarTextoArea(dados, data);
+    let texto = '';
+
+    if (tabAreaAtual === 'diario') {
+      const data = document.getElementById('rarea-data').value;
+      if (!data) { alert('Selecione a data.'); return; }
+      const resp = await fetch(`${APPS_SCRIPT_URL}?acao=dadosCICC&data=${data}`);
+      const dados = await resp.json();
+      if (dados.status !== 'ok') throw new Error(dados.message);
+      texto = montarTextoArea(dados, data);
+    } else {
+      const ini = document.getElementById('rarea-data-ini').value;
+      const fim = document.getElementById('rarea-data-fim').value;
+      if (!ini || !fim) { alert('Selecione as datas.'); return; }
+      texto = await gerarAreaPeriodo(ini, fim);
+    }
+
     document.getElementById('rarea-texto').value = texto;
     document.getElementById('rarea-resultado').style.display = 'block';
     document.getElementById('rarea-resultado').scrollIntoView({ behavior: 'smooth' });
@@ -2236,6 +2293,85 @@ async function gerarRelatorioArea() {
   } finally {
     btn.disabled = false; txt.textContent = '🗂 Gerar Relatório de Área'; sp.style.display = 'none';
   }
+}
+
+async function gerarAreaPeriodo(ini, fim) {
+  const resp = await fetch(`${APPS_SCRIPT_URL}?acao=consultar&dataIni=${ini}&dataFim=${fim}&escrivao=&modalidade=expediente&delegacia=`);
+  const data = await resp.json();
+  if (data.status !== 'ok') throw new Error(data.message);
+
+  // Agregar registros por delegacia e procedimento
+  const exp = {};
+  (data.registros || []).forEach(r => {
+    if (r.procedimento === 'SEM OCORRÊNCIAS') return;
+    const qtd = parseInt(r.quantidade) || 0;
+    if (qtd === 0) return;
+    const del = r.delegacia;
+    if (!exp[del]) exp[del] = {};
+    if (!exp[del][r.procedimento]) exp[del][r.procedimento] = { total: 0, linhas: [] };
+    exp[del][r.procedimento].total += qtd;
+    exp[del][r.procedimento].linhas.push({ quantidade: String(qtd), crime: r.crime || '', cidade: r.cidade || del });
+  });
+
+  const [yIni,mIni,dIni] = ini.split('-');
+  const [yFim,mFim,dFim] = fim.split('-');
+  const periodoFmt = `${dIni}/${mIni}/${yIni} a ${dFim}/${mFim}/${yFim}`;
+
+  const linhas = [];
+  linhas.push('*POLÍCIA CIVIL*');
+  linhas.push('');
+  linhas.push('*15ª Delegacia Seccional, com sede em Patos/PB (15ª/PATOS)*');
+  linhas.push('');
+  linhas.push('*PRODUTIVIDADE DAS UNIDADES DURANTE O EXPEDIENTE NORMAL DE TRABALHO (Seg a Sex - 08h às 18h)*');
+  linhas.push('');
+  linhas.push('*RELATÓRIO CONSOLIDADO — PERÍODO:*');
+  linhas.push('');
+  linhas.push(`*DATA: ${periodoFmt}*`);
+  linhas.push('');
+
+  const pad = n => String(parseInt(n)||0).padStart(2,'0');
+
+  AREAS.forEach(area => {
+    linhas.push(`*ÁREA ${area.num}*:`);
+    linhas.push('');
+    area.delegacias.forEach((del, idx) => {
+      const letra = LETRAS[idx];
+      linhas.push(`*${letra}) ${del.toUpperCase()}:*`);
+      linhas.push('');
+      const procs = exp[del];
+      if (!procs || Object.keys(procs).length === 0) {
+        linhas.push('Sem ocorrências no período');
+        linhas.push('');
+        return;
+      }
+      let temAlgo = false;
+      Object.entries(NOMES_PROC_AREA).forEach(([k, nome]) => {
+        const p = procs[k];
+        if (!p || parseInt(p.total) === 0) return;
+        temAlgo = true;
+        const total = parseInt(p.total);
+        // Agrupar detalhes iguais
+        const detalhes = [];
+        p.linhas.forEach(l => {
+          const qtd = parseInt(l.quantidade) || 0;
+          if (qtd === 0) return;
+          const crime = l.crime || '';
+          const cidade = l.cidade || '';
+          if (crime) detalhes.push(`${pad(qtd)} ${crime}${cidade && cidade !== del ? ' (' + cidade + ')' : ''}`);
+        });
+        if (detalhes.length > 0) {
+          linhas.push(`${nome}: ${pad(total)} (${detalhes.join('; ')})`);
+        } else {
+          linhas.push(`${nome}: ${pad(total)}`);
+        }
+        linhas.push('');
+      });
+      if (!temAlgo) { linhas.push('Sem ocorrências no período'); linhas.push(''); }
+    });
+  });
+
+  linhas.push('Assessoria de Estatística 15aDSPC/Patos');
+  return linhas.join('\n');
 }
 
 function montarTextoArea(dados, dataISO) {
