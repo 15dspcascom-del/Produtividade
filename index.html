@@ -3058,7 +3058,11 @@ function montarTextoCICC(dados, dataISO) {
   const custTransfNomes = document.getElementById('cust-transf-nomes').value.trim();
   const custFinalQtd = document.getElementById('cust-final-qtd').value;
 
-  const formatarNomes = (txt) => txt ? txt.split('\n').filter(l=>l.trim()).map(l => l.trim()).join(';\n') + ';' : '';
+  const formatarNomes = (txt) => {
+    if (!txt) return '';
+    const nomes = txt.split('\n').map(l => l.trim()).filter(Boolean);
+    return nomes.map(n => `${n};`).join('\n\n');
+  };
 
   // Helper para formatar quantidade com zero pad
   const pad = (n) => String(parseInt(n)||0).padStart(2,'0');
@@ -3079,20 +3083,27 @@ function montarTextoCICC(dados, dataISO) {
   linhas.push('');
 
   const polos = dados.plantao || {};
-  const nomesPolos = { 'Central - Patos': 'a) Central de Policia de Patos', 'Teixeira': 'b) Delegacia de Teixeira', 'DHE': 'c) Delegacia de Homicídios e Entorpecentes de Patos' };
-  const letrasPolos = { 'Central - Patos': 'a', 'Teixeira': 'b', 'DHE': 'c' };
+  const POLO_INFO = {
+    'Central - Patos': { letra: 'a', nome: 'CENTRAL DE POLICIA DE PATOS' },
+    'Teixeira': { letra: 'b', nome: 'PLANTÃO NA DELEGACIA DE TEIXEIRA' },
+    'DHE': { letra: 'c', nome: 'PLANTÃO NA DELEGACIA DE HOMICÍDIOS E ENTORPECENTES DE PATOS - DHE' }
+  };
+  const nomesPolosArr = Object.keys(POLO_INFO);
 
-  Object.keys(nomesPolos).forEach(polo => {
+  nomesPolosArr.forEach((polo, idxPolo) => {
+    const { letra, nome } = POLO_INFO[polo];
     const reg = polos[polo];
     const inicio = reg?.horario?.split('|')[0]?.replace('Início:','').trim() || '';
     const fim = reg?.horario?.split('|')[1]?.replace('Final:','').trim() || '';
     if (inicio) {
       linhas.push(`*INÍCIO: ${inicio}*`);
       linhas.push(`*TÉRMINO: ${fim}*`);
+      linhas.push('');
       linhas.push(reg?.duracao || 'Plantão 24h');
+      linhas.push('');
     }
+    linhas.push(`*${letra}) ${nome}:*`);
     linhas.push('');
-    linhas.push(`*${nomesPolos[polo]}:*`);
 
     if (!reg || reg.semOcorrencias) {
       linhas.push('Sem ocorrências');
@@ -3113,46 +3124,52 @@ function montarTextoCICC(dados, dataISO) {
     linhas.push('');
     linhas.push('Obs.: vide detalhamento no final deste relatório.');
     linhas.push('');
+    if (idxPolo < nomesPolosArr.length - 1) linhas.push(''); // espaço extra entre os polos
   });
 
-  // II — DHE separado se necessário (já incluído acima)
-
-  // III — Custódia
-  linhas.push('*III) PRODUTIVIDADE DO SETOR DE CUSTÓDIA DA CENTRAL DE POLÍCIA DE PATOS:*');
+  // Custódia
+  linhas.push('*II) PRODUTIVIDADE DO SETOR DE CUSTÓDIA DA CENTRAL DE POLÍCIA DE PATOS:*');
   linhas.push('');
   if (custInicio) linhas.push(`*INÍCIO: ${custInicio}*`);
   if (custFinal) linhas.push(`*FINAL: ${custFinal}*`);
+  linhas.push('');
   linhas.push(custDuracao);
+  linhas.push('');
   if (custServidor) linhas.push(`Servidor Responsável pelo plantão: ${custServidor.toUpperCase()}`);
   linhas.push('');
-  linhas.push('1) Situação Inicial da Carceragem:');
+  linhas.push('*1) Situação Inicial da Carceragem:*');
+  linhas.push('');
   linhas.push(`O plantão foi iniciado às ${custInicio || '08h00'}, com ${custIniQtd || '00 presos'} custodiado(s) nas dependências da carceragem.`);
   linhas.push('');
-  linhas.push(`2) Presos Recebidos Durante o Plantão: ${pad(custRecQtd)}`);
+  linhas.push(`*2) Presos Recebidos Durante o Plantão: ${pad(custRecQtd)}*`);
+  linhas.push('');
   if (custRecNomes) linhas.push(formatarNomes(custRecNomes));
   linhas.push('');
-  linhas.push('3) Audiências de Custódia:');
+  linhas.push('*3) Audiências de Custódia:*');
+  linhas.push('');
   if (custAud) linhas.push(formatarNomes(custAud));
   else linhas.push('Nenhuma.');
   linhas.push('');
-  linhas.push(`4) Transferências para Unidades Prisionais: ${pad(custTransfQtd)}`);
+  linhas.push(`*4) Transferências para Unidades Prisionais: ${pad(custTransfQtd)}*`);
+  linhas.push('');
   if (custTransfNomes) linhas.push(formatarNomes(custTransfNomes));
   linhas.push('');
-  linhas.push(`5) Situação Final da Carceragem: ${custFinalQtd || '00 custodiados'}.`);
+  linhas.push(`*5) Situação Final da Carceragem: ${custFinalQtd || '00 custodiados'}.*`);
   linhas.push('');
 
-  // IV — Setor de B.O.
-  linhas.push('*IV) PRODUTIVIDADE DO SETOR DE BOLETIM DE OCORRÊNCIA DA CENTRAL DE POLICIA (08h às 18h – SEG/SEX):*');
+  // Setor de B.O.
+  linhas.push('*III) PRODUTIVIDADE DO SETOR DE BOLETIM DE OCORRÊNCIA DA CENTRAL DE POLICIA (08h às 18h – SEG/SEX):*');
   linhas.push('');
   linhas.push(`*08h às 18h de ${dataFmt} (${diaSemana})*`);
+  linhas.push('');
   const totalBO = (dados.bo?.manha?.total || 0) + (dados.bo?.tarde?.total || 0);
   linhas.push(`1) BOLETIM DE OCORRÊNCIA: ${pad(totalBO)}`);
   linhas.push('');
   linhas.push('Obs.: vide detalhamento no final deste relatório.');
   linhas.push('');
 
-  // V — Expediente
-  linhas.push('*V) PRODUTIVIDADE DAS UNIDADES DURANTE O EXPEDIENTE NORMAL DE TRABALHO (08h às 18h - SEG/SEX):*');
+  // Expediente
+  linhas.push(`*IV) PRODUTIVIDADE DAS UNIDADES DURANTE O EXPEDIENTE NORMAL DE TRABALHO (08h às 18h - SEG/SEX):*`);
   linhas.push('');
   linhas.push(`DATA: ${dataFmt}, ${diaSemana}, 08h às 18h.`);
   linhas.push('');
@@ -3191,20 +3208,25 @@ function montarTextoCICC(dados, dataISO) {
   linhas.push('*I) PLANTÃO EXTRAORDINÁRIO*');
   linhas.push('');
 
-  Object.entries(nomesPolos).forEach(([polo, nomeCompleto]) => {
+  nomesPolosArr.forEach((polo, idxPolo) => {
+    const { letra, nome } = POLO_INFO[polo];
     const reg = polos[polo];
     const inicio = reg?.horario?.split('|')[0]?.replace('Início:','').trim() || '';
     const fim = reg?.horario?.split('|')[1]?.replace('Final:','').trim() || '';
 
-    linhas.push(`*${nomeCompleto.replace(/^[a-z]\) /i,'').toUpperCase().trim() === 'CENTRAL DE POLICIA DE PATOS' ? 'a) CENTRAL DE POLICIA DE PATOS' : nomeCompleto.toUpperCase()}*`);
+    linhas.push(`*${letra}) ${nome}*`);
+    linhas.push('');
     if (inicio) {
       linhas.push(`*INÍCIO: ${inicio}*`);
       linhas.push(`*TÉRMINO: ${fim}*`);
+      linhas.push('');
+      linhas.push(reg?.duracao || 'Plantão 24h');
+      linhas.push('');
     }
-    linhas.push('');
 
     if (!reg || reg.semOcorrencias) {
       linhas.push('Sem ocorrências');
+      linhas.push('');
     } else {
       const procs = reg.procedimentos || {};
       const nomesDetPla = {
@@ -3215,12 +3237,14 @@ function montarTextoCICC(dados, dataISO) {
       let i = 1;
       Object.entries(procs).forEach(([k, v]) => {
         if (parseInt(v.total) > 0 && nomesDetPla[k]) {
-          linhas.push(`${i++}) ${nomesDetPla[k]}: ${pad(v.total)}`);
+          linhas.push(`*${i++}) ${nomesDetPla[k]}: ${pad(v.total)}*`);
+          linhas.push('');
           (v.linhas || []).forEach(l => linhas.push(`${pad(l.quantidade)} ${l.crime||l['descrição']||''} (${l.cidade||''})`));
+          linhas.push('');
         }
       });
     }
-    linhas.push('');
+    if (idxPolo < nomesPolosArr.length - 1) linhas.push(''); // espaço extra entre os polos
   });
 
   // B-II — Setor de B.O.
@@ -3231,7 +3255,9 @@ function montarTextoCICC(dados, dataISO) {
     if (!t) return;
     const horTurno = turno === 'manha' ? '08h às 13h' : '13h às 18h';
     linhas.push(`*${horTurno} de ${dataFmt} (${diaSemana})*`);
-    linhas.push(`1) BOLETIM DE OCORRÊNCIA: ${pad(t.total)}`);
+    linhas.push('');
+    linhas.push(`*1) BOLETIM DE OCORRÊNCIA: ${pad(t.total)}*`);
+    linhas.push('');
     (t.linhas || []).forEach(l => {
       linhas.push(`${l.crime||''} (${l.delegacia||''}): ${pad(l.quantidade)}`);
     });
@@ -3246,7 +3272,8 @@ function montarTextoCICC(dados, dataISO) {
   nomesExpResumo.forEach(([k, nome]) => {
     const total = totaisExp[k] || 0;
     if (total === 0) return;
-    linhas.push(`${numDetExp++}) ${nome}: ${pad(total)}`);
+    linhas.push(`*${numDetExp++}) ${nome}: ${pad(total)}*`);
+    linhas.push('');
     // Detalhar por delegacia
     Object.entries(exp).forEach(([del, procs]) => {
       const p = procs[k];
@@ -3262,7 +3289,6 @@ function montarTextoCICC(dados, dataISO) {
     linhas.push('');
   });
 
-  linhas.push('');
   linhas.push('Assessoria de Estatística 15ªDSPC/Patos');
 
   return linhas.join('\n');
