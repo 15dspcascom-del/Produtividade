@@ -348,6 +348,8 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 .fb-icon { width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 26px; }
 .fb-icon.ok { background: rgba(26,122,74,0.1); color: var(--verde); }
 .fb-icon.err { background: rgba(176,32,32,0.1); color: var(--vermelho); }
+.fb-icon.warn { background: rgba(230,162,0,0.12); color: #e6a200; }
+#fb-msg { white-space: pre-line; }
 .modal-fb h3 { font-size: 18px; color: var(--azul); margin-bottom: 8px; }
 .modal-fb p { font-size: 13px; color: var(--texto-leve); margin-bottom: 22px; }
 .btn-fb { padding: 11px 28px; background: var(--azul); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; }
@@ -843,7 +845,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
               <option value="IZAU">Izau</option>
               <option value="RAFAEL">Rafael</option>
               <option value="MARCOS">Marcos</option>
-              <option value="ELYSSOM">Elyssom</option>
+              <option value="ELYSSON">Elysson</option>
               <option value="Outro">Outro</option>
             </select>
             <input type="text" id="cust-servidor" placeholder="Digite o nome" style="display:none;margin-top:6px;" />
@@ -1293,6 +1295,27 @@ async function excluirEscrivao(nome) {
 // ============================================================
 // ENVIAR REGISTRO
 // ============================================================
+function dataHojeLocal() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+
+// Classifica a situação do envio do expediente: 'ok' | 'fora_horario' (mesmo dia, após 18:15) | 'atrasado' (data anterior a hoje)
+function expedienteStatusEnvio(dataSelecionada) {
+  const hoje = dataHojeLocal();
+  if (dataSelecionada < hoje) return 'atrasado';
+  if (dataSelecionada === hoje) {
+    const agora = new Date();
+    const limite = new Date();
+    limite.setHours(18, 15, 0, 0);
+    return agora > limite ? 'fora_horario' : 'ok';
+  }
+  return 'ok';
+}
+
 async function enviar() {
   const dados = coletarDados();
   const erros = validarCampos(dados);
@@ -1350,7 +1373,18 @@ async function enviar() {
       if (rows.length > 0) await supa.post('registros', rows);
     }
 
-    mostrarFeedback(true, 'Registro enviado!', 'Dados salvos com sucesso.');
+    const statusExp = modalidadeAtual === 'expediente' ? expedienteStatusEnvio(dados.data) : 'ok';
+    if (statusExp === 'fora_horario') {
+      mostrarFeedback(true, 'Registrado fora do horário',
+        'Dados salvos com sucesso.\n\n⚠️ Atenção: o envio foi feito após as 18:15. O registro foi realizado normalmente, mas é necessário que o preenchimento do expediente seja feito dentro do horário estabelecido.',
+        true);
+    } else if (statusExp === 'atrasado') {
+      mostrarFeedback(true, 'Registrado com data atrasada',
+        'Dados salvos com sucesso.\n\n⚠️ Atenção: o registro foi feito com data anterior à data atual (atrasado). Sempre que possível, preencha o expediente no mesmo dia.',
+        true);
+    } else {
+      mostrarFeedback(true, 'Registro enviado!', 'Dados salvos com sucesso.');
+    }
   } catch(e) {
     mostrarFeedback(false, 'Erro ao enviar', e.message);
   } finally {
@@ -1389,7 +1423,18 @@ async function enviarSemOcorrencias() {
       : { data, horario, delegacia, escrivao: usuarioLogado.nome, modalidade: modalidadeAtual, procedimento: 'SEM OCORRÊNCIAS', quantidade: 0 };
 
     await supa.post(tabela, row);
-    mostrarFeedback(true, 'Registrado!', 'Sem ocorrências registrado com sucesso.');
+    const statusExpSemOcor = modalidadeAtual === 'expediente' ? expedienteStatusEnvio(data) : 'ok';
+    if (statusExpSemOcor === 'fora_horario') {
+      mostrarFeedback(true, 'Registrado fora do horário',
+        'Sem ocorrências registrado com sucesso.\n\n⚠️ Atenção: o envio foi feito após as 18:15. O registro foi realizado normalmente, mas é necessário que o preenchimento do expediente seja feito dentro do horário estabelecido.',
+        true);
+    } else if (statusExpSemOcor === 'atrasado') {
+      mostrarFeedback(true, 'Registrado com data atrasada',
+        'Sem ocorrências registrado com sucesso.\n\n⚠️ Atenção: o registro foi feito com data anterior à data atual (atrasado). Sempre que possível, preencha o expediente no mesmo dia.',
+        true);
+    } else {
+      mostrarFeedback(true, 'Registrado!', 'Sem ocorrências registrado com sucesso.');
+    }
   } catch(e) {
     mostrarFeedback(false, 'Erro ao enviar', e.message);
   } finally { btn.disabled = false; btn.textContent = '⚪ Sem Ocorrências'; }
@@ -1863,6 +1908,11 @@ function _abrirFormularioReal(modalidade) {
     document.getElementById('plantao-data-inicio').value = hoje;
     document.getElementById('plantao-hora-inicio').value = '08:00';
     document.getElementById('meta-escrivao-plantao').value = usuarioLogado.nome;
+    const primeiroNomePlantao = (usuarioLogado.nome || '').trim().split(' ')[0].toLowerCase();
+    if (primeiroNomePlantao === 'luciano') {
+      document.getElementById('plantao-local').value = 'DHE';
+      togglePoloOutro();
+    }
     calcularFimPlantao();
   } else {
     document.getElementById('meta-padrao').style.display = 'grid';
@@ -1872,6 +1922,12 @@ function _abrirFormularioReal(modalidade) {
     document.getElementById('wrap-turno').style.display = modalidade === 'bo' ? 'block' : 'none';
     document.getElementById('wrap-horario').style.display = modalidade === 'bo' ? 'none' : 'block';
     document.getElementById('meta-horario').value = modalidade === 'expediente' ? '08h às 18h' : '';
+    if (modalidade === 'bo') {
+      const primeiroNomeBO = (usuarioLogado.nome || '').trim().split(' ')[0].toLowerCase();
+      if (primeiroNomeBO === 'ana') {
+        document.getElementById('meta-turno').value = 'Tarde';
+      }
+    }
   }
 
   const campos = modalidade === 'expediente' ? CAMPOS_EXP : modalidade === 'plantao' ? CAMPOS_PLA : CAMPOS_BO;
@@ -1966,6 +2022,12 @@ function voltarSelecao() {
 // ============================================================
 // FORMULÁRIO
 // ============================================================
+
+function toggleExameOutro(sel) {
+  const outro = sel.parentElement.querySelector('.exame-tipo-outro');
+  if (outro) outro.style.display = sel.value === 'Outros' ? 'block' : 'none';
+  if (sel.value !== 'Outros' && outro) outro.value = '';
+}
 
 function toggleProcOutro(sel) {
   const outro = sel.parentElement.querySelector('.proc-pje-outro');
@@ -2099,6 +2161,21 @@ function renderInput(sub, campoId) {
         <option value="Outros">Outros</option>
       </select>
       <input type="text" class="cidade-outro" placeholder="Digite a cidade" style="display:none;margin-top:4px;" />
+    </div>`;
+  }
+  if (sub === 'tipo de crime' && campoId === 'req_exames') {
+    return `<div class="c-grupo">
+      <label>TIPO DE EXAME</label>
+      <select class="exame-tipo-sel" onchange="toggleExameOutro(this)">
+        <option value="">Selecione...</option>
+        <option>Lesão corporal</option>
+        <option>Constatação de droga</option>
+        <option>Químico metalográfico</option>
+        <option>Local de crime</option>
+        <option>Necroscópico</option>
+        <option value="Outros">Outros</option>
+      </select>
+      <input type="text" class="exame-tipo-outro" placeholder="Digite o tipo de exame" style="display:none;margin-top:4px;" />
     </div>`;
   }
   if (sub === 'tipo (depoimento/declaração/interrogatório)') {
@@ -2275,6 +2352,10 @@ function coletarDados() {
           const sel = linha.querySelector('.cidade-sel');
           const outro = linha.querySelector('.cidade-outro');
           obj[sub] = sel?.value === 'Outros' ? (outro?.value || 'Outros') : (sel?.value || '');
+        } else if (sub === 'tipo de crime' && campo.id === 'req_exames') {
+          const sel = linha.querySelector('.exame-tipo-sel');
+          const outro = linha.querySelector('.exame-tipo-outro');
+          obj[sub] = sel?.value === 'Outros' ? (outro?.value || 'Outros') : (sel?.value || '');
         } else if (sub === 'tipo (depoimento/declaração/interrogatório)') {
           const sel = linha.querySelector('select');
           obj[sub] = sel?.value || '';
@@ -2290,7 +2371,7 @@ function coletarDados() {
           const crime = crimeSel?.value === 'Outros' ? (crimeOutro?.value || 'Outros') : (crimeSel?.value || '');
           obj[sub] = tipo && crime ? `${tipo} - ${crime}` : (tipo || crime || '');
         } else {
-          const textInputs = Array.from(linha.querySelectorAll('input:not(.qtd-input):not(.cidade-outro):not(.proc-pje-outro):not(.crime-bo-outro)'));
+          const textInputs = Array.from(linha.querySelectorAll('input:not(.qtd-input):not(.cidade-outro):not(.proc-pje-outro):not(.crime-bo-outro):not(.exame-tipo-outro)'));
           const subIdx = campo.sub.filter((s,i) => i < campo.sub.indexOf(sub) && !['quantidade','cidade','tipo (depoimento/declaração/interrogatório)'].includes(s) && !(s === 'procedimento' && campo.id === 'prot_pje') && !(s === 'crime' && campo.id === 'bos_ip')).length;
           obj[sub] = textInputs[subIdx]?.value || '';
         }
@@ -2861,14 +2942,30 @@ function copiarRelatorioArea() {
 // ============================================================
 // RELATÓRIO CICC
 // ============================================================
+function preencherCustodiaPadrao(dataISO) {
+  if (!dataISO) return;
+  const [ano, mes, dia] = dataISO.split('-').map(Number);
+  const inicioDate = new Date(ano, mes - 1, dia);
+  const fimDate = new Date(inicioDate.getTime() + 24 * 60 * 60 * 1000);
+  const fmt = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  const isoFim = `${fimDate.getFullYear()}-${String(fimDate.getMonth()+1).padStart(2,'0')}-${String(fimDate.getDate()).padStart(2,'0')}`;
+  document.getElementById('cust-inicio').value = `08h do dia ${fmt(inicioDate)}, ${getDiaSemana(dataISO)}`;
+  document.getElementById('cust-final').value = `08h do dia ${fmt(fimDate)}, ${getDiaSemana(isoFim)}`;
+  document.getElementById('cust-duracao').value = 'Plantão 24h';
+}
+
 function iniciarRelatorio() {
   const agora = new Date();
   const hoje = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
   document.getElementById('rel-data').value = hoje;
   document.getElementById('rel-diaSemana').value = getDiaSemana(hoje);
   document.getElementById('rel-resultado').style.display = 'none';
+  preencherCustodiaPadrao(hoje);
   document.getElementById('rel-data').addEventListener('change', function() {
-    if (this.value) document.getElementById('rel-diaSemana').value = getDiaSemana(this.value);
+    if (this.value) {
+      document.getElementById('rel-diaSemana').value = getDiaSemana(this.value);
+      preencherCustodiaPadrao(this.value);
+    }
   });
 }
 
@@ -3230,9 +3327,40 @@ function renderPresenca(escrivaes, envios, dataStr) {
     return (temExp && temPla) || (temExp && temBO) || (temPla && temBO);
   });
 
+  // EXPEDIENTE — subdividido por delegacia vinculada ao escrivão
+  const delegaciasExp = {};
+  soExp.forEach(e => {
+    const dels = Array.isArray(e.delegacias) && e.delegacias.length ? e.delegacias : [e.delegacia];
+    dels.forEach(d => {
+      if (!d) return;
+      if (!delegaciasExp[d]) delegaciasExp[d] = [];
+      delegaciasExp[d].push(e);
+    });
+  });
+  const htmlExp = Object.keys(delegaciasExp).sort((a,b) => a.localeCompare(b, 'pt-BR'))
+    .map(d => renderGrupo(`📋 EXPEDIENTE — ${d}`, 'var(--azul)', delegaciasExp[d]))
+    .join('');
+
+  // PLANTÃO — subdividido por polo (Central - Patos, Teixeira, DHE); quem não enviou fica em bucket à parte
+  const polosPla = {};
+  POLOS_PLANTAO.forEach(p => polosPla[p] = []);
+  const plaSemRegistro = [];
+  soPla.forEach(e => {
+    const polo = envios[e.nome]?.delegacia;
+    if (polo) {
+      if (!polosPla[polo]) polosPla[polo] = [];
+      polosPla[polo].push(e);
+    } else {
+      plaSemRegistro.push(e);
+    }
+  });
+  const htmlPla = Object.keys(polosPla).filter(p => polosPla[p].length)
+    .map(p => renderGrupo(`🕐 PLANTÃO — ${p}`, 'var(--verde)', polosPla[p]))
+    .join('') + (plaSemRegistro.length ? renderGrupo('🕐 PLANTÃO — Sem Registro Enviado', 'var(--verde)', plaSemRegistro) : '');
+
   document.getElementById('presenca-grid').innerHTML = `
-    ${renderGrupo('📋 EXPEDIENTE', 'var(--azul)', soExp)}
-    ${renderGrupo('🕐 PLANTÃO', 'var(--verde)', soPla)}
+    ${htmlExp}
+    ${htmlPla}
     ${renderGrupo('📄 SETOR DE B.O.', 'var(--dourado)', soBO)}
     ${multiplos.length ? renderGrupo('🔀 MÚLTIPLAS MODALIDADES', '#6a0dad', multiplos) : ''}
   `;
@@ -3296,11 +3424,11 @@ function exportarCSV() {
   a.click(); URL.revokeObjectURL(url);
 }
 
-function mostrarFeedback(ok, titulo, msg) {
+function mostrarFeedback(ok, titulo, msg, aviso) {
   feedbackSucesso = ok;
   const icon = document.getElementById('fb-icon');
-  icon.className = 'fb-icon ' + (ok ? 'ok' : 'err');
-  icon.textContent = ok ? '✓' : '✕';
+  icon.className = 'fb-icon ' + (ok ? (aviso ? 'warn' : 'ok') : 'err');
+  icon.textContent = ok ? (aviso ? '⚠' : '✓') : '✕';
   document.getElementById('fb-titulo').textContent = titulo;
   document.getElementById('fb-msg').textContent = msg;
   document.getElementById('overlay-fb').classList.add('aberto');
