@@ -1173,10 +1173,540 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 </div>
 
 <script>
+
+// ============================================================
+// CONFIGURAÇÃO SUPABASE
+// ============================================================
+const SUPA_URL = 'https://gngbnhwskezjxlpensam.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImduZ2JuaHdza2V6anhscGVuc2FtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzM2ODEsImV4cCI6MjA5OTEwOTY4MX0.O_HSFq6xU_lzw8GHbdMfnyXXJG3iXHAYH5G72OAtg8M';
+
+const supa = {
+  h: {
+    'apikey': SUPA_KEY,
+    'Authorization': `Bearer ${SUPA_KEY}`,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+  },
+  async get(table, qs = '') {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${table}${qs}`, { headers: this.h });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  },
+  async post(table, data) {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${table}`, { method: 'POST', headers: this.h, body: JSON.stringify(data) });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  },
+  async patch(table, qs, data) {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${qs}`, { method: 'PATCH', headers: { ...this.h, 'Prefer': 'return=representation' }, body: JSON.stringify(data) });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  },
+  async del(table, qs) {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${qs}`, { method: 'DELETE', headers: this.h });
+    if (!r.ok) throw new Error(await r.text());
+  }
+};
+
+// ============================================================
+// LOGIN
+// ============================================================
+async function fazerLogin() {
+  const nome = document.getElementById('login-nome').value.trim();
+  const senha = document.getElementById('login-senha').value;
+  const erroEl = document.getElementById('msg-erro-login');
+  const btn = document.getElementById('btn-login');
+  erroEl.textContent = '';
+  if (!nome || !senha) { erroEl.textContent = 'Preencha nome e senha.'; return; }
+
+  if (nome.toLowerCase() === 'admin' && senha === 'admin@15dspc') {
+    usuarioLogado = { nome: 'Administrador', delegacia: null, isAdmin: true };
+    entrarNoApp(); return;
+  }
+
+  btn.textContent = 'Entrando...'; btn.disabled = true;
+  try {
+    const rows = await supa.get('escrivaes', `?nome=eq.${encodeURIComponent(nome)}&select=*`);
+    if (!rows.length || rows[0].senha !== senha) { erroEl.textContent = 'Nome ou senha incorretos.'; return; }
+    const e = rows[0];
+    usuarioLogado = { nome: e.nome, delegacias: e.delegacias || [], delegacia: (e.delegacias||[])[0] || '', modalidades: e.modalidades || ['expediente','plantao','bo'], isAdmin: false };
+    entrarNoApp();
+  } catch(err) { erroEl.textContent = 'Erro de conexão.'; }
+  finally { btn.textContent = 'ENTRAR'; btn.disabled = false; }
+}
+
+// ============================================================
+// ESCRIVÃES (ADMIN)
+// ============================================================
+async function carregarEscrivaes() {
+  document.getElementById('admin-loading').style.display = 'block';
+  document.getElementById('tabela-escrivaes').style.display = 'none';
+  try {
+    const rows = await supa.get('escrivaes', '?select=*&order=nome');
+    renderTabela(rows);
+  } catch(e) {
+    document.getElementById('admin-loading').textContent = 'Erro ao carregar.';
+  }
+}
+
+async function salvarEscrivao() {
+  const nome = document.getElementById('esc-nome').value.trim();
+  const senha = document.getElementById('esc-senha').value.trim();
+  const nomeAntigo = document.getElementById('esc-id-edit').value;
+  const erroEl = document.getElementById('msg-erro-esc');
+  const btnSalvar = document.querySelector('#overlay-esc .btn-salvar');
+
+  const modalidades = [];
+  if (document.getElementById('mod-expediente').checked) modalidades.push('expediente');
+  if (document.getElementById('mod-plantao').checked) modalidades.push('plantao');
+  if (document.getElementById('mod-bo').checked) modalidades.push('bo');
+
+  const checks = document.querySelectorAll('#esc-delegacias-lista input[type="checkbox"]:checked');
+  const delegacias = Array.from(checks).map(cb => cb.value);
+
+  if (!nome || !senha) { erroEl.textContent = 'Preencha nome e senha.'; return; }
+  if (modalidades.length === 0) { erroEl.textContent = 'Selecione ao menos uma modalidade.'; return; }
+  if (modalidades.includes('expediente') && delegacias.length === 0) { erroEl.textContent = 'Selecione ao menos uma delegacia.'; return; }
+
+  btnSalvar.textContent = 'Salvando...'; btnSalvar.disabled = true;
+  try {
+    if (nomeAntigo) {
+      await supa.patch('escrivaes', `nome=eq.${encodeURIComponent(nomeAntigo)}`, { nome, senha, delegacias, modalidades });
+    } else {
+      await supa.post('escrivaes', { nome, senha, delegacias, modalidades });
+    }
+    fecharModalEsc(); carregarEscrivaes();
+  } catch(e) {
+    erroEl.textContent = e.message.includes('unique') ? 'Já existe um escrivão com esse nome.' : 'Erro ao salvar.';
+  }
+  finally { btnSalvar.textContent = 'Salvar'; btnSalvar.disabled = false; }
+}
+
+async function excluirEscrivao(nome) {
+  if (!confirm(`Excluir o escrivão "${nome}"?`)) return;
+  try {
+    await supa.del('escrivaes', `nome=eq.${encodeURIComponent(nome)}`);
+    carregarEscrivaes();
+  } catch(e) { alert('Erro ao excluir: ' + e.message); }
+}
+
+// ============================================================
+// ENVIAR REGISTRO
+// ============================================================
+async function enviar() {
+  const dados = coletarDados();
+  const erros = validarCampos(dados);
+  if (erros.length > 0) {
+    alert('Preencha os campos obrigatórios:\n\n' + erros.slice(0,5).join('\n'));
+    return;
+  }
+
+  const btn = document.getElementById('btn-enviar');
+  const txt = document.getElementById('btn-txt');
+  const sp = document.getElementById('spinner');
+  btn.disabled = true; txt.textContent = 'Enviando...'; sp.style.display = 'block';
+
+  try {
+    const rows = [];
+    const campos = modalidadeAtual === 'expediente' ? CAMPOS_EXP : modalidadeAtual === 'plantao' ? CAMPOS_PLA : CAMPOS_BO;
+
+    if (modalidadeAtual === 'bo') {
+      const itens = dados.campos['boletins'] || [];
+      for (const item of itens) {
+        rows.push({
+          data: dados.data,
+          turno: dados.turno,
+          delegacia: dados.delegacia,
+          escrivao: dados.escrivao,
+          quantidade: parseInt(item.quantidade) || 0,
+          crime: item.crime || null,
+          delegacia_bo: item.delegacia || null
+        });
+      }
+      if (rows.length > 0) await supa.post('registros_bo', rows);
+      else await supa.post('registros_bo', [{ data: dados.data, turno: dados.turno, delegacia: dados.delegacia, escrivao: dados.escrivao, quantidade: 0, crime: 'SEM OCORRÊNCIAS' }]);
+    } else {
+      // Expediente ou Plantão
+      campos.forEach(campo => {
+        const itens = dados.campos[campo.id] || [];
+        itens.forEach(item => {
+          const qtd = parseInt(item.quantidade) || 0;
+          if (qtd === 0) return;
+          rows.push({
+            data: dados.data,
+            horario: dados.horario || null,
+            delegacia: dados.delegacia,
+            escrivao: dados.escrivao,
+            modalidade: modalidadeAtual,
+            procedimento: campo.id,
+            quantidade: qtd,
+            crime: item.crime || item['tipo (depoimento/declaração/interrogatório)'] || item['tipo de crime'] || item['descrição'] || item['nome da operação'] || null,
+            cidade: item.cidade || null,
+            turno: dados.turno || null
+          });
+        });
+      });
+
+      if (rows.length > 0) await supa.post('registros', rows);
+    }
+
+    mostrarFeedback(true, 'Registro enviado!', 'Dados salvos com sucesso.');
+  } catch(e) {
+    mostrarFeedback(false, 'Erro ao enviar', e.message);
+  } finally {
+    btn.disabled = false; txt.textContent = 'Enviar Registro'; sp.style.display = 'none';
+  }
+}
+
+async function enviarSemOcorrencias() {
+  if (!confirm('Confirmar envio de "Sem Ocorrências"?')) return;
+  const btn = document.getElementById('btn-sem-ocor');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+
+  try {
+    let data, horario, turno, delegacia;
+    if (modalidadeAtual === 'plantao') {
+      const dataInicio = document.getElementById('plantao-data-inicio').value;
+      const horaInicio = document.getElementById('plantao-hora-inicio').value;
+      const dataFim = document.getElementById('plantao-data-fim').value;
+      const horaFim = document.getElementById('plantao-hora-fim').value;
+      const fmt = d => { const [y,m,dd] = d.split('-'); return `${dd}/${m}`; };
+      data = dataInicio; horario = `Início: ${horaInicio}h de ${fmt(dataInicio)} | Final: ${horaFim}h de ${fmt(dataFim)}`;
+      turno = null; delegacia = getPoloPlantao();
+    } else if (modalidadeAtual === 'bo') {
+      data = document.getElementById('meta-data').value;
+      horario = null; turno = document.getElementById('meta-turno').value;
+      delegacia = usuarioLogado.delegacia;
+    } else {
+      data = document.getElementById('meta-data').value;
+      horario = document.getElementById('meta-horario').value;
+      turno = null; delegacia = usuarioLogado.delegacia;
+    }
+
+    const tabela = modalidadeAtual === 'bo' ? 'registros_bo' : 'registros';
+    const row = modalidadeAtual === 'bo'
+      ? { data, turno, delegacia, escrivao: usuarioLogado.nome, quantidade: 0, crime: 'SEM OCORRÊNCIAS' }
+      : { data, horario, delegacia, escrivao: usuarioLogado.nome, modalidade: modalidadeAtual, procedimento: 'SEM OCORRÊNCIAS', quantidade: 0 };
+
+    await supa.post(tabela, row);
+    mostrarFeedback(true, 'Registrado!', 'Sem ocorrências registrado com sucesso.');
+  } catch(e) {
+    mostrarFeedback(false, 'Erro ao enviar', e.message);
+  } finally { btn.disabled = false; btn.textContent = '⚪ Sem Ocorrências'; }
+}
+
+// ============================================================
+// MEUS REGISTROS
+// ============================================================
+async function abrirMeusRegistros() {
+  document.getElementById('overlay-registros').classList.add('aberto');
+  document.getElementById('corpo-registros').innerHTML = '<div class="registros-loading">Carregando...</div>';
+
+  try {
+    let rows;
+    if (modalidadeAtual === 'bo') {
+      rows = await supa.get('registros_bo', `?escrivao=eq.${encodeURIComponent(usuarioLogado.nome)}&order=hora_registro.desc&limit=100`);
+      rows = rows.map(r => ({
+        'PROCEDIMENTO': r.crime === 'SEM OCORRÊNCIAS' ? 'SEM OCORRÊNCIAS' : 'Boletim de Ocorrência',
+        'DATA': r.data, 'QUANTIDADE': r.quantidade, 'CRIME': r.crime,
+        'DELEGACIA B.O.': r.delegacia_bo, 'TURNO': r.turno,
+        'HORA DO REGISTRO': r.hora_registro ? new Date(r.hora_registro).toLocaleString('pt-BR') : ''
+      }));
+    } else {
+      const polos = modalidadeAtual === 'plantao' ? POLOS_PLANTAO : null;
+      let qs = `?escrivao=eq.${encodeURIComponent(usuarioLogado.nome)}&modalidade=eq.${modalidadeAtual}&order=hora_registro.desc&limit=200`;
+      rows = await supa.get('registros', qs);
+      rows = rows.map(r => ({
+        'PROCEDIMENTO': r.procedimento, 'DATA': r.data, 'HORÁRIO': r.horario,
+        'QUANTIDADE': r.quantidade, 'CRIME': r.crime, 'CIDADE': r.cidade,
+        'POLO': r.delegacia, 'HORA DO REGISTRO': r.hora_registro ? new Date(r.hora_registro).toLocaleString('pt-BR') : ''
+      }));
+    }
+    renderRegistros(rows);
+  } catch(e) {
+    document.getElementById('corpo-registros').innerHTML = '<div class="registros-vazio">Erro de conexão.</div>';
+  }
+}
+
+// ============================================================
+// CONSULTAS (ADMIN)
+// ============================================================
+async function iniciarConsulta() {
+  try {
+    const escrivaes = await supa.get('escrivaes', '?select=nome&order=nome');
+    const sel = document.getElementById('filtro-escrivao');
+    sel.innerHTML = '<option value="">Todos</option>';
+    escrivaes.forEach(e => sel.innerHTML += `<option value="${e.nome}">${e.nome}</option>`);
+  } catch(e) {}
+
+  const delSel = document.getElementById('filtro-delegacia');
+  const todasDel = ['1ª DD','Cacimba de Areia','2ª DD','São José de Espinharas','Malta','Condado','Vista Serrana','Santa Luzia','Várzea','Junco do Seridó','São José do Sabugi','Teixeira','Desterro','Cacimbas',"Mãe D'água",'Maturéia','São Mamede','Passagem','Santa Terezinha','São José do Bonfim','Areia de Baraúnas','Quixaba','DEAM','DRF','DHE','Central - Patos'];
+  delSel.innerHTML = '<option value="">Todas</option>';
+  todasDel.forEach(d => delSel.innerHTML += `<option value="${d}">${d}</option>`);
+
+  const agora = new Date();
+  const hoje = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
+  document.getElementById('filtro-data-ini').value = hoje;
+  document.getElementById('filtro-data-fim').value = hoje;
+}
+
+async function buscarRegistros() {
+  const dataIni = document.getElementById('filtro-data-ini').value;
+  const dataFim = document.getElementById('filtro-data-fim').value;
+  const escrivao = document.getElementById('filtro-escrivao').value;
+  const modalidade = document.getElementById('filtro-modalidade').value;
+  const delegacia = document.getElementById('filtro-delegacia').value;
+
+  document.getElementById('consulta-loading').style.display = 'block';
+  document.getElementById('consulta-resultado').style.display = 'none';
+  document.getElementById('consulta-vazio').style.display = 'none';
+  document.getElementById('kpi-grid').style.display = 'none';
+
+  try {
+    let qs = `?data=gte.${dataIni}&data=lte.${dataFim}&order=hora_registro.desc`;
+    if (escrivao) qs += `&escrivao=eq.${encodeURIComponent(escrivao)}`;
+    if (delegacia) qs += `&delegacia=eq.${encodeURIComponent(delegacia)}`;
+
+    let rows = [];
+
+    if (!modalidade || modalidade === 'expediente' || modalidade === 'plantao') {
+      let qsExp = qs;
+      if (modalidade) qsExp += `&modalidade=eq.${modalidade}`;
+      const r = await supa.get('registros', qsExp + '&select=*');
+      rows.push(...r.map(x => ({
+        modalidade: x.modalidade, horaRegistro: x.hora_registro ? new Date(x.hora_registro).toLocaleString('pt-BR') : '',
+        data: x.data, horario: x.horario || x.turno || '', delegacia: x.delegacia,
+        escrivao: x.escrivao, procedimento: x.procedimento, quantidade: x.quantidade,
+        crime: x.crime || '', cidade: x.cidade || ''
+      })));
+    }
+
+    if (!modalidade || modalidade === 'bo') {
+      const r = await supa.get('registros_bo', qs + (escrivao ? `&escrivao=eq.${encodeURIComponent(escrivao)}` : '') + (delegacia ? `&delegacia=eq.${encodeURIComponent(delegacia)}` : '') + '&select=*');
+      rows.push(...r.map(x => ({
+        modalidade: 'bo', horaRegistro: x.hora_registro ? new Date(x.hora_registro).toLocaleString('pt-BR') : '',
+        data: x.data, horario: x.turno || '', delegacia: x.delegacia,
+        escrivao: x.escrivao, procedimento: x.crime === 'SEM OCORRÊNCIAS' ? 'SEM OCORRÊNCIAS' : 'boletins',
+        quantidade: x.quantidade, crime: x.crime || '', cidade: x.delegacia_bo || ''
+      })));
+    }
+
+    dadosConsulta = rows;
+    renderConsulta(rows);
+  } catch(e) {
+    document.getElementById('consulta-loading').style.display = 'none';
+    document.getElementById('consulta-vazio').style.display = 'block';
+    document.getElementById('consulta-vazio').textContent = 'Erro: ' + e.message;
+  }
+}
+
+// ============================================================
+// PRESENÇA
+// ============================================================
+async function carregarPresenca() {
+  document.getElementById('presenca-loading').style.display = 'block';
+  document.getElementById('presenca-corpo').style.display = 'none';
+
+  const agora = new Date();
+  const dataAlvo = new Date(agora);
+  if (diaPresenca === 'ontem') dataAlvo.setDate(dataAlvo.getDate() - 1);
+  const dataStr = `${dataAlvo.getFullYear()}-${String(dataAlvo.getMonth()+1).padStart(2,'0')}-${String(dataAlvo.getDate()).padStart(2,'0')}`;
+
+  try {
+    const [escrivaes, regsExp, regsBO] = await Promise.all([
+      supa.get('escrivaes', '?select=*&order=nome'),
+      supa.get('registros', `?data=eq.${dataStr}&select=escrivao,modalidade,delegacia`),
+      supa.get('registros_bo', `?data=eq.${dataStr}&select=escrivao,delegacia`)
+    ]);
+
+    const envios = {};
+    [...regsExp, ...regsBO.map(r => ({...r, modalidade:'bo'}))].forEach(r => {
+      if (!envios[r.escrivao]) envios[r.escrivao] = { modalidades: new Set(), delegacia: r.delegacia };
+      envios[r.escrivao].modalidades.add(r.modalidade);
+    });
+
+    renderPresenca(escrivaes, envios, dataStr);
+  } catch(e) {
+    document.getElementById('presenca-loading').textContent = 'Erro ao carregar.';
+  }
+}
+
+// ============================================================
+// DADOS CICC (para relatórios)
+// ============================================================
+async function buscarDadosCICC(data) {
+  const [regsExp, regsBO] = await Promise.all([
+    supa.get('registros', `?data=eq.${data}&modalidade=in.(expediente)&quantidade=gt.0&select=*`),
+    supa.get('registros_bo', `?data=eq.${data}&quantidade=gt.0&select=*`)
+  ]);
+
+  // Plantão
+  const regsPlantao = await supa.get('registros', `?data=eq.${data}&modalidade=eq.plantao&quantidade=gt.0&select=*`);
+
+  // Montar estrutura compatível com as funções de relatório existentes
+  const plantao = {};
+  POLOS_PLANTAO.forEach(polo => {
+    const linhasPolo = regsPlantao.filter(r => r.delegacia === polo);
+    if (!linhasPolo.length) return;
+    const procedimentos = {};
+    linhasPolo.forEach(r => {
+      if (!procedimentos[r.procedimento]) procedimentos[r.procedimento] = { total: 0, linhas: [] };
+      procedimentos[r.procedimento].total += r.quantidade;
+      procedimentos[r.procedimento].linhas.push({ quantidade: String(r.quantidade), crime: r.crime || '', cidade: r.cidade || '' });
+    });
+    plantao[polo] = { horario: linhasPolo[0]?.horario || '', procedimentos, semOcorrencias: false };
+  });
+
+  // BO
+  const bo = { manha: { total: 0, linhas: [] }, tarde: { total: 0, linhas: [] } };
+  regsBO.forEach(r => {
+    const turno = (r.turno || '').toLowerCase().includes('manh') ? 'manha' : 'tarde';
+    bo[turno].total += r.quantidade;
+    bo[turno].linhas.push({ quantidade: String(r.quantidade), crime: r.crime || '', delegacia: r.delegacia_bo || '' });
+  });
+
+  // Expediente
+  const expediente = {};
+  regsExp.forEach(r => {
+    if (!expediente[r.delegacia]) expediente[r.delegacia] = {};
+    if (!expediente[r.delegacia][r.procedimento]) expediente[r.delegacia][r.procedimento] = { total: 0, linhas: [] };
+    expediente[r.delegacia][r.procedimento].total += r.quantidade;
+    expediente[r.delegacia][r.procedimento].linhas.push({ quantidade: String(r.quantidade), crime: r.crime || '', cidade: r.cidade || '' });
+  });
+
+  return { status: 'ok', plantao, bo, expediente };
+}
+
+async function gerarRelatorioCICC() {
+  const data = document.getElementById('rel-data').value;
+  if (!data) { alert('Selecione a data.'); return; }
+  const btn = document.getElementById('btn-gerar-rel');
+  const txt = document.getElementById('btn-gerar-txt');
+  const sp = document.getElementById('spinner-rel');
+  btn.disabled = true; txt.textContent = 'Buscando dados...'; sp.style.display = 'block';
+  try {
+    const dados = await buscarDadosCICC(data);
+    const texto = montarTextoCICC(dados, data);
+    document.getElementById('rel-texto').value = texto;
+    document.getElementById('rel-resultado').style.display = 'block';
+    document.getElementById('rel-resultado').scrollIntoView({ behavior: 'smooth' });
+  } catch(e) { alert('Erro: ' + e.message); }
+  finally { btn.disabled = false; txt.textContent = '📄 Gerar Relatório'; sp.style.display = 'none'; }
+}
+
+async function gerarRelatorioArea() {
+  const btn = document.getElementById('btn-gerar-area');
+  const txt = document.getElementById('btn-area-txt');
+  const sp = document.getElementById('spinner-area');
+  btn.disabled = true; txt.textContent = 'Buscando dados...'; sp.style.display = 'block';
+  try {
+    let texto = '';
+    if (tabAreaAtual === 'diario') {
+      const data = document.getElementById('rarea-data').value;
+      if (!data) { alert('Selecione a data.'); return; }
+      const dados = await buscarDadosCICC(data);
+      texto = montarTextoArea(dados, data);
+      document.getElementById('rarea-resumo').style.display = 'none';
+      document.getElementById('rarea-dashboard').style.display = 'none';
+    } else {
+      const ini = document.getElementById('rarea-data-ini').value;
+      const fim = document.getElementById('rarea-data-fim').value;
+      if (!ini || !fim) { alert('Selecione as datas.'); return; }
+      const resultado = await gerarAreaPeriodo(ini, fim);
+      texto = resultado.texto;
+      document.getElementById('rarea-resumo-texto').value = resultado.resumo;
+      document.getElementById('rarea-resumo').style.display = 'block';
+      document.getElementById('rarea-dashboard').style.display = 'none';
+      window._dadosDashboard = resultado.dadosRaw;
+    }
+    document.getElementById('rarea-texto').value = texto;
+    document.getElementById('rarea-resultado').style.display = 'block';
+    document.getElementById('rarea-resultado').scrollIntoView({ behavior: 'smooth' });
+  } catch(e) { alert('Erro: ' + e.message); }
+  finally { btn.disabled = false; txt.textContent = '🗂 Gerar Relatório de Área'; sp.style.display = 'none'; }
+}
+
+async function gerarAreaPeriodo(ini, fim) {
+  const rows = await supa.get('registros', `?data=gte.${ini}&data=lte.${fim}&modalidade=eq.expediente&quantidade=gt.0&select=*&order=data`);
+
+  const exp = {};
+  rows.forEach(r => {
+    if (r.procedimento === 'SEM OCORRÊNCIAS') return;
+    const del = r.delegacia;
+    if (!exp[del]) exp[del] = {};
+    if (!exp[del][r.procedimento]) exp[del][r.procedimento] = { total: 0, linhas: [] };
+    exp[del][r.procedimento].total += r.quantidade;
+    exp[del][r.procedimento].linhas.push({ quantidade: String(r.quantidade), crime: r.crime || '', cidade: r.cidade || del, data: r.data });
+  });
+
+  const [yIni,mIni,dIni] = ini.split('-');
+  const [yFim,mFim,dFim] = fim.split('-');
+  const periodoFmt = `${dIni}/${mIni}/${yIni} a ${dFim}/${mFim}/${yFim}`;
+  const pad = n => String(parseInt(n)||0).padStart(2,'0');
+
+  const linhas = [];
+  linhas.push('*POLÍCIA CIVIL*'); linhas.push('');
+  linhas.push('*15ª Delegacia Seccional, com sede em Patos/PB (15ª/PATOS)*'); linhas.push('');
+  linhas.push('*PRODUTIVIDADE DAS UNIDADES DURANTE O EXPEDIENTE NORMAL DE TRABALHO (Seg a Sex - 08h às 18h)*'); linhas.push('');
+  linhas.push('*RELATÓRIO CONSOLIDADO — PERÍODO:*'); linhas.push('');
+  linhas.push(`*DATA: ${periodoFmt}*`); linhas.push('');
+
+  AREAS.forEach(area => {
+    linhas.push(`*ÁREA ${area.num}*:`); linhas.push('');
+    area.delegacias.forEach((del, idx) => {
+      linhas.push(`*${LETRAS[idx]}) ${del.toUpperCase()}:*`); linhas.push('');
+      const procs = exp[del];
+      if (!procs || !Object.keys(procs).length) { linhas.push('Sem ocorrências no período'); linhas.push(''); return; }
+      let temAlgo = false;
+      Object.entries(NOMES_PROC_AREA).forEach(([k, nome]) => {
+        const p = procs[k]; if (!p || !parseInt(p.total)) return; temAlgo = true;
+        const total = parseInt(p.total);
+        const det = p.linhas.filter(l => parseInt(l.quantidade) && l.crime).map(l => `${pad(parseInt(l.quantidade))} ${l.crime}${l.cidade && l.cidade !== del ? ' ('+l.cidade+')' : ''}`);
+        linhas.push(det.length ? `${nome}: ${pad(total)} (${det.join('; ')})` : `${nome}: ${pad(total)}`);
+        linhas.push('');
+      });
+      if (!temAlgo) { linhas.push('Sem ocorrências no período'); linhas.push(''); }
+    });
+  });
+  linhas.push('Assessoria de Estatística 15aDSPC/Patos');
+
+  // Resumo
+  const totaisGerais = {};
+  Object.values(exp).forEach(procs => Object.entries(procs).forEach(([k,v]) => { totaisGerais[k] = (totaisGerais[k]||0) + (parseInt(v.total)||0); }));
+  const resumoLinhas = ['*POLÍCIA CIVIL*','*15ª DSPC/PATOS*','',`*RESUMO DO PERÍODO: ${periodoFmt}*`,''];
+  Object.entries(NOMES_PROC_AREA).forEach(([k,nome]) => { if (totaisGerais[k] > 0) resumoLinhas.push(`${nome}: ${pad(totaisGerais[k])}`); });
+  resumoLinhas.push('','Assessoria de Estatística 15aDSPC/Patos');
+
+  // Dados brutos para dashboard
+  const registros = rows.map(r => ({ procedimento: r.procedimento, quantidade: r.quantidade, delegacia: r.delegacia, data: r.data, crime: r.crime, cidade: r.cidade, escrivao: r.escrivao, horaRegistro: r.hora_registro }));
+
+  return { texto: linhas.join('\n'), resumo: resumoLinhas.join('\n'), dadosRaw: { exp, registros, periodoFmt } };
+}
+
+async function gerarRelatorioSemanal() {
+  const ini = document.getElementById('rsem-ini').value;
+  const fim = document.getElementById('rsem-fim').value;
+  if (!ini || !fim) { alert('Selecione as datas.'); return; }
+  const btn = document.getElementById('btn-gerar-sem');
+  const txt = document.getElementById('btn-sem-txt');
+  const sp = document.getElementById('spinner-sem');
+  btn.disabled = true; txt.textContent = 'Buscando...'; sp.style.display = 'block';
+  try {
+    const rows = await supa.get('registros', `?data=gte.${ini}&data=lte.${fim}&quantidade=gt.0&select=*`);
+    const texto = montarTextoSemanal(rows, ini, fim);
+    document.getElementById('rsem-texto').value = texto;
+    renderDetalhamentoSemanal(rows.map(r => ({ procedimento: r.procedimento, quantidade: r.quantidade, delegacia: r.delegacia, data: r.data, crime: r.crime, cidade: r.cidade, escrivao: r.escrivao, horaRegistro: r.hora_registro })));
+    document.getElementById('rsem-resultado').style.display = 'block';
+    document.getElementById('rsem-resultado').scrollIntoView({ behavior: 'smooth' });
+  } catch(e) { alert('Erro: ' + e.message); }
+  finally { btn.disabled = false; txt.textContent = '📊 Gerar Relatório'; sp.style.display = 'none'; }
+}
+
+
+
 // ============================================================
 // CONFIGURAÇÃO
 // ============================================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxHTHk68GGsnieua1zbjg0QLo-fqrwR3CuP5N8JunTaNTF_TbOgahh0_uPapbo29A0G/exec';
 
 // ============================================================
 // CAMPOS DOS FORMULÁRIOS
@@ -1268,41 +1798,6 @@ let linhaCounters = {};
 // ============================================================
 // LOGIN
 // ============================================================
-async function fazerLogin() {
-  const nome = document.getElementById('login-nome').value.trim();
-  const senha = document.getElementById('login-senha').value;
-  const erroEl = document.getElementById('msg-erro-login');
-  const btn = document.getElementById('btn-login');
-  erroEl.textContent = '';
-
-  if (!nome || !senha) { erroEl.textContent = 'Preencha nome e senha.'; return; }
-
-  // Admin hardcoded
-  if (nome.toLowerCase() === 'admin' && senha === 'admin@15dspc') {
-    usuarioLogado = { nome: 'Administrador', delegacia: null, isAdmin: true };
-    entrarNoApp();
-    return;
-  }
-
-  btn.textContent = 'Entrando...';
-  btn.disabled = true;
-
-  try {
-    const resp = await fetch(APPS_SCRIPT_URL + '?acao=login&nome=' + encodeURIComponent(nome) + '&senha=' + encodeURIComponent(senha));
-    const data = await resp.json();
-    if (data.status === 'ok') {
-      usuarioLogado = { nome: data.nome, delegacias: data.delegacias || [data.delegacia], delegacia: data.delegacia, modalidades: data.modalidades || ['expediente','plantao','bo'], isAdmin: false };
-      entrarNoApp();
-    } else {
-      erroEl.textContent = 'Nome ou senha incorretos.';
-    }
-  } catch(e) {
-    erroEl.textContent = 'Erro de conexão com o servidor.';
-  } finally {
-    btn.textContent = 'ENTRAR';
-    btn.disabled = false;
-  }
-}
 
 document.getElementById('login-senha').addEventListener('keydown', e => { if(e.key==='Enter') fazerLogin(); });
 
@@ -1843,84 +2338,7 @@ function validarCampos(dados) {
   return [...new Set(erros)]; // deduplicar
 }
 
-async function enviar() {
-  const dados = coletarDados();
 
-  // Validação de campos obrigatórios
-  const erros = validarCampos(dados);
-  if (erros.length > 0) {
-    alert('Preencha os campos obrigatórios:\n\n' + erros.slice(0,5).join('\n') + (erros.length > 5 ? `\n...e mais ${erros.length-5} campos` : ''));
-    return;
-  }
-
-  const btn = document.getElementById('btn-enviar');
-  const txt = document.getElementById('btn-txt');
-  const sp = document.getElementById('spinner');
-  btn.disabled = true; txt.textContent = 'Enviando...'; sp.style.display = 'block';
-  try {
-    const resp = await fetch(APPS_SCRIPT_URL, { method:'POST', body: JSON.stringify({acao:'salvar', ...dados}) });
-    const result = await resp.json();
-    if (result.status === 'ok') mostrarFeedback(true, 'Registro enviado!', 'Dados salvos na planilha com sucesso.');
-    else mostrarFeedback(false, 'Erro ao enviar', result.message || 'Tente novamente.');
-  } catch(e) {
-    mostrarFeedback(false, 'Erro de conexão', 'Verifique a URL do Apps Script.');
-  } finally {
-    btn.disabled = false; txt.textContent = 'Enviar Registro'; sp.style.display = 'none';
-  }
-}
-
-async function enviarSemOcorrencias() {
-  if (!confirm('Confirmar envio de "Sem Ocorrências"?\n\nIsso registrará que não houve ocorrências no período.')) return;
-
-  const btn = document.getElementById('btn-sem-ocor');
-  btn.disabled = true; btn.textContent = 'Enviando...';
-
-  // Monta metadados iguais ao envio normal
-  let data, horario, turno, delegacia;
-  if (modalidadeAtual === 'plantao') {
-    const dataInicio = document.getElementById('plantao-data-inicio').value;
-    const horaInicio = document.getElementById('plantao-hora-inicio').value;
-    const dataFim = document.getElementById('plantao-data-fim').value;
-    const horaFim = document.getElementById('plantao-hora-fim').value;
-    const polo = getPoloPlantao();
-    const fmt = (d) => { const [y,m,dd] = d.split('-'); return `${dd}/${m}`; };
-    data = dataInicio;
-    horario = `Início: ${horaInicio}h de ${fmt(dataInicio)} | Final: ${horaFim}h de ${fmt(dataFim)}`;
-    turno = '';
-    delegacia = polo;
-  } else if (modalidadeAtual === 'bo') {
-    data = document.getElementById('meta-data').value;
-    horario = '';
-    turno = document.getElementById('meta-turno').value;
-    delegacia = usuarioLogado.delegacia;
-  } else {
-    data = document.getElementById('meta-data').value;
-    horario = document.getElementById('meta-horario').value;
-    turno = '';
-    delegacia = usuarioLogado.delegacia;
-  }
-
-  const dados = {
-    acao: 'semOcorrencias',
-    modalidade: modalidadeAtual,
-    delegacia,
-    escrivao: usuarioLogado.nome,
-    data,
-    horario,
-    turno
-  };
-
-  try {
-    const resp = await fetch(APPS_SCRIPT_URL, { method: 'POST', body: JSON.stringify(dados) });
-    const result = await resp.json();
-    if (result.status === 'ok') mostrarFeedback(true, 'Registrado!', 'Sem ocorrências registrado na planilha.');
-    else mostrarFeedback(false, 'Erro ao enviar', result.message || 'Tente novamente.');
-  } catch(e) {
-    mostrarFeedback(false, 'Erro de conexão', 'Verifique a URL do Apps Script.');
-  } finally {
-    btn.disabled = false; btn.textContent = '⚪ Sem Ocorrências';
-  }
-}
 
 function limparForm() {
   document.querySelectorAll('#campos-container input:not(.qtd-input)').forEach(el => el.value = '');
@@ -1931,23 +2349,6 @@ function limparForm() {
 // ============================================================
 // MEUS REGISTROS DE HOJE
 // ============================================================
-async function abrirMeusRegistros() {
-  document.getElementById('overlay-registros').classList.add('aberto');
-  document.getElementById('corpo-registros').innerHTML = '<div class="registros-loading">Carregando...</div>';
-
-  const agora = new Date();
-  const hoje = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
-  const url = `${APPS_SCRIPT_URL}?acao=meusRegistros&modalidade=${modalidadeAtual}&delegacia=${encodeURIComponent(usuarioLogado.delegacia)}&escrivao=${encodeURIComponent(usuarioLogado.nome)}&data=${hoje}`;
-
-  try {
-    const resp = await fetch(url);
-    const data = await resp.json();
-    if (data.status === 'ok') renderRegistros(data.registros);
-    else document.getElementById('corpo-registros').innerHTML = `<div class="registros-vazio">Erro: ${data.message || 'não foi possível carregar.'}</div>`;
-  } catch(e) {
-    document.getElementById('corpo-registros').innerHTML = '<div class="registros-vazio">Erro de conexão com o servidor.</div>';
-  }
-}
 
 function renderRegistros(registros) {
   const cont = document.getElementById('corpo-registros');
@@ -1995,17 +2396,6 @@ function fecharMeusRegistros() {
 // ============================================================
 // ADMIN — GERENCIAR ESCRIVÃES
 // ============================================================
-async function carregarEscrivaes() {
-  document.getElementById('admin-loading').style.display = 'block';
-  document.getElementById('tabela-escrivaes').style.display = 'none';
-  try {
-    const resp = await fetch(APPS_SCRIPT_URL + '?acao=listarEscrivaes');
-    const data = await resp.json();
-    renderTabela(data.escrivaes || []);
-  } catch(e) {
-    document.getElementById('admin-loading').textContent = 'Erro ao carregar. Verifique a URL do Apps Script.';
-  }
-}
 
 function renderTabela(lista) {
   const tbody = document.getElementById('tbody-escrivaes');
@@ -2066,49 +2456,7 @@ function abrirModalEscrivao(esc = null) {
 
 function fecharModalEsc() { document.getElementById('overlay-esc').classList.remove('aberto'); }
 
-async function salvarEscrivao() {
-  const nome = document.getElementById('esc-nome').value.trim();
-  const senha = document.getElementById('esc-senha').value.trim();
-  const nomeAntigo = document.getElementById('esc-id-edit').value;
-  const erroEl = document.getElementById('msg-erro-esc');
-  const btnSalvar = document.querySelector('#overlay-esc .btn-salvar');
 
-  // Modalidades
-  const modalidades = [];
-  if (document.getElementById('mod-expediente').checked) modalidades.push('expediente');
-  if (document.getElementById('mod-plantao').checked) modalidades.push('plantao');
-  if (document.getElementById('mod-bo').checked) modalidades.push('bo');
-
-  // Delegacias (só se expediente marcado)
-  const checks = document.querySelectorAll('#esc-delegacias-lista input[type="checkbox"]:checked');
-  const delegacias = Array.from(checks).map(cb => cb.value);
-
-  if (!nome || !senha) { erroEl.textContent = 'Preencha nome e senha.'; return; }
-  if (modalidades.length === 0) { erroEl.textContent = 'Selecione ao menos uma modalidade.'; return; }
-  if (modalidades.includes('expediente') && delegacias.length === 0) { erroEl.textContent = 'Selecione ao menos uma delegacia para o Expediente.'; return; }
-
-  btnSalvar.textContent = 'Salvando...'; btnSalvar.disabled = true;
-  try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify({ acao: 'salvarEscrivao', nome, senha, delegacias, modalidades, nomeAntigo })
-    });
-    const data = await resp.json();
-    if (data.status === 'ok') { fecharModalEsc(); carregarEscrivaes(); }
-    else erroEl.textContent = data.message || 'Erro ao salvar.';
-  } catch(e) { erroEl.textContent = 'Erro de conexão.'; }
-  finally { btnSalvar.textContent = 'Salvar'; btnSalvar.disabled = false; }
-}
-
-async function excluirEscrivao(nome) {
-  if (!confirm(`Excluir o escrivão "${nome}"?`)) return;
-  try {
-    const resp = await fetch(APPS_SCRIPT_URL, { method:'POST', body: JSON.stringify({ acao:'excluirEscrivao', nome }) });
-    const data = await resp.json();
-    if (data.status === 'ok') carregarEscrivaes();
-    else alert('Erro ao excluir: ' + (data.message || ''));
-  } catch(e) { alert('Erro de conexão.'); }
-}
 
 // ============================================================
 // FEEDBACK
@@ -2130,31 +2478,6 @@ function iniciarRelatorioSemanal() {
   document.getElementById('rsem-resultado').style.display = 'none';
 }
 
-async function gerarRelatorioSemanal() {
-  const ini = document.getElementById('rsem-ini').value;
-  const fim = document.getElementById('rsem-fim').value;
-  if (!ini || !fim) { alert('Selecione as datas.'); return; }
-
-  const btn = document.getElementById('btn-gerar-sem');
-  const txt = document.getElementById('btn-sem-txt');
-  const sp = document.getElementById('spinner-sem');
-  btn.disabled = true; txt.textContent = 'Buscando...'; sp.style.display = 'block';
-
-  try {
-    const resp = await fetch(`${APPS_SCRIPT_URL}?acao=consultar&dataIni=${ini}&dataFim=${fim}&escrivao=&modalidade=&delegacia=`);
-    const data = await resp.json();
-    if (data.status !== 'ok') throw new Error(data.message);
-    const texto = montarTextoSemanal(data.registros || [], ini, fim);
-    document.getElementById('rsem-texto').value = texto;
-    renderDetalhamentoSemanal(data.registros || []);
-    document.getElementById('rsem-resultado').style.display = 'block';
-    document.getElementById('rsem-resultado').scrollIntoView({ behavior: 'smooth' });
-  } catch(e) {
-    alert('Erro: ' + e.message);
-  } finally {
-    btn.disabled = false; txt.textContent = '📊 Gerar Relatório'; sp.style.display = 'none';
-  }
-}
 
 function montarTextoSemanal(registros, ini, fim) {
   // Somar totais por procedimento
@@ -2261,6 +2584,8 @@ function copiarRelatorioSemanal() {
 // ============================================================
 // RELATÓRIO DE ÁREA
 // ============================================================
+const POLOS_PLANTAO = ['Central - Patos', 'Teixeira', 'DHE'];
+
 const AREAS = [
   { num: 1,  delegacias: ['1ª DD', 'Cacimba de Areia'] },
   { num: 2,  delegacias: ['2ª DD', 'São José de Espinharas'] },
@@ -2331,146 +2656,7 @@ function mudarTabArea(tab) {
   document.getElementById('rarea-resultado').style.display = 'none';
 }
 
-async function gerarRelatorioArea() {
-  const btn = document.getElementById('btn-gerar-area');
-  const txt = document.getElementById('btn-area-txt');
-  const sp = document.getElementById('spinner-area');
-  btn.disabled = true; txt.textContent = 'Buscando dados...'; sp.style.display = 'block';
 
-  try {
-    let texto = '';
-
-    if (tabAreaAtual === 'diario') {
-      const data = document.getElementById('rarea-data').value;
-      if (!data) { alert('Selecione a data.'); return; }
-      const resp = await fetch(`${APPS_SCRIPT_URL}?acao=dadosCICC&data=${data}`);
-      const dados = await resp.json();
-      if (dados.status !== 'ok') throw new Error(dados.message);
-      texto = montarTextoArea(dados, data);
-      document.getElementById('rarea-resumo').style.display = 'none';
-      document.getElementById('rarea-dashboard').style.display = 'none';
-    } else {
-      const ini = document.getElementById('rarea-data-ini').value;
-      const fim = document.getElementById('rarea-data-fim').value;
-      if (!ini || !fim) { alert('Selecione as datas.'); return; }
-      const resultado = await gerarAreaPeriodo(ini, fim);
-      texto = resultado.texto;
-      // Mostrar resumo
-      document.getElementById('rarea-resumo-texto').value = resultado.resumo;
-      document.getElementById('rarea-resumo').style.display = 'block';
-      document.getElementById('rarea-dashboard').style.display = 'none';
-      // Guardar dados para o dashboard
-      window._dadosDashboard = resultado.dadosRaw;
-      window._periodoDash = { ini, fim };
-    }
-
-    document.getElementById('rarea-texto').value = texto;
-    document.getElementById('rarea-resultado').style.display = 'block';
-    document.getElementById('rarea-resultado').scrollIntoView({ behavior: 'smooth' });
-  } catch(e) {
-    alert('Erro ao gerar relatório: ' + e.message);
-  } finally {
-    btn.disabled = false; txt.textContent = '🗂 Gerar Relatório de Área'; sp.style.display = 'none';
-  }
-}
-
-async function gerarAreaPeriodo(ini, fim) {
-  const resp = await fetch(`${APPS_SCRIPT_URL}?acao=consultar&dataIni=${ini}&dataFim=${fim}&escrivao=&modalidade=expediente&delegacia=`);
-  const data = await resp.json();
-  if (data.status !== 'ok') throw new Error(data.message);
-
-  const registros = data.registros || [];
-
-  // Agregar por delegacia e procedimento
-  const exp = {};
-  registros.forEach(r => {
-    if (r.procedimento === 'SEM OCORRÊNCIAS') return;
-    const qtd = parseInt(r.quantidade) || 0;
-    if (qtd === 0) return;
-    const del = r.delegacia;
-    if (!exp[del]) exp[del] = {};
-    if (!exp[del][r.procedimento]) exp[del][r.procedimento] = { total: 0, linhas: [] };
-    exp[del][r.procedimento].total += qtd;
-    exp[del][r.procedimento].linhas.push({ quantidade: String(qtd), crime: r.crime || '', cidade: r.cidade || del, data: r.data });
-  });
-
-  const [yIni,mIni,dIni] = ini.split('-');
-  const [yFim,mFim,dFim] = fim.split('-');
-  const periodoFmt = `${dIni}/${mIni}/${yIni} a ${dFim}/${mFim}/${yFim}`;
-  const pad = n => String(parseInt(n)||0).padStart(2,'0');
-
-  // ===== TEXTO COMPLETO =====
-  const linhas = [];
-  linhas.push('*POLÍCIA CIVIL*');
-  linhas.push('');
-  linhas.push('*15ª Delegacia Seccional, com sede em Patos/PB (15ª/PATOS)*');
-  linhas.push('');
-  linhas.push('*PRODUTIVIDADE DAS UNIDADES DURANTE O EXPEDIENTE NORMAL DE TRABALHO (Seg a Sex - 08h às 18h)*');
-  linhas.push('');
-  linhas.push('*RELATÓRIO CONSOLIDADO — PERÍODO:*');
-  linhas.push('');
-  linhas.push(`*DATA: ${periodoFmt}*`);
-  linhas.push('');
-
-  AREAS.forEach(area => {
-    linhas.push(`*ÁREA ${area.num}*:`);
-    linhas.push('');
-    area.delegacias.forEach((del, idx) => {
-      const letra = LETRAS[idx];
-      linhas.push(`*${letra}) ${del.toUpperCase()}:*`);
-      linhas.push('');
-      const procs = exp[del];
-      if (!procs || Object.keys(procs).length === 0) {
-        linhas.push('Sem ocorrências no período');
-        linhas.push('');
-        return;
-      }
-      let temAlgo = false;
-      Object.entries(NOMES_PROC_AREA).forEach(([k, nome]) => {
-        const p = procs[k];
-        if (!p || parseInt(p.total) === 0) return;
-        temAlgo = true;
-        const total = parseInt(p.total);
-        const detalhes = [];
-        p.linhas.forEach(l => {
-          const qtd = parseInt(l.quantidade) || 0;
-          if (qtd === 0) return;
-          const crime = l.crime || '';
-          const cidade = l.cidade || '';
-          if (crime) detalhes.push(`${pad(qtd)} ${crime}${cidade && cidade !== del ? ' (' + cidade + ')' : ''}`);
-        });
-        linhas.push(detalhes.length > 0 ? `${nome}: ${pad(total)} (${detalhes.join('; ')})` : `${nome}: ${pad(total)}`);
-        linhas.push('');
-      });
-      if (!temAlgo) { linhas.push('Sem ocorrências no período'); linhas.push(''); }
-    });
-  });
-  linhas.push('Assessoria de Estatística 15aDSPC/Patos');
-
-  // ===== RESUMO =====
-  const totaisGerais = {};
-  Object.values(exp).forEach(procs => {
-    Object.entries(procs).forEach(([k, v]) => {
-      if (!totaisGerais[k]) totaisGerais[k] = 0;
-      totaisGerais[k] += parseInt(v.total) || 0;
-    });
-  });
-
-  const resumoLinhas = [];
-  resumoLinhas.push('*POLÍCIA CIVIL*');
-  resumoLinhas.push('*15ª DSPC/PATOS*');
-  resumoLinhas.push('');
-  resumoLinhas.push(`*RESUMO DO PERÍODO: ${periodoFmt}*`);
-  resumoLinhas.push('');
-  Object.entries(NOMES_PROC_AREA).forEach(([k, nome]) => {
-    const total = totaisGerais[k] || 0;
-    if (total > 0) resumoLinhas.push(`${nome}: ${pad(total)}`);
-  });
-  resumoLinhas.push('');
-  resumoLinhas.push('Assessoria de Estatística 15aDSPC/Patos');
-
-  return { texto: linhas.join('\n'), resumo: resumoLinhas.join('\n'), dadosRaw: { exp, registros, periodoFmt } };
-}
 
 function montarTextoArea(dados, dataISO) {
   const [ano, mes, dia] = dataISO.split('-');
@@ -2686,30 +2872,6 @@ function iniciarRelatorio() {
   });
 }
 
-async function gerarRelatorioCICC() {
-  const data = document.getElementById('rel-data').value;
-  if (!data) { alert('Selecione a data do relatório.'); return; }
-
-  const btn = document.getElementById('btn-gerar-rel');
-  const txt = document.getElementById('btn-gerar-txt');
-  const sp = document.getElementById('spinner-rel');
-  btn.disabled = true; txt.textContent = 'Buscando dados...'; sp.style.display = 'block';
-
-  try {
-    // Buscar dados das 3 planilhas
-    const resp = await fetch(`${APPS_SCRIPT_URL}?acao=dadosCICC&data=${data}`);
-    const dados = await resp.json();
-    if (dados.status !== 'ok') throw new Error(dados.message);
-    const texto = montarTextoCICC(dados, data);
-    document.getElementById('rel-texto').value = texto;
-    document.getElementById('rel-resultado').style.display = 'block';
-    document.getElementById('rel-resultado').scrollIntoView({ behavior: 'smooth' });
-  } catch(e) {
-    alert('Erro ao gerar relatório: ' + e.message);
-  } finally {
-    btn.disabled = false; txt.textContent = '📄 Gerar Relatório'; sp.style.display = 'none';
-  }
-}
 
 function montarTextoCICC(dados, dataISO) {
   const [ano, mes, dia] = dataISO.split('-');
@@ -2981,40 +3143,6 @@ function mudarTabPresenca(dia) {
   carregarPresenca();
 }
 
-async function carregarPresenca() {
-  document.getElementById('presenca-loading').style.display = 'block';
-  document.getElementById('presenca-corpo').style.display = 'none';
-
-  const agora = new Date();
-  const dataAlvo = new Date(agora);
-  if (diaPresenca === 'ontem') dataAlvo.setDate(dataAlvo.getDate() - 1);
-  const dataStr = `${dataAlvo.getFullYear()}-${String(dataAlvo.getMonth()+1).padStart(2,'0')}-${String(dataAlvo.getDate()).padStart(2,'0')}`;
-
-  try {
-    // Buscar escrivães cadastrados e registros do dia em paralelo
-    const [respEsc, respReg] = await Promise.all([
-      fetch(APPS_SCRIPT_URL + '?acao=listarEscrivaes'),
-      fetch(APPS_SCRIPT_URL + `?acao=consultar&dataIni=${dataStr}&dataFim=${dataStr}&escrivao=&modalidade=&delegacia=`)
-    ]);
-    const dataEsc = await respEsc.json();
-    const dataReg = await respReg.json();
-
-    escrivaesCadastrados = dataEsc.escrivaes || [];
-    const registros = dataReg.registros || [];
-
-    // Mapear quem enviou e em quais modalidades
-    const envios = {};
-    registros.forEach(r => {
-      if (!envios[r.escrivao]) envios[r.escrivao] = { modalidades: new Set(), delegacia: r.delegacia };
-      envios[r.escrivao].modalidades.add(r.modalidade);
-    });
-
-    renderPresenca(escrivaesCadastrados, envios, dataStr);
-  } catch(e) {
-    document.getElementById('presenca-loading').style.display = 'none';
-    document.getElementById('presenca-loading').textContent = 'Erro ao carregar dados.';
-  }
-}
 
 function renderPresenca(escrivaes, envios, dataStr) {
   document.getElementById('presenca-loading').style.display = 'none';
@@ -3115,61 +3243,7 @@ function renderPresenca(escrivaes, envios, dataStr) {
 // ============================================================
 let dadosConsulta = [];
 
-async function iniciarConsulta() {
-  // Preencher filtro de escrivães
-  try {
-    const resp = await fetch(APPS_SCRIPT_URL + '?acao=listarEscrivaes');
-    const data = await resp.json();
-    const sel = document.getElementById('filtro-escrivao');
-    sel.innerHTML = '<option value="">Todos</option>';
-    (data.escrivaes || []).forEach(e => {
-      sel.innerHTML += `<option value="${e.nome}">${e.nome}</option>`;
-    });
-  } catch(e) {}
 
-  // Preencher filtro de delegacias
-  const delSel = document.getElementById('filtro-delegacia');
-  const todasDel = [
-    '1ª DD','Cacimba de Areia','2ª DD','São José de Espinharas','Malta','Condado',
-    'Vista Serrana','Santa Luzia','Várzea','Junco do Seridó','São José do Sabugi',
-    'Teixeira','Desterro','Cacimbas',"Mãe D'água",'Maturéia','São Mamede','Passagem',
-    'Santa Terezinha','São José do Bonfim','Areia de Baraúnas','Quixaba',
-    'DEAM','DRF','DHE','Central - Patos'
-  ];
-  delSel.innerHTML = '<option value="">Todas</option>';
-  todasDel.forEach(d => delSel.innerHTML += `<option value="${d}">${d}</option>`);
-
-  // Data padrão: hoje
-  const agora = new Date();
-  const hoje = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
-  document.getElementById('filtro-data-ini').value = hoje;
-  document.getElementById('filtro-data-fim').value = hoje;
-}
-
-async function buscarRegistros() {
-  const dataIni = document.getElementById('filtro-data-ini').value;
-  const dataFim = document.getElementById('filtro-data-fim').value;
-  const escrivao = document.getElementById('filtro-escrivao').value;
-  const modalidade = document.getElementById('filtro-modalidade').value;
-  const delegacia = document.getElementById('filtro-delegacia').value;
-
-  document.getElementById('consulta-loading').style.display = 'block';
-  document.getElementById('consulta-resultado').style.display = 'none';
-  document.getElementById('consulta-vazio').style.display = 'none';
-  document.getElementById('kpi-grid').style.display = 'none';
-
-  try {
-    const params = new URLSearchParams({ acao:'consultar', dataIni, dataFim, escrivao, modalidade, delegacia });
-    const resp = await fetch(APPS_SCRIPT_URL + '?' + params.toString());
-    const data = await resp.json();
-    dadosConsulta = data.registros || [];
-    renderConsulta(dadosConsulta);
-  } catch(e) {
-    document.getElementById('consulta-loading').style.display = 'none';
-    document.getElementById('consulta-vazio').style.display = 'block';
-    document.getElementById('consulta-vazio').textContent = 'Erro ao buscar registros. Verifique a conexão.';
-  }
-}
 
 function renderConsulta(registros) {
   document.getElementById('consulta-loading').style.display = 'none';
@@ -3235,6 +3309,7 @@ function fecharFeedback() {
   document.getElementById('overlay-fb').classList.remove('aberto');
   if (feedbackSucesso) voltarSelecao();
 }
+
 </script>
 </body>
 </html>
