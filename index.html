@@ -649,6 +649,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <button class="btn-novo" style="background:#6a0dad;color:white;" onclick="mostrarTela('relatorio')">📄 Relatório CICC</button>
           <button class="btn-novo" style="background:#c0392b;color:white;" onclick="mostrarTela('relatorio-area')">🗂 Relatório de Área</button>
           <button class="btn-novo" style="background:#27ae60;color:white;" onclick="mostrarTela('relatorio-semanal')">📊 Rel. Resumido Semanal (Janielson)</button>
+          <button class="btn-novo" style="background:#2c3e50;color:white;" onclick="fazerBackupCSV()" id="btn-backup-csv">💾 Backup Completo (CSV)</button>
           <button class="btn-novo" onclick="abrirModalEscrivao()">+ Novo Escrivão</button>
         </div>
       </div>
@@ -907,6 +908,11 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
       <div class="presenca-tabs">
         <button class="presenca-tab ativa" id="tab-hoje" onclick="mudarTabPresenca('hoje')">Hoje</button>
         <button class="presenca-tab" id="tab-ontem" onclick="mudarTabPresenca('ontem')">Ontem</button>
+      </div>
+
+      <div class="presenca-tabs" style="margin-top:8px;">
+        <button class="presenca-tab ativa" id="tab-view-delegacia" onclick="mudarVisualizacaoPresenca('delegacia')">🏢 Por Delegacia</button>
+        <button class="presenca-tab" id="tab-view-usuario" onclick="mudarVisualizacaoPresenca('usuario')">👤 Por Usuário</button>
       </div>
 
       <div id="presenca-loading" style="text-align:center;padding:40px;color:var(--texto-leve);font-size:14px;">Carregando...</div>
@@ -1293,6 +1299,59 @@ async function excluirEscrivao(nome) {
 }
 
 // ============================================================
+// BACKUP COMPLETO EM CSV
+// ============================================================
+function paraCSV(rows) {
+  if (!rows || !rows.length) return '';
+  const colunas = Object.keys(rows[0]);
+  const escapar = (v) => {
+    if (v === null || v === undefined) return '';
+    let s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+    s = s.replace(/"/g, '""');
+    return /[",;\n]/.test(s) ? `"${s}"` : s;
+  };
+  const linhas = [colunas.join(';')];
+  rows.forEach(r => linhas.push(colunas.map(c => escapar(r[c])).join(';')));
+  return linhas.join('\n');
+}
+
+function baixarArquivoCSV(nomeArquivo, conteudo) {
+  const blob = new Blob(['\uFEFF' + conteudo], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nomeArquivo;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function fazerBackupCSV() {
+  const btn = document.getElementById('btn-backup-csv');
+  const txtOriginal = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando backup...'; }
+
+  try {
+    const [escrivaes, registros, registrosBO] = await Promise.all([
+      supa.get('escrivaes', '?select=*&order=nome'),
+      supa.get('registros', '?select=*&order=data.desc'),
+      supa.get('registros_bo', '?select=*&order=data.desc')
+    ]);
+
+    const agora = new Date();
+    const carimbo = `${agora.getFullYear()}${String(agora.getMonth()+1).padStart(2,'0')}${String(agora.getDate()).padStart(2,'0')}_${String(agora.getHours()).padStart(2,'0')}${String(agora.getMinutes()).padStart(2,'0')}`;
+
+    if (escrivaes.length) baixarArquivoCSV(`backup_escrivaes_${carimbo}.csv`, paraCSV(escrivaes));
+    if (registros.length) baixarArquivoCSV(`backup_registros_${carimbo}.csv`, paraCSV(registros));
+    if (registrosBO.length) baixarArquivoCSV(`backup_registros_bo_${carimbo}.csv`, paraCSV(registrosBO));
+
+    alert(`Backup gerado com sucesso!\n\n• Escrivães: ${escrivaes.length} registros\n• Registros (Expediente/Plantão): ${registros.length} registros\n• Registros de B.O.: ${registrosBO.length} registros\n\nOs arquivos CSV foram baixados.`);
+  } catch(e) {
+    alert('Erro ao gerar backup: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = txtOriginal || '💾 Backup Completo (CSV)'; }
+  }
+}
+
+// ============================================================
 // ENVIAR REGISTRO
 // ============================================================
 function dataHojeLocal() {
@@ -1564,13 +1623,14 @@ async function carregarPresenca() {
       supa.get('registros_bo', `?data=eq.${dataStr}&select=escrivao,delegacia`)
     ]);
 
+    const regsTodos = [...regsExp, ...regsBO.map(r => ({...r, modalidade:'bo'}))];
     const envios = {};
-    [...regsExp, ...regsBO.map(r => ({...r, modalidade:'bo'}))].forEach(r => {
+    regsTodos.forEach(r => {
       if (!envios[r.escrivao]) envios[r.escrivao] = { modalidades: new Set(), delegacia: r.delegacia };
       envios[r.escrivao].modalidades.add(r.modalidade);
     });
 
-    renderPresenca(escrivaes, envios, dataStr);
+    renderPresenca(escrivaes, envios, dataStr, regsTodos);
   } catch(e) {
     document.getElementById('presenca-loading').textContent = 'Erro ao carregar.';
   }
@@ -1768,6 +1828,14 @@ const CIDADE_PADRAO = {
   'São José do Bonfim':'São José do Bonfim','Areia de Baraúnas':'Areia de Baraúnas','Quixaba':'Quixaba'
 };
 
+// Lista completa das delegacias de expediente (municipais + especializadas) para a visão agregada por delegacia
+const TODAS_DELEGACIAS = [
+  '1ª DD','2ª DD','Cacimba de Areia','São José de Espinharas','Malta','Condado','Vista Serrana',
+  'Santa Luzia','Várzea','Junco do Seridó','São José do Sabugi','Teixeira','Desterro','Cacimbas',
+  "Mãe D'água",'Maturéia','São Mamede','Passagem','Santa Terezinha','São José do Bonfim',
+  'Areia de Baraúnas','Quixaba','DEAM','DRF','DHE'
+];
+
 const CIDADES = [
   'Aparecida','Areia de Baraúnas','Cacimba de Areia','Cacimbas','Condado','Desterro',
   'Emas','Junco do Seridó',"Mãe d'Água",'Malta','Matureia','Passagem','Patos','Quixaba',
@@ -1909,7 +1977,7 @@ function _abrirFormularioReal(modalidade) {
     document.getElementById('plantao-hora-inicio').value = '08:00';
     document.getElementById('meta-escrivao-plantao').value = usuarioLogado.nome;
     const primeiroNomePlantao = (usuarioLogado.nome || '').trim().split(' ')[0].toLowerCase();
-    if (primeiroNomePlantao === 'luciano') {
+    if (['luciano', 'israel', 'emanoel'].includes(primeiroNomePlantao)) {
       document.getElementById('plantao-local').value = 'DHE';
       togglePoloOutro();
     }
@@ -3225,6 +3293,10 @@ function copiarRelatorio() {
 // ============================================================
 let diaPresenca = 'hoje';
 let escrivaesCadastrados = [];
+let visualizacaoPresenca = 'delegacia'; // 'delegacia' (padrão) | 'usuario'
+let ultimoEscrivaesPresenca = [];
+let ultimoEnviosPresenca = {};
+let ultimoRegsPresenca = [];
 
 async function iniciarPresenca() {
   diaPresenca = 'hoje';
@@ -3240,72 +3312,67 @@ function mudarTabPresenca(dia) {
   carregarPresenca();
 }
 
+function mudarVisualizacaoPresenca(tipo) {
+  visualizacaoPresenca = tipo;
+  document.getElementById('tab-view-delegacia').classList.toggle('ativa', tipo === 'delegacia');
+  document.getElementById('tab-view-usuario').classList.toggle('ativa', tipo === 'usuario');
+  renderizarGridPresenca();
+}
 
-function renderPresenca(escrivaes, envios, dataStr) {
-  document.getElementById('presenca-loading').style.display = 'none';
-  document.getElementById('presenca-corpo').style.display = 'block';
-
-  const total = escrivaes.length;
-  const enviaram = escrivaes.filter(e => envios[e.nome]).length;
-  const naoEnviaram = total - enviaram;
-
-  // KPIs
-  document.getElementById('presenca-resumo').innerHTML = `
-    <div class="presenca-kpi">
-      <div class="kpi-valor" style="color:var(--azul);">${total}</div>
-      <div class="kpi-label">Total de Escrivães</div>
+function montarCardEntidade(nome, enviou, subtitulo, mods, nomeMod, classeMod) {
+  const inicial = nome.charAt(0).toUpperCase();
+  const badgesMod = mods && mods.length ? mods.map(m => `<span class="presenca-mod ${classeMod[m]||''}">${nomeMod[m]||m}</span>`).join('') : '';
+  return `<div class="presenca-card ${enviou ? 'enviou' : 'nao-enviou'}">
+    <div class="presenca-avatar ${enviou ? 'ok' : 'nok'}">${inicial}</div>
+    <div class="presenca-info">
+      <div class="presenca-nome">${nome}</div>
+      ${subtitulo ? `<div class="presenca-del">${subtitulo}</div>` : ''}
+      <div class="presenca-envios">
+        ${enviou ? `<span class="presenca-badge-ok">✓ Enviou</span>` : `<span class="presenca-badge-nok">✗ Não enviou</span>`}
+      </div>
+      ${badgesMod ? `<div class="presenca-mods">${badgesMod}</div>` : ''}
     </div>
-    <div class="presenca-kpi" style="border-color:var(--verde);">
-      <div class="kpi-valor" style="color:var(--verde);">${enviaram}</div>
-      <div class="kpi-label">Enviaram Registros</div>
-    </div>
-    <div class="presenca-kpi" style="border-color:var(--vermelho);">
-      <div class="kpi-valor" style="color:var(--vermelho);">${naoEnviaram}</div>
-      <div class="kpi-label">Não Enviaram</div>
-    </div>`;
+  </div>`;
+}
 
+function montarGrupoEntidades(titulo, cor, itens) {
+  if (!itens.length) return '';
+  const enviaram = itens.filter(i => i.enviou);
+  const naoEnv = itens.filter(i => !i.enviou);
+  const ordenados = [...enviaram.sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+                     ...naoEnv.sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'))];
   const nomeMod = { expediente: 'Exp', plantao: 'Pla', bo: 'B.O.' };
   const classeMod = { expediente: 'mod-exp', plantao: 'mod-pla', bo: 'mod-bo' };
-
-  const renderCard = (e) => {
-    const enviou = envios[e.nome];
-    const delegacias = Array.isArray(e.delegacias) ? e.delegacias : [e.delegacia];
-    const inicial = e.nome.charAt(0).toUpperCase();
-    const mods = enviou ? Array.from(enviou.modalidades) : [];
-    const badgesMod = mods.map(m => `<span class="presenca-mod ${classeMod[m]||''}">${nomeMod[m]||m}</span>`).join('');
-    return `<div class="presenca-card ${enviou ? 'enviou' : 'nao-enviou'}">
-      <div class="presenca-avatar ${enviou ? 'ok' : 'nok'}">${inicial}</div>
-      <div class="presenca-info">
-        <div class="presenca-nome">${e.nome}</div>
-        <div class="presenca-del">${delegacias.join(', ')}</div>
-        <div class="presenca-envios">
-          ${enviou ? `<span class="presenca-badge-ok">✓ Enviou</span>` : `<span class="presenca-badge-nok">✗ Não enviou</span>`}
-        </div>
-        ${mods.length ? `<div class="presenca-mods">${badgesMod}</div>` : ''}
+  return `
+    <div class="presenca-grupo">
+      <div class="presenca-grupo-header" style="border-left:4px solid ${cor};">
+        <span style="color:${cor};">${titulo}</span>
+        <span class="presenca-grupo-stats">
+          <span style="color:var(--verde);font-weight:600;">${enviaram.length} enviaram</span>
+          <span style="color:var(--texto-leve);margin:0 6px;">·</span>
+          <span style="color:var(--vermelho);font-weight:600;">${naoEnv.length} não enviaram</span>
+        </span>
       </div>
+      <div class="presenca-grid">${ordenados.map(i => montarCardEntidade(i.nome, i.enviou, i.subtitulo, i.mods, nomeMod, classeMod)).join('')}</div>
     </div>`;
-  };
+}
 
-  const renderGrupo = (titulo, cor, lista) => {
-    if (!lista.length) return '';
-    const enviaram = lista.filter(e => envios[e.nome]);
-    const naoEnv = lista.filter(e => !envios[e.nome]);
-    const ordenados = [...enviaram.sort((a,b) => a.nome.localeCompare(b.nome)),
-                       ...naoEnv.sort((a,b) => a.nome.localeCompare(b.nome))];
-    return `
-      <div class="presenca-grupo">
-        <div class="presenca-grupo-header" style="border-left:4px solid ${cor};">
-          <span style="color:${cor};">${titulo}</span>
-          <span class="presenca-grupo-stats">
-            <span style="color:var(--verde);font-weight:600;">${enviaram.length} enviaram</span>
-            <span style="color:var(--texto-leve);margin:0 6px;">·</span>
-            <span style="color:var(--vermelho);font-weight:600;">${naoEnv.length} não enviaram</span>
-          </span>
-        </div>
-        <div class="presenca-grid">${ordenados.map(renderCard).join('')}</div>
-      </div>`;
-  };
+// Visão agregada por delegacia (expediente) e por polo (plantão)
+function montarGridPorDelegacia(regsTodos) {
+  const delegaciasComExp = new Set(regsTodos.filter(r => r.modalidade === 'expediente').map(r => r.delegacia));
+  const itensExp = TODAS_DELEGACIAS.map(d => ({ nome: d, enviou: delegaciasComExp.has(d) }));
 
+  const polosComRegistro = new Set(regsTodos.filter(r => r.modalidade === 'plantao').map(r => r.delegacia));
+  const itensPla = POLOS_PLANTAO.map(p => ({ nome: p, enviou: polosComRegistro.has(p) }));
+
+  return `
+    ${montarGrupoEntidades('📋 EXPEDIENTE — POR DELEGACIA', 'var(--azul)', itensExp)}
+    ${montarGrupoEntidades('🕐 PLANTÃO — POR POLO', 'var(--verde)', itensPla)}
+  `;
+}
+
+// Visão por usuário (escrivão), subdividida por delegacia/polo dentro de cada modalidade
+function montarGridPorUsuario(escrivaes, envios) {
   // Separar por modalidade principal
   const soExp = escrivaes.filter(e => {
     const mods = e.modalidades || ['expediente','plantao','bo'];
@@ -3327,6 +3394,12 @@ function renderPresenca(escrivaes, envios, dataStr) {
     return (temExp && temPla) || (temExp && temBO) || (temPla && temBO);
   });
 
+  const paraItem = (e) => {
+    const enviou = envios[e.nome];
+    const delegacias = Array.isArray(e.delegacias) ? e.delegacias : [e.delegacia];
+    return { nome: e.nome, enviou: !!enviou, subtitulo: delegacias.filter(Boolean).join(', '), mods: enviou ? Array.from(enviou.modalidades) : [] };
+  };
+
   // EXPEDIENTE — subdividido por delegacia vinculada ao escrivão
   const delegaciasExp = {};
   soExp.forEach(e => {
@@ -3338,7 +3411,7 @@ function renderPresenca(escrivaes, envios, dataStr) {
     });
   });
   const htmlExp = Object.keys(delegaciasExp).sort((a,b) => a.localeCompare(b, 'pt-BR'))
-    .map(d => renderGrupo(`📋 EXPEDIENTE — ${d}`, 'var(--azul)', delegaciasExp[d]))
+    .map(d => montarGrupoEntidades(`📋 EXPEDIENTE — ${d}`, 'var(--azul)', delegaciasExp[d].map(paraItem)))
     .join('');
 
   // PLANTÃO — subdividido por polo (Central - Patos, Teixeira, DHE); quem não enviou fica em bucket à parte
@@ -3355,15 +3428,54 @@ function renderPresenca(escrivaes, envios, dataStr) {
     }
   });
   const htmlPla = Object.keys(polosPla).filter(p => polosPla[p].length)
-    .map(p => renderGrupo(`🕐 PLANTÃO — ${p}`, 'var(--verde)', polosPla[p]))
-    .join('') + (plaSemRegistro.length ? renderGrupo('🕐 PLANTÃO — Sem Registro Enviado', 'var(--verde)', plaSemRegistro) : '');
+    .map(p => montarGrupoEntidades(`🕐 PLANTÃO — ${p}`, 'var(--verde)', polosPla[p].map(paraItem)))
+    .join('') + (plaSemRegistro.length ? montarGrupoEntidades('🕐 PLANTÃO — Sem Registro Enviado', 'var(--verde)', plaSemRegistro.map(paraItem)) : '');
 
-  document.getElementById('presenca-grid').innerHTML = `
+  return `
     ${htmlExp}
     ${htmlPla}
-    ${renderGrupo('📄 SETOR DE B.O.', 'var(--dourado)', soBO)}
-    ${multiplos.length ? renderGrupo('🔀 MÚLTIPLAS MODALIDADES', '#6a0dad', multiplos) : ''}
+    ${montarGrupoEntidades('📄 SETOR DE B.O.', 'var(--dourado)', soBO.map(paraItem))}
+    ${multiplos.length ? montarGrupoEntidades('🔀 MÚLTIPLAS MODALIDADES', '#6a0dad', multiplos.map(paraItem)) : ''}
   `;
+}
+
+function renderizarGridPresenca() {
+  const grid = document.getElementById('presenca-grid');
+  if (visualizacaoPresenca === 'delegacia') {
+    grid.innerHTML = montarGridPorDelegacia(ultimoRegsPresenca);
+  } else {
+    grid.innerHTML = montarGridPorUsuario(ultimoEscrivaesPresenca, ultimoEnviosPresenca);
+  }
+}
+
+function renderPresenca(escrivaes, envios, dataStr, regsTodos) {
+  document.getElementById('presenca-loading').style.display = 'none';
+  document.getElementById('presenca-corpo').style.display = 'block';
+
+  ultimoEscrivaesPresenca = escrivaes;
+  ultimoEnviosPresenca = envios;
+  ultimoRegsPresenca = regsTodos || [];
+
+  const total = escrivaes.length;
+  const enviaram = escrivaes.filter(e => envios[e.nome]).length;
+  const naoEnviaram = total - enviaram;
+
+  // KPIs
+  document.getElementById('presenca-resumo').innerHTML = `
+    <div class="presenca-kpi">
+      <div class="kpi-valor" style="color:var(--azul);">${total}</div>
+      <div class="kpi-label">Total de Escrivães</div>
+    </div>
+    <div class="presenca-kpi" style="border-color:var(--verde);">
+      <div class="kpi-valor" style="color:var(--verde);">${enviaram}</div>
+      <div class="kpi-label">Enviaram Registros</div>
+    </div>
+    <div class="presenca-kpi" style="border-color:var(--vermelho);">
+      <div class="kpi-valor" style="color:var(--vermelho);">${naoEnviaram}</div>
+      <div class="kpi-label">Não Enviaram</div>
+    </div>`;
+
+  renderizarGridPresenca();
 }
 
 // ============================================================
