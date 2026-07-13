@@ -3372,37 +3372,28 @@ function montarGridPorDelegacia(regsTodos) {
 }
 
 // Visão por usuário (escrivão), subdividida por delegacia/polo dentro de cada modalidade
-function montarGridPorUsuario(escrivaes, envios) {
-  // Separar por modalidade principal
-  const soExp = escrivaes.filter(e => {
-    const mods = e.modalidades || ['expediente','plantao','bo'];
-    return mods.includes('expediente') && !mods.includes('plantao') && !mods.includes('bo');
-  });
-  const soPla = escrivaes.filter(e => {
-    const mods = e.modalidades || ['expediente','plantao','bo'];
-    return mods.includes('plantao') && !mods.includes('expediente');
-  });
-  const soBO = escrivaes.filter(e => {
-    const mods = e.modalidades || ['expediente','plantao','bo'];
-    return mods.includes('bo') && !mods.includes('expediente') && !mods.includes('plantao');
-  });
-  const multiplos = escrivaes.filter(e => {
-    const mods = e.modalidades || ['expediente','plantao','bo'];
-    const temExp = mods.includes('expediente');
-    const temPla = mods.includes('plantao');
-    const temBO = mods.includes('bo');
-    return (temExp && temPla) || (temExp && temBO) || (temPla && temBO);
+function montarGridPorUsuario(escrivaes, envios, regsTodos) {
+  // Inclusivo: um escrivão aparece em toda modalidade que ele exerce, mesmo que tenha mais de uma
+  const comExp = escrivaes.filter(e => (e.modalidades || ['expediente','plantao','bo']).includes('expediente'));
+  const comPla = escrivaes.filter(e => (e.modalidades || ['expediente','plantao','bo']).includes('plantao'));
+  const comBO = escrivaes.filter(e => (e.modalidades || ['expediente','plantao','bo']).includes('bo'));
+
+  // Polo de plantão efetivamente usado no envio do dia (aferido a partir dos registros, não do cadastro)
+  const poloPorEscrivao = {};
+  (regsTodos || []).forEach(r => {
+    if (r.modalidade === 'plantao' && !poloPorEscrivao[r.escrivao]) poloPorEscrivao[r.escrivao] = r.delegacia;
   });
 
-  const paraItem = (e) => {
-    const enviou = envios[e.nome];
+  const paraItem = (e, modalidadeChecagem) => {
+    const envio = envios[e.nome];
+    const enviouEssaModalidade = envio ? envio.modalidades.has(modalidadeChecagem) : false;
     const delegacias = Array.isArray(e.delegacias) ? e.delegacias : [e.delegacia];
-    return { nome: e.nome, enviou: !!enviou, subtitulo: delegacias.filter(Boolean).join(', '), mods: enviou ? Array.from(enviou.modalidades) : [] };
+    return { nome: e.nome, enviou: enviouEssaModalidade, subtitulo: delegacias.filter(Boolean).join(', '), mods: envio ? Array.from(envio.modalidades) : [] };
   };
 
   // EXPEDIENTE — subdividido por delegacia vinculada ao escrivão
   const delegaciasExp = {};
-  soExp.forEach(e => {
+  comExp.forEach(e => {
     const dels = Array.isArray(e.delegacias) && e.delegacias.length ? e.delegacias : [e.delegacia];
     dels.forEach(d => {
       if (!d) return;
@@ -3411,15 +3402,15 @@ function montarGridPorUsuario(escrivaes, envios) {
     });
   });
   const htmlExp = Object.keys(delegaciasExp).sort((a,b) => a.localeCompare(b, 'pt-BR'))
-    .map(d => montarGrupoEntidades(`📋 EXPEDIENTE — ${d}`, 'var(--azul)', delegaciasExp[d].map(paraItem)))
+    .map(d => montarGrupoEntidades(`📋 EXPEDIENTE — ${d}`, 'var(--azul)', delegaciasExp[d].map(e => paraItem(e, 'expediente'))))
     .join('');
 
-  // PLANTÃO — subdividido por polo (Central - Patos, Teixeira, DHE); quem não enviou fica em bucket à parte
+  // PLANTÃO — subdividido por polo efetivamente usado no envio; quem não enviou fica em bucket à parte
   const polosPla = {};
   POLOS_PLANTAO.forEach(p => polosPla[p] = []);
   const plaSemRegistro = [];
-  soPla.forEach(e => {
-    const polo = envios[e.nome]?.delegacia;
+  comPla.forEach(e => {
+    const polo = poloPorEscrivao[e.nome];
     if (polo) {
       if (!polosPla[polo]) polosPla[polo] = [];
       polosPla[polo].push(e);
@@ -3428,14 +3419,13 @@ function montarGridPorUsuario(escrivaes, envios) {
     }
   });
   const htmlPla = Object.keys(polosPla).filter(p => polosPla[p].length)
-    .map(p => montarGrupoEntidades(`🕐 PLANTÃO — ${p}`, 'var(--verde)', polosPla[p].map(paraItem)))
-    .join('') + (plaSemRegistro.length ? montarGrupoEntidades('🕐 PLANTÃO — Sem Registro Enviado', 'var(--verde)', plaSemRegistro.map(paraItem)) : '');
+    .map(p => montarGrupoEntidades(`🕐 PLANTÃO — ${p}`, 'var(--verde)', polosPla[p].map(e => paraItem(e, 'plantao'))))
+    .join('') + (plaSemRegistro.length ? montarGrupoEntidades('🕐 PLANTÃO — Sem Registro Enviado', 'var(--verde)', plaSemRegistro.map(e => paraItem(e, 'plantao'))) : '');
 
   return `
     ${htmlExp}
     ${htmlPla}
-    ${montarGrupoEntidades('📄 SETOR DE B.O.', 'var(--dourado)', soBO.map(paraItem))}
-    ${multiplos.length ? montarGrupoEntidades('🔀 MÚLTIPLAS MODALIDADES', '#6a0dad', multiplos.map(paraItem)) : ''}
+    ${montarGrupoEntidades('📄 SETOR DE B.O.', 'var(--dourado)', comBO.map(e => paraItem(e, 'bo')))}
   `;
 }
 
@@ -3444,7 +3434,7 @@ function renderizarGridPresenca() {
   if (visualizacaoPresenca === 'delegacia') {
     grid.innerHTML = montarGridPorDelegacia(ultimoRegsPresenca);
   } else {
-    grid.innerHTML = montarGridPorUsuario(ultimoEscrivaesPresenca, ultimoEnviosPresenca);
+    grid.innerHTML = montarGridPorUsuario(ultimoEscrivaesPresenca, ultimoEnviosPresenca, ultimoRegsPresenca);
   }
 }
 
