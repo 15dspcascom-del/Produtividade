@@ -269,6 +269,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 .c-row.c2 { grid-template-columns: 140px 1fr; }
 .c-row.c3 { grid-template-columns: 140px 1fr 1fr; }
 .c-row.c4 { grid-template-columns: 140px 1fr 1fr 1fr; }
+.c-grupo { min-width: 0; }
 
 .c-grupo label { display: block; font-size: 10px; font-weight: 600; color: var(--texto-leve); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
 .c-grupo input, .c-grupo select, .c-grupo textarea {
@@ -565,11 +566,16 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 .btn-exportar:hover { opacity: 0.85; }
 .btn-acao-tabela { background: transparent; border: 1px solid var(--cinza-borda); border-radius: 6px; padding: 4px 8px; font-size: 13px; cursor: pointer; margin-right: 4px; transition: background 0.15s; }
 .btn-acao-tabela:hover { background: var(--cinza); }
-.chips-scroll { display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:6px; -webkit-overflow-scrolling:touch; scrollbar-width:thin; }
-.chip-btn { flex:0 0 auto; white-space:nowrap; padding:6px 12px; border-radius:16px; border:1.5px solid var(--cinza-borda); background:white; font-size:12px; cursor:pointer; font-family:'Inter',sans-serif; transition:all 0.15s; }
+.chips-scroll { display:flex; overflow-x:auto; white-space:nowrap; padding-bottom:8px; margin-bottom:8px; border-bottom:1.5px solid var(--cinza-borda); }
+.chips-scroll::-webkit-scrollbar { height:6px; }
+.chips-scroll::-webkit-scrollbar-track { background:var(--cinza); border-radius:3px; }
+.chips-scroll::-webkit-scrollbar-thumb { background:var(--cinza-borda); border-radius:3px; }
+.chips-scroll::-webkit-scrollbar-thumb:hover { background:var(--texto-leve); }
+.chip-btn { flex:0 0 auto; white-space:nowrap; padding:6px 14px; border:none; border-right:1px solid var(--cinza-borda); background:transparent; font-size:12px; color:var(--texto); cursor:pointer; font-family:'Inter',sans-serif; transition:background 0.15s; }
+.chip-btn:last-child { border-right:none; }
 .chip-btn:hover { background:var(--cinza); }
-.chip-btn.chip-ativo { background:var(--azul); color:white; border-color:var(--azul); }
-.chip-btn.chip-outros { border-style:dashed; }
+.chip-btn.chip-ativo { background:var(--azul); color:white; font-weight:600; }
+.chip-btn.chip-outros { font-style:italic; color:var(--texto-leve); }
 .modal-edicao-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center; }
 .modal-edicao-overlay.aberto { display:flex; }
 .modal-edicao { background:white; border-radius:12px; padding:28px; width:92%; max-width:480px; max-height:88vh; overflow-y:auto; }
