@@ -563,6 +563,22 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 .consulta-tabela-header span { font-size: 13px; color: var(--texto-leve); font-weight: 600; }
 .btn-exportar { background: var(--verde); color: white; border: none; border-radius: 6px; padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: opacity 0.2s; }
 .btn-exportar:hover { opacity: 0.85; }
+.btn-acao-tabela { background: transparent; border: 1px solid var(--cinza-borda); border-radius: 6px; padding: 4px 8px; font-size: 13px; cursor: pointer; margin-right: 4px; transition: background 0.15s; }
+.btn-acao-tabela:hover { background: var(--cinza); }
+.chips-scroll { display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:6px; -webkit-overflow-scrolling:touch; scrollbar-width:thin; }
+.chip-btn { flex:0 0 auto; white-space:nowrap; padding:6px 12px; border-radius:16px; border:1.5px solid var(--cinza-borda); background:white; font-size:12px; cursor:pointer; font-family:'Inter',sans-serif; transition:all 0.15s; }
+.chip-btn:hover { background:var(--cinza); }
+.chip-btn.chip-ativo { background:var(--azul); color:white; border-color:var(--azul); }
+.chip-btn.chip-outros { border-style:dashed; }
+.modal-edicao-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center; }
+.modal-edicao-overlay.aberto { display:flex; }
+.modal-edicao { background:white; border-radius:12px; padding:28px; width:92%; max-width:480px; max-height:88vh; overflow-y:auto; }
+.modal-edicao h3 { margin:0 0 18px; font-size:16px; color:var(--azul); }
+.modal-edicao .fm-item { margin-bottom:14px; }
+.modal-edicao .fm-item label { display:block; font-size:11px; font-weight:600; color:var(--texto-leve); text-transform:uppercase; margin-bottom:5px; }
+.modal-edicao .fm-item input, .modal-edicao .fm-item select { width:100%; padding:9px 10px; border:1.5px solid var(--cinza-borda); border-radius:7px; font-size:13px; font-family:'Inter',sans-serif; }
+.modal-edicao-acoes { display:flex; gap:10px; margin-top:20px; }
+.modal-edicao-acoes button { flex:1; padding:11px; border-radius:8px; border:none; font-size:13px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; }
 .consulta-tabela { width: 100%; border-collapse: collapse; font-size: 12px; }
 .consulta-tabela thead { background: var(--azul); color: white; }
 .consulta-tabela th { padding: 10px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; white-space: nowrap; }
@@ -1006,6 +1022,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
                   <th>Crime/Descrição</th>
                   <th>Cidade</th>
                   <th>Hora Registro</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody id="consulta-tbody"></tbody>
@@ -1019,6 +1036,49 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
       </div>
       <div id="consulta-loading" style="display:none;text-align:center;padding:40px;color:var(--texto-leve);font-size:14px;">
         Buscando registros...
+      </div>
+    </div>
+
+    <!-- Modal de Edição de Registro -->
+    <div class="modal-edicao-overlay" id="overlay-edicao-registro">
+      <div class="modal-edicao">
+        <h3>✏️ Editar Registro</h3>
+        <div class="fm-item">
+          <label>Data</label>
+          <input type="date" id="edit-reg-data" />
+        </div>
+        <div class="fm-item">
+          <label id="edit-reg-horario-label">Horário</label>
+          <input type="text" id="edit-reg-horario" />
+        </div>
+        <div class="fm-item">
+          <label>Delegacia / Polo</label>
+          <input type="text" id="edit-reg-delegacia" />
+        </div>
+        <div class="fm-item">
+          <label>Escrivão</label>
+          <select id="edit-reg-escrivao"></select>
+        </div>
+        <div class="fm-item">
+          <label>Quantidade</label>
+          <input type="number" id="edit-reg-quantidade" min="0" />
+        </div>
+        <div class="fm-item">
+          <label>Crime / Descrição</label>
+          <input type="text" id="edit-reg-crime" />
+        </div>
+        <div class="fm-item" id="edit-reg-cidade-wrap">
+          <label id="edit-reg-cidade-label">Cidade</label>
+          <input type="text" id="edit-reg-cidade" />
+        </div>
+        <div class="fm-item">
+          <label>Procedimento (não editável)</label>
+          <input type="text" id="edit-reg-procedimento" disabled style="background:var(--cinza);" />
+        </div>
+        <div class="modal-edicao-acoes">
+          <button onclick="fecharEdicaoRegistro()" style="background:var(--cinza);color:var(--texto);">Cancelar</button>
+          <button onclick="salvarEdicaoRegistro()" style="background:var(--azul);color:white;">Salvar Alterações</button>
+        </div>
       </div>
     </div>
 
@@ -1578,6 +1638,7 @@ async function buscarRegistros() {
       if (modalidade) qsExp += `&modalidade=eq.${modalidade}`;
       const r = await supa.get('registros', qsExp + '&select=*');
       rows.push(...r.map(x => ({
+        id: x.id, tabela: 'registros', raw: x,
         modalidade: x.modalidade, horaRegistro: x.hora_registro ? new Date(x.hora_registro).toLocaleString('pt-BR') : '',
         data: x.data, horario: x.horario || x.turno || '', delegacia: x.delegacia,
         escrivao: x.escrivao, procedimento: x.procedimento, quantidade: x.quantidade,
@@ -1588,6 +1649,7 @@ async function buscarRegistros() {
     if (!modalidade || modalidade === 'bo') {
       const r = await supa.get('registros_bo', qs + (escrivao ? `&escrivao=eq.${encodeURIComponent(escrivao)}` : '') + (delegacia ? `&delegacia=eq.${encodeURIComponent(delegacia)}` : '') + '&select=*');
       rows.push(...r.map(x => ({
+        id: x.id, tabela: 'registros_bo', raw: x,
         modalidade: 'bo', horaRegistro: x.hora_registro ? new Date(x.hora_registro).toLocaleString('pt-BR') : '',
         data: x.data, horario: x.turno || '', delegacia: x.delegacia,
         escrivao: x.escrivao, procedimento: x.crime === 'SEM OCORRÊNCIAS' ? 'SEM OCORRÊNCIAS' : 'boletins',
@@ -2097,6 +2159,21 @@ function toggleExameOutro(sel) {
   if (sel.value !== 'Outros' && outro) outro.value = '';
 }
 
+function chipSelecionar(btn) {
+  const wrap = btn.closest('.c-grupo');
+  const input = wrap.querySelector('.chip-input');
+  if (!input) return;
+  wrap.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('chip-ativo'));
+  btn.classList.add('chip-ativo');
+  if (btn.classList.contains('chip-outros')) {
+    input.value = '';
+    input.focus();
+  } else {
+    input.value = btn.textContent.trim();
+  }
+  atualizarCamposObrigatorios(wrap.closest('.c-row'));
+}
+
 function toggleProcOutro(sel) {
   const outro = sel.parentElement.querySelector('.proc-pje-outro');
   outro.style.display = sel.value === 'Outros' ? 'block' : 'none';
@@ -2217,6 +2294,27 @@ function renderInput(sub, campoId) {
         <input type="text" inputmode="numeric" value="0" class="qtd-input" readonly />
         <button type="button" class="btn-qtd" data-delta="1">+</button>
       </div>
+    </div>`;
+  }
+  if (sub === 'crime' && campoId === 'boletins') {
+    const crimes = ['Placa clonada','Estelionato','Ameaça','Perda ou extravio de documento','Envio de Pix - chave errada','Solicitação de exame químico metalográfico','Violência doméstica','Perda de celular'];
+    const chips = crimes.map(c => `<button type="button" class="chip-btn" onclick="chipSelecionar(this)">${c}</button>`).join('')
+      + `<button type="button" class="chip-btn chip-outros" onclick="chipSelecionar(this)">Outros</button>`;
+    return `<div class="c-grupo">
+      <label>CRIME / OCORRÊNCIA</label>
+      <div class="chips-scroll">${chips}</div>
+      <input type="text" class="chip-input" placeholder="Crime / Ocorrência" />
+    </div>`;
+  }
+  if (sub === 'delegacia' && campoId === 'boletins') {
+    const iniciais = ['2ª DD','1ª DD','DRF'];
+    const listaDelegacias = [...iniciais, ...TODAS_DELEGACIAS.filter(d => !iniciais.includes(d))];
+    const chips = listaDelegacias.map(d => `<button type="button" class="chip-btn" onclick="chipSelecionar(this)">${d}</button>`).join('')
+      + `<button type="button" class="chip-btn chip-outros" onclick="chipSelecionar(this)">Outros</button>`;
+    return `<div class="c-grupo">
+      <label>DELEGACIA</label>
+      <div class="chips-scroll">${chips}</div>
+      <input type="text" class="chip-input" placeholder="Delegacia" />
     </div>`;
   }
   if (sub === 'cidade') {
@@ -3095,7 +3193,7 @@ function montarTextoCICC(dados, dataISO) {
     const reg = polos[polo];
     const inicio = reg?.horario?.split('|')[0]?.replace('Início:','').trim() || '';
     const fim = reg?.horario?.split('|')[1]?.replace('Final:','').trim() || '';
-    if (inicio) {
+    if (idxPolo === 0 && inicio) {
       linhas.push(`*INÍCIO: ${inicio}*`);
       linhas.push(`*TÉRMINO: ${fim}*`);
       linhas.push('');
@@ -3132,18 +3230,22 @@ function montarTextoCICC(dados, dataISO) {
   linhas.push('');
   if (custInicio) linhas.push(`*INÍCIO: ${custInicio}*`);
   if (custFinal) linhas.push(`*FINAL: ${custFinal}*`);
-  linhas.push('');
+  if (custInicio || custFinal) linhas.push('');
   linhas.push(custDuracao);
   linhas.push('');
-  if (custServidor) linhas.push(`Servidor Responsável pelo plantão: ${custServidor.toUpperCase()}`);
-  linhas.push('');
+  if (custServidor) {
+    linhas.push(`Servidor Responsável pelo plantão: ${custServidor.toUpperCase()}`);
+    linhas.push('');
+  }
   linhas.push('*1) Situação Inicial da Carceragem:*');
   linhas.push('');
   linhas.push(`O plantão foi iniciado às ${custInicio || '08h00'}, com ${custIniQtd || '00 presos'} custodiado(s) nas dependências da carceragem.`);
   linhas.push('');
   linhas.push(`*2) Presos Recebidos Durante o Plantão: ${pad(custRecQtd)}*`);
-  linhas.push('');
-  if (custRecNomes) linhas.push(formatarNomes(custRecNomes));
+  if (custRecNomes) {
+    linhas.push('');
+    linhas.push(formatarNomes(custRecNomes));
+  }
   linhas.push('');
   linhas.push('*3) Audiências de Custódia:*');
   linhas.push('');
@@ -3151,8 +3253,10 @@ function montarTextoCICC(dados, dataISO) {
   else linhas.push('Nenhuma.');
   linhas.push('');
   linhas.push(`*4) Transferências para Unidades Prisionais: ${pad(custTransfQtd)}*`);
-  linhas.push('');
-  if (custTransfNomes) linhas.push(formatarNomes(custTransfNomes));
+  if (custTransfNomes) {
+    linhas.push('');
+    linhas.push(formatarNomes(custTransfNomes));
+  }
   linhas.push('');
   linhas.push(`*5) Situação Final da Carceragem: ${custFinalQtd || '00 custodiados'}.*`);
   linhas.push('');
@@ -3216,7 +3320,7 @@ function montarTextoCICC(dados, dataISO) {
 
     linhas.push(`*${letra}) ${nome}*`);
     linhas.push('');
-    if (inicio) {
+    if (idxPolo === 0 && inicio) {
       linhas.push(`*INÍCIO: ${inicio}*`);
       linhas.push(`*TÉRMINO: ${fim}*`);
       linhas.push('');
@@ -3522,7 +3626,7 @@ function renderConsulta(registros) {
   // Tabela
   document.getElementById('consulta-count').textContent = `${registros.length} registro(s) encontrado(s)`;
   const tbody = document.getElementById('consulta-tbody');
-  tbody.innerHTML = registros.map(r => `
+  tbody.innerHTML = registros.map((r, idx) => `
     <tr>
       <td>${formatarDataBR(r.data) || '—'}</td>
       <td>${r.horario || r.turno || '—'}</td>
@@ -3533,9 +3637,98 @@ function renderConsulta(registros) {
       <td>${r.crime || '—'}</td>
       <td>${r.cidade || '—'}</td>
       <td style="white-space:nowrap;">${r.horaRegistro || '—'}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-acao-tabela" onclick="abrirEdicaoRegistro(${idx})" title="Editar">✏️</button>
+        <button class="btn-acao-tabela" onclick="excluirRegistroConsulta(${idx})" title="Excluir">🗑️</button>
+      </td>
     </tr>`).join('');
 
   document.getElementById('consulta-resultado').style.display = 'block';
+}
+
+let idxEdicaoAtual = null;
+
+function abrirEdicaoRegistro(idx) {
+  const r = dadosConsulta[idx];
+  if (!r) return;
+  idxEdicaoAtual = idx;
+
+  document.getElementById('edit-reg-data').value = r.data || '';
+  document.getElementById('edit-reg-quantidade').value = r.quantidade || 0;
+  document.getElementById('edit-reg-crime').value = r.crime || '';
+  document.getElementById('edit-reg-procedimento').value = r.procedimento || '';
+  document.getElementById('edit-reg-delegacia').value = r.delegacia || '';
+
+  // Preencher select de escrivão a partir do filtro já carregado
+  const selOrigem = document.getElementById('filtro-escrivao');
+  const selEdit = document.getElementById('edit-reg-escrivao');
+  selEdit.innerHTML = Array.from(selOrigem.options).filter(o => o.value).map(o => `<option value="${o.value}">${o.textContent}</option>`).join('');
+  selEdit.value = r.escrivao || '';
+
+  if (r.tabela === 'registros_bo') {
+    document.getElementById('edit-reg-horario-label').textContent = 'Turno';
+    document.getElementById('edit-reg-horario').value = r.raw.turno || '';
+    document.getElementById('edit-reg-cidade-label').textContent = 'Delegacia do B.O.';
+    document.getElementById('edit-reg-cidade').value = r.raw.delegacia_bo || '';
+  } else {
+    document.getElementById('edit-reg-horario-label').textContent = 'Horário';
+    document.getElementById('edit-reg-horario').value = r.raw.horario || r.raw.turno || '';
+    document.getElementById('edit-reg-cidade-label').textContent = 'Cidade';
+    document.getElementById('edit-reg-cidade').value = r.raw.cidade || '';
+  }
+
+  document.getElementById('overlay-edicao-registro').classList.add('aberto');
+}
+
+function fecharEdicaoRegistro() {
+  document.getElementById('overlay-edicao-registro').classList.remove('aberto');
+  idxEdicaoAtual = null;
+}
+
+async function salvarEdicaoRegistro() {
+  if (idxEdicaoAtual === null) return;
+  const r = dadosConsulta[idxEdicaoAtual];
+  if (!r) return;
+
+  const novaData = document.getElementById('edit-reg-data').value;
+  const novoHorario = document.getElementById('edit-reg-horario').value.trim();
+  const novaDelegacia = document.getElementById('edit-reg-delegacia').value.trim();
+  const novoEscrivao = document.getElementById('edit-reg-escrivao').value;
+  const novaQuantidade = parseInt(document.getElementById('edit-reg-quantidade').value) || 0;
+  const novoCrime = document.getElementById('edit-reg-crime').value.trim();
+  const novaCidade = document.getElementById('edit-reg-cidade').value.trim();
+
+  if (!novaData || !novoEscrivao) {
+    alert('Preencha ao menos a Data e o Escrivão.');
+    return;
+  }
+
+  let payload;
+  if (r.tabela === 'registros_bo') {
+    payload = { data: novaData, turno: novoHorario, delegacia: novaDelegacia, escrivao: novoEscrivao, quantidade: novaQuantidade, crime: novoCrime || null, delegacia_bo: novaCidade || null };
+  } else {
+    payload = { data: novaData, horario: novoHorario || null, delegacia: novaDelegacia, escrivao: novoEscrivao, quantidade: novaQuantidade, crime: novoCrime || null, cidade: novaCidade || null };
+  }
+
+  try {
+    await supa.patch(r.tabela, `id=eq.${r.id}`, payload);
+    fecharEdicaoRegistro();
+    await buscarRegistros();
+  } catch(e) {
+    alert('Erro ao salvar alterações: ' + e.message);
+  }
+}
+
+async function excluirRegistroConsulta(idx) {
+  const r = dadosConsulta[idx];
+  if (!r) return;
+  if (!confirm(`Excluir este registro?\n\nData: ${formatarDataBR(r.data)}\nEscrivão: ${r.escrivao}\nProcedimento: ${r.procedimento}\n\nEsta ação não pode ser desfeita.`)) return;
+  try {
+    await supa.del(r.tabela, `id=eq.${r.id}`);
+    await buscarRegistros();
+  } catch(e) {
+    alert('Erro ao excluir: ' + e.message);
+  }
 }
 
 function exportarCSV() {
