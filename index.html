@@ -3318,9 +3318,11 @@ function montarTextoCICC(dados, dataISO) {
   ];
 
   let numExp = 1;
+  const SIGLAS_SEM_CAIXA_ALTA = ['bos', 'apfs', 'aafai', 'tcos', 'bocs'];
   nomesExpResumo.forEach(([k, nome]) => {
     const total = totaisExp[k] || 0;
-    if (total > 0) linhas.push(`${numExp++}) ${nome.toUpperCase()}: ${pad(total)}`);
+    const nomeFmt = SIGLAS_SEM_CAIXA_ALTA.includes(k) ? nome : nome.toUpperCase();
+    if (total > 0) linhas.push(`${numExp++}) ${nomeFmt}: ${pad(total)}`);
   });
   linhas.push('');
   linhas.push('Obs.: vide detalhamento no final deste relatório.');
