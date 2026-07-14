@@ -902,6 +902,11 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
             <input type="text" id="cust-final-qtd" placeholder="ex: 02 custodiados" />
           </div>
         </div>
+
+        <div style="display:flex;align-items:center;gap:12px;margin-top:16px;">
+          <button class="btn-exportar" onclick="salvarCustodia()" id="btn-salvar-custodia" style="background:var(--dourado);color:var(--azul);">💾 Salvar Custódia</button>
+          <span id="cust-status" style="font-size:12px;color:var(--texto-leve);"></span>
+        </div>
       </div>
 
       <button class="btn-enviar" onclick="gerarRelatorioCICC()" id="btn-gerar-rel">
@@ -1763,6 +1768,7 @@ async function gerarRelatorioCICC() {
     document.getElementById('rel-texto').value = texto;
     document.getElementById('rel-resultado').style.display = 'block';
     document.getElementById('rel-resultado').scrollIntoView({ behavior: 'smooth' });
+    salvarCustodia(); // salva automaticamente os dados da custódia junto com a geração do relatório
   } catch(e) { alert('Erro: ' + e.message); }
   finally { btn.disabled = false; txt.textContent = '📄 Gerar Relatório'; sp.style.display = 'none'; }
 }
@@ -3142,12 +3148,106 @@ function iniciarRelatorio() {
   document.getElementById('rel-diaSemana').value = getDiaSemana(hoje);
   document.getElementById('rel-resultado').style.display = 'none';
   preencherCustodiaPadrao(hoje);
+  carregarCustodiaSalva(hoje);
   document.getElementById('rel-data').addEventListener('change', function() {
     if (this.value) {
       document.getElementById('rel-diaSemana').value = getDiaSemana(this.value);
       preencherCustodiaPadrao(this.value);
+      carregarCustodiaSalva(this.value);
     }
   });
+}
+
+// ============================================================
+// CUSTÓDIA — PERSISTÊNCIA NO BANCO
+// ============================================================
+async function carregarCustodiaSalva(dataISO) {
+  const status = document.getElementById('cust-status');
+  status.style.color = 'var(--texto-leve)';
+  status.textContent = 'Verificando dados salvos...';
+  try {
+    const r = await supa.get('custodia', `?data=eq.${dataISO}&select=*&limit=1`);
+    if (r && r.length > 0) {
+      const c = r[0];
+      document.getElementById('cust-inicio').value = c.inicio || '';
+      document.getElementById('cust-final').value = c.final || '';
+      document.getElementById('cust-duracao').value = c.duracao || 'Plantão 24h';
+
+      const selServ = document.getElementById('cust-servidor-sel');
+      const opcoes = Array.from(selServ.options).map(o => o.value);
+      if (c.servidor && opcoes.includes(c.servidor)) {
+        selServ.value = c.servidor;
+        document.getElementById('cust-servidor').style.display = 'none';
+      } else if (c.servidor) {
+        selServ.value = 'Outro';
+        document.getElementById('cust-servidor').style.display = 'block';
+        document.getElementById('cust-servidor').value = c.servidor;
+      }
+
+      document.getElementById('cust-ini-qtd').value = c.inicial_qtd || '';
+      document.getElementById('cust-recebidos-qtd').value = c.recebidos_qtd ?? 0;
+      document.getElementById('cust-recebidos-nomes').value = c.recebidos_nomes || '';
+      document.getElementById('cust-audiencias').value = c.audiencias || '';
+      document.getElementById('cust-transf-qtd').value = c.transferencias_qtd ?? 0;
+      document.getElementById('cust-transf-nomes').value = c.transferencias_nomes || '';
+      document.getElementById('cust-final-qtd').value = c.final_qtd || '';
+
+      status.textContent = `✓ Dados salvos carregados (registrado em ${new Date(c.hora_registro).toLocaleString('pt-BR')})`;
+      status.style.color = 'var(--verde)';
+    } else {
+      status.textContent = 'Nenhum dado de custódia salvo ainda para esta data.';
+    }
+  } catch(e) {
+    status.textContent = '';
+  }
+}
+
+async function salvarCustodia() {
+  const btn = document.getElementById('btn-salvar-custodia');
+  const status = document.getElementById('cust-status');
+  const dataISO = document.getElementById('rel-data').value;
+  if (!dataISO) { alert('Selecione a Data do Relatório antes de salvar a custódia.'); return; }
+
+  const servidor = document.getElementById('cust-servidor-sel').value === 'Outro'
+    ? document.getElementById('cust-servidor').value
+    : document.getElementById('cust-servidor-sel').value;
+
+  const payload = {
+    data: dataISO,
+    inicio: document.getElementById('cust-inicio').value.trim() || null,
+    final: document.getElementById('cust-final').value.trim() || null,
+    duracao: document.getElementById('cust-duracao').value.trim() || 'Plantão 24h',
+    servidor: servidor || null,
+    inicial_qtd: document.getElementById('cust-ini-qtd').value.trim() || null,
+    recebidos_qtd: parseInt(document.getElementById('cust-recebidos-qtd').value) || 0,
+    recebidos_nomes: document.getElementById('cust-recebidos-nomes').value.trim() || null,
+    audiencias: document.getElementById('cust-audiencias').value.trim() || null,
+    transferencias_qtd: parseInt(document.getElementById('cust-transf-qtd').value) || 0,
+    transferencias_nomes: document.getElementById('cust-transf-nomes').value.trim() || null,
+    final_qtd: document.getElementById('cust-final-qtd').value.trim() || null
+  };
+
+  btn.disabled = true;
+  const txtOriginal = btn.textContent;
+  btn.textContent = '⏳ Salvando...';
+  status.textContent = '';
+
+  try {
+    const existente = await supa.get('custodia', `?data=eq.${dataISO}&select=id&limit=1`);
+    if (existente && existente.length > 0) {
+      await supa.patch('custodia', `id=eq.${existente[0].id}`, payload);
+    } else {
+      await supa.post('custodia', payload);
+    }
+    status.textContent = '✓ Custódia salva com sucesso!';
+    status.style.color = 'var(--verde)';
+  } catch(e) {
+    status.textContent = 'Erro ao salvar: ' + e.message;
+    status.style.color = 'var(--vermelho)';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = txtOriginal;
+  }
 }
 
 
