@@ -3186,7 +3186,7 @@ function montarTextoCICC(dados, dataISO) {
   linhas.push('*POLÍCIA CIVIL*');
   linhas.push('*15ªDSPC/PATOS*');
   linhas.push('');
-  linhas.push('*PRODUTIVIDADE DAS UNIDADES DA POLICIA CIVIL NA ÁREA DA 15ªDSPC/PATOS*');
+  linhas.push('*PRODUTIVIDADE DAS UNIDADES DA POLÍCIA CIVIL NA ÁREA DA 15ªDSPC/PATOS*');
   linhas.push('');
   linhas.push('*A) RESUMOS:*');
   linhas.push('');
@@ -3197,7 +3197,7 @@ function montarTextoCICC(dados, dataISO) {
 
   const polos = dados.plantao || {};
   const POLO_INFO = {
-    'Central - Patos': { letra: 'a', nome: 'CENTRAL DE POLICIA DE PATOS' },
+    'Central - Patos': { letra: 'a', nome: 'CENTRAL DE POLÍCIA DE PATOS' },
     'Teixeira': { letra: 'b', nome: 'PLANTÃO NA DELEGACIA DE TEIXEIRA' },
     'DHE': { letra: 'c', nome: 'PLANTÃO NA DELEGACIA DE HOMICÍDIOS E ENTORPECENTES DE PATOS - DHE' }
   };
@@ -3237,7 +3237,7 @@ function montarTextoCICC(dados, dataISO) {
     linhas.push('');
     linhas.push('Obs.: vide detalhamento no final deste relatório.');
     linhas.push('');
-    if (idxPolo < nomesPolosArr.length - 1) linhas.push(''); // espaço extra entre os polos
+    linhas.push(''); // espaço extra sempre, inclusive antes da seção II
   });
 
   // Custódia
@@ -3252,9 +3252,11 @@ function montarTextoCICC(dados, dataISO) {
     linhas.push(`Servidor Responsável pelo plantão: ${custServidor.toUpperCase()}`);
     linhas.push('');
   }
+  linhas.push('');
   linhas.push('*1) Situação Inicial da Carceragem:*');
   linhas.push('');
   linhas.push(`O plantão foi iniciado às ${custInicio || '08h00'}, com ${custIniQtd || '00 presos'} custodiado(s) nas dependências da carceragem.`);
+  linhas.push('');
   linhas.push('');
   linhas.push(`*2) Presos Recebidos Durante o Plantão: ${pad(custRecQtd)}*`);
   if (custRecNomes) {
@@ -3262,10 +3264,12 @@ function montarTextoCICC(dados, dataISO) {
     linhas.push(formatarNomes(custRecNomes));
   }
   linhas.push('');
+  linhas.push('');
   linhas.push('*3) Audiências de Custódia:*');
   linhas.push('');
   if (custAud) linhas.push(formatarNomes(custAud));
   else linhas.push('Nenhuma.');
+  linhas.push('');
   linhas.push('');
   linhas.push(`*4) Transferências para Unidades Prisionais: ${pad(custTransfQtd)}*`);
   if (custTransfNomes) {
@@ -3273,11 +3277,13 @@ function montarTextoCICC(dados, dataISO) {
     linhas.push(formatarNomes(custTransfNomes));
   }
   linhas.push('');
+  linhas.push('');
   linhas.push(`*5) Situação Final da Carceragem: ${custFinalQtd || '00 custodiados'}.*`);
   linhas.push('');
+  linhas.push(''); // espaço extra antes da seção III
 
   // Setor de B.O.
-  linhas.push('*III) PRODUTIVIDADE DO SETOR DE BOLETIM DE OCORRÊNCIA DA CENTRAL DE POLICIA (08h às 18h – SEG/SEX):*');
+  linhas.push('*III) PRODUTIVIDADE DO SETOR DE BOLETIM DE OCORRÊNCIA DA CENTRAL DE POLÍCIA (08h às 18h – SEG/SEX):*');
   linhas.push('');
   linhas.push(`*08h às 18h de ${dataFmt} (${diaSemana})*`);
   linhas.push('');
@@ -3286,6 +3292,7 @@ function montarTextoCICC(dados, dataISO) {
   linhas.push('');
   linhas.push('Obs.: vide detalhamento no final deste relatório.');
   linhas.push('');
+  linhas.push(''); // espaço extra antes da seção IV
 
   // Expediente
   linhas.push(`*IV) PRODUTIVIDADE DAS UNIDADES DURANTE O EXPEDIENTE NORMAL DE TRABALHO (08h às 18h - SEG/SEX):*`);
@@ -3313,15 +3320,17 @@ function montarTextoCICC(dados, dataISO) {
   let numExp = 1;
   nomesExpResumo.forEach(([k, nome]) => {
     const total = totaisExp[k] || 0;
-    if (total > 0) linhas.push(`${numExp++}) ${nome}: ${pad(total)}`);
+    if (total > 0) linhas.push(`${numExp++}) ${nome.toUpperCase()}: ${pad(total)}`);
   });
   linhas.push('');
   linhas.push('Obs.: vide detalhamento no final deste relatório.');
   linhas.push('');
+  linhas.push(''); // espaço extra antes da seção B
 
   // ===== SEÇÃO B — DETALHAMENTO =====
   linhas.push('*B) DETALHAMENTO DAS OCORRÊNCIAS:*');
   linhas.push('');
+  linhas.push(''); // espaço extra antes do primeiro item (I) do detalhamento
 
   // B-I — Plantão
   linhas.push('*I) PLANTÃO EXTRAORDINÁRIO*');
@@ -3408,7 +3417,8 @@ function montarTextoCICC(dados, dataISO) {
     linhas.push('');
   });
 
-  linhas.push('Assessoria de Estatística 15ªDSPC/Patos');
+  linhas.push('');
+  linhas.push('_Assessoria de Estatística 15ªDSPC/Patos_');
 
   return linhas.join('\n');
 }
