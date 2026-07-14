@@ -1822,33 +1822,39 @@ async function gerarAreaPeriodo(ini, fim) {
   linhas.push('*15ª Delegacia Seccional, com sede em Patos/PB (15ª/PATOS)*'); linhas.push('');
   linhas.push('*PRODUTIVIDADE DAS UNIDADES DURANTE O EXPEDIENTE NORMAL DE TRABALHO (Seg a Sex - 08h às 18h)*'); linhas.push('');
   linhas.push('*RELATÓRIO CONSOLIDADO — PERÍODO:*'); linhas.push('');
-  linhas.push(`*DATA: ${periodoFmt}*`); linhas.push('');
+  linhas.push(`*DATA: ${periodoFmt}*`); linhas.push(''); linhas.push('');
 
-  AREAS.forEach(area => {
+  AREAS.forEach((area, areaIdx) => {
     linhas.push(`*ÁREA ${area.num}*:`); linhas.push('');
     area.delegacias.forEach((del, idx) => {
       linhas.push(`*${LETRAS[idx]}) ${del.toUpperCase()}:*`); linhas.push('');
       const procs = exp[del];
-      if (!procs || !Object.keys(procs).length) { linhas.push('Sem ocorrências no período'); linhas.push(''); return; }
-      let temAlgo = false;
-      Object.entries(NOMES_PROC_AREA).forEach(([k, nome]) => {
-        const p = procs[k]; if (!p || !parseInt(p.total)) return; temAlgo = true;
-        const total = parseInt(p.total);
-        const det = p.linhas.filter(l => parseInt(l.quantidade) && l.crime).map(l => `${pad(parseInt(l.quantidade))} ${l.crime}${l.cidade && l.cidade !== del ? ' ('+l.cidade+')' : ''}`);
-        linhas.push(det.length ? `${nome}: ${pad(total)} (${det.join('; ')})` : `${nome}: ${pad(total)}`);
-        linhas.push('');
-      });
-      if (!temAlgo) { linhas.push('Sem ocorrências no período'); linhas.push(''); }
+      if (!procs || !Object.keys(procs).length) {
+        linhas.push('Sem ocorrências no período');
+      } else {
+        let temAlgo = false;
+        Object.entries(NOMES_PROC_AREA).forEach(([k, nome]) => {
+          const p = procs[k]; if (!p || !parseInt(p.total)) return; temAlgo = true;
+          const total = parseInt(p.total);
+          const det = p.linhas.filter(l => parseInt(l.quantidade) && l.crime).map(l => `${pad(parseInt(l.quantidade))} ${l.crime}${l.cidade && l.cidade !== del ? ' ('+l.cidade+')' : ''}`);
+          linhas.push(det.length ? `${nome}: ${pad(total)} (${det.join('; ')})` : `${nome}: ${pad(total)}`);
+          linhas.push('');
+        });
+        if (!temAlgo) linhas.push('Sem ocorrências no período');
+      }
+      if (linhas[linhas.length - 1] === '') linhas.pop();
+      linhas.push('');
+      linhas.push(''); // sempre dobra o espaço, inclusive antes da assinatura final
     });
   });
-  linhas.push('Assessoria de Estatística 15aDSPC/Patos');
+  linhas.push('_Assessoria de Estatística 15aDSPC/Patos_');
 
   // Resumo
   const totaisGerais = {};
   Object.values(exp).forEach(procs => Object.entries(procs).forEach(([k,v]) => { totaisGerais[k] = (totaisGerais[k]||0) + (parseInt(v.total)||0); }));
   const resumoLinhas = ['*POLÍCIA CIVIL*','*15ª DSPC/PATOS*','',`*RESUMO DO PERÍODO: ${periodoFmt}*`,''];
   Object.entries(NOMES_PROC_AREA).forEach(([k,nome]) => { if (totaisGerais[k] > 0) resumoLinhas.push(`${nome}: ${pad(totaisGerais[k])}`); });
-  resumoLinhas.push('','Assessoria de Estatística 15aDSPC/Patos');
+  resumoLinhas.push('','','_Assessoria de Estatística 15aDSPC/Patos_');
 
   // Dados brutos para dashboard
   const registros = rows.map(r => ({ procedimento: r.procedimento, quantidade: r.quantidade, delegacia: r.delegacia, data: r.data, crime: r.crime, cidade: r.cidade, escrivao: r.escrivao, horaRegistro: r.hora_registro }));
@@ -2929,8 +2935,9 @@ function montarTextoArea(dados, dataISO) {
   linhas.push('');
   linhas.push(`*DATA: ${dataFmt}, ${diaSemana}, 08h às 18h.*`);
   linhas.push('');
+  linhas.push('');
 
-  AREAS.forEach(area => {
+  AREAS.forEach((area, areaIdx) => {
     linhas.push(`*ÁREA ${area.num}*:`);
     linhas.push('');
 
@@ -2942,41 +2949,43 @@ function montarTextoArea(dados, dataISO) {
       const procs = exp[del];
       if (!procs || Object.keys(procs).length === 0) {
         linhas.push('Sem ocorrências');
-        linhas.push('');
-        return;
+      } else {
+        let temAlgo = false;
+        Object.entries(NOMES_PROC_AREA).forEach(([k, nome]) => {
+          const p = procs[k];
+          if (!p || parseInt(p.total) === 0) return;
+          temAlgo = true;
+          const total = parseInt(p.total);
+
+          const detalhes = [];
+          if (p.linhas && p.linhas.length > 0) {
+            p.linhas.forEach(l => {
+              const qtd = parseInt(l.quantidade) || 0;
+              if (qtd === 0) return;
+              const crime = l.crime || l['descrição'] || l['tipo (depoimento/declaração/interrogatório)'] || l['tipo de crime'] || l['nome da operação'] || '';
+              const cidade = l.cidade || '';
+              if (crime) detalhes.push(`${pad(qtd)} ${crime}${cidade && cidade !== del ? ' (' + cidade + ')' : ''}`);
+            });
+          }
+
+          if (detalhes.length > 0) {
+            linhas.push(`${nome}: ${pad(total)} (${detalhes.join('; ')})`);
+          } else {
+            linhas.push(`${nome}: ${pad(total)}`);
+          }
+          linhas.push('');
+        });
+
+        if (!temAlgo) linhas.push('Sem ocorrências');
       }
 
-      let temAlgo = false;
-      Object.entries(NOMES_PROC_AREA).forEach(([k, nome]) => {
-        const p = procs[k];
-        if (!p || parseInt(p.total) === 0) return;
-        temAlgo = true;
-        const total = parseInt(p.total);
-
-        const detalhes = [];
-        if (p.linhas && p.linhas.length > 0) {
-          p.linhas.forEach(l => {
-            const qtd = parseInt(l.quantidade) || 0;
-            if (qtd === 0) return;
-            const crime = l.crime || l['descrição'] || l['tipo (depoimento/declaração/interrogatório)'] || l['tipo de crime'] || l['nome da operação'] || '';
-            const cidade = l.cidade || '';
-            if (crime) detalhes.push(`${pad(qtd)} ${crime}${cidade && cidade !== del ? ' (' + cidade + ')' : ''}`);
-          });
-        }
-
-        if (detalhes.length > 0) {
-          linhas.push(`${nome}: ${pad(total)} (${detalhes.join('; ')})`);
-        } else {
-          linhas.push(`${nome}: ${pad(total)}`);
-        }
-        linhas.push('');
-      });
-
-      if (!temAlgo) { linhas.push('Sem ocorrências'); linhas.push(''); }
+      if (linhas[linhas.length - 1] === '') linhas.pop(); // evita blank duplicado antes do separador
+      linhas.push('');
+      linhas.push(''); // sempre dobra o espaço, inclusive antes da assinatura final
     });
   });
 
-  linhas.push('Assessoria de Estatística 15aDSPC/Patos');
+  linhas.push('_Assessoria de Estatística 15aDSPC/Patos_');
   return linhas.join('\n');
 }
 
