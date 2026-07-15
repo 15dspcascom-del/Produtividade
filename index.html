@@ -576,6 +576,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 .chip-btn:hover { background:var(--cinza); }
 .chip-btn.chip-ativo { background:var(--azul); color:white; font-weight:600; }
 .chip-btn.chip-outros { font-style:italic; color:var(--texto-leve); }
+.campo-confirmar input, input.campo-confirmar { border-color:var(--vermelho) !important; background:rgba(176,32,32,0.06) !important; box-shadow:0 0 0 2px rgba(176,32,32,0.12); }
 .modal-edicao-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center; }
 .modal-edicao-overlay.aberto { display:flex; }
 .modal-edicao { background:white; border-radius:12px; padding:28px; width:92%; max-width:480px; max-height:88vh; overflow-y:auto; }
@@ -594,6 +595,8 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 @media (max-width:768px) { .consulta-filtros { grid-template-columns: 1fr 1fr; } .kpi-grid { grid-template-columns: 1fr 1fr; } }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -813,15 +816,20 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <strong style="font-size:16px;color:var(--azul);font-family:'Rajdhani',sans-serif;letter-spacing:0.5px;">📊 DASHBOARD POR ÁREA</strong>
           <span id="dash-periodo-label" style="font-size:12px;color:var(--texto-leve);font-weight:600;"></span>
         </div>
-        <!-- KPIs gerais -->
-        <div class="dashboard-kpis" id="dash-kpis" style="margin-bottom:24px;"></div>
-        <!-- Gráfico geral de procedimentos -->
-        <div class="dashboard-card" style="margin-bottom:24px;">
-          <div class="dashboard-card-titulo">📈 Evolução diária de registros no período</div>
-          <canvas id="chart-linha" height="80"></canvas>
+        <div style="margin-bottom:18px;">
+          <button class="btn-exportar" onclick="salvarDashboardPDF()" id="btn-dashboard-pdf" style="background:#6a0dad;">📄 Salvar Dashboard em PDF</button>
         </div>
-        <!-- Cards por área -->
-        <div id="dash-areas-corpo"></div>
+        <div id="dash-conteudo-pdf" style="background:var(--branco);">
+          <!-- KPIs gerais -->
+          <div class="dashboard-kpis" id="dash-kpis" style="margin-bottom:24px;"></div>
+          <!-- Gráfico geral de procedimentos -->
+          <div class="dashboard-card" style="margin-bottom:24px;">
+            <div class="dashboard-card-titulo">📈 Evolução diária de registros no período</div>
+            <canvas id="chart-linha" height="80"></canvas>
+          </div>
+          <!-- Cards por área -->
+          <div id="dash-areas-corpo"></div>
+        </div>
       </div>
     </div>
 
@@ -935,6 +943,19 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
       <div class="presenca-tabs">
         <button class="presenca-tab ativa" id="tab-hoje" onclick="mudarTabPresenca('hoje')">Hoje</button>
         <button class="presenca-tab" id="tab-ontem" onclick="mudarTabPresenca('ontem')">Ontem</button>
+      </div>
+
+      <div class="presenca-tabs" style="margin-top:8px;align-items:center;flex-wrap:wrap;gap:8px;">
+        <label style="font-size:11px;font-weight:700;color:var(--texto-leve);text-transform:uppercase;letter-spacing:0.5px;">Período:</label>
+        <select id="presenca-periodo-sel" onchange="mudarPeriodoPresenca()" style="padding:7px 10px;border:1.5px solid var(--cinza-borda);border-radius:6px;font-size:12px;font-family:'Inter',sans-serif;background:white;">
+          <option value="dia">Dia (usar Hoje/Ontem acima)</option>
+          <option value="7dias">Últimos 7 dias</option>
+          <option value="mes">Este mês</option>
+          <option value="personalizado">Personalizado...</option>
+        </select>
+        <input type="date" id="presenca-periodo-de" style="display:none;padding:7px;border:1.5px solid var(--cinza-borda);border-radius:6px;font-size:12px;" onchange="carregarPresenca()">
+        <span id="presenca-periodo-sep" style="display:none;font-size:12px;color:var(--texto-leve);">até</span>
+        <input type="date" id="presenca-periodo-ate" style="display:none;padding:7px;border:1.5px solid var(--cinza-borda);border-radius:6px;font-size:12px;" onchange="carregarPresenca()">
       </div>
 
       <div class="presenca-tabs" style="margin-top:8px;">
@@ -1093,6 +1114,18 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
       </div>
     </div>
 
+    <!-- Modal de Confirmação de Início do Plantão -->
+    <div class="modal-edicao-overlay" id="overlay-confirmar-plantao">
+      <div class="modal-edicao" style="max-width:400px;text-align:center;">
+        <h3 style="color:var(--vermelho);">⚠️ Confirme o Início do Plantão</h3>
+        <p id="modal-confirmar-plantao-texto" style="font-size:14px;color:var(--texto);margin-bottom:22px;"></p>
+        <div class="modal-edicao-acoes">
+          <button onclick="confirmarPlantaoModalCorrigir()" style="background:var(--cinza);color:var(--texto);">✏️ Corrigir</button>
+          <button onclick="confirmarPlantaoModalSim()" style="background:var(--verde);color:white;">✓ Confirmar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- FORMULÁRIO -->
     <div id="tela-formulario" style="display:none; flex-direction:column; padding:28px 32px; max-width:920px; margin:0 auto;">
       <div class="form-header">
@@ -1123,7 +1156,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         </div>
       </div>
 
-      <div class="form-meta" id="meta-plantao" style="display:none; grid-template-columns: repeat(4, 1fr);">
+      <div class="form-meta" id="meta-plantao" style="display:none; grid-template-columns: repeat(3, 1fr);">
         <div class="fm-item">
           <label>Local do Plantão</label>
           <select id="plantao-local" onchange="togglePoloOutro()">
@@ -1143,6 +1176,15 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <input type="time" id="plantao-hora-inicio" value="08:00" />
         </div>
         <div class="fm-item">
+          <label>Duração do Plantão</label>
+          <select id="plantao-duracao-sel" onchange="toggleDuracaoOutro(); calcularFimPlantao();">
+            <option value="24">24 horas</option>
+            <option value="18">18 horas</option>
+            <option value="outro">Outro</option>
+          </select>
+          <input type="number" id="plantao-duracao-outro" placeholder="Nº de horas" min="1" style="display:none;margin-top:6px;" oninput="calcularFimPlantao()" />
+        </div>
+        <div class="fm-item">
           <label>Final — Data</label>
           <input type="date" id="plantao-data-fim" />
         </div>
@@ -1154,6 +1196,10 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <label>Escrivão</label>
           <input type="text" id="meta-escrivao-plantao" readonly />
         </div>
+      </div>
+      <div id="aviso-confirmar-plantao" style="display:none;align-items:center;gap:12px;background:rgba(176,32,32,0.08);border:1.5px solid var(--vermelho);border-radius:8px;padding:12px 16px;margin-bottom:16px;">
+        <span style="font-size:13px;color:var(--vermelho);flex:1;">⚠️ Confirme a <strong>data e hora de início</strong> do plantão antes de preencher os procedimentos.</span>
+        <button type="button" onclick="confirmarInicioPlantaoPrimeiraVez()" style="background:var(--vermelho);color:white;border:none;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">✓ Confirmar Início</button>
       </div>
       <div id="campos-container"></div>
       <div class="form-acoes">
@@ -1447,6 +1493,10 @@ function expedienteStatusEnvio(dataSelecionada) {
 }
 
 async function enviar() {
+  if (modalidadeAtual === 'plantao' && !plantaoConfirmadoNestaSessao) {
+    alert('Confirme a data e hora de início do plantão antes de enviar o registro.');
+    return;
+  }
   const dados = coletarDados();
   const erros = validarCampos(dados);
   if (erros.length > 0) {
@@ -1495,7 +1545,8 @@ async function enviar() {
             quantidade: qtd,
             crime: item.crime || item['tipo (depoimento/declaração/interrogatório)'] || item['tipo de crime'] || item['descrição'] || item['nome da operação'] || null,
             cidade: item.cidade || null,
-            turno: dados.turno || null
+            turno: dados.turno || null,
+            duracao: dados.duracao || null
           });
         });
       });
@@ -1523,6 +1574,10 @@ async function enviar() {
 }
 
 async function enviarSemOcorrencias() {
+  if (modalidadeAtual === 'plantao' && !plantaoConfirmadoNestaSessao) {
+    alert('Confirme a data e hora de início do plantão antes de enviar o registro.');
+    return;
+  }
   if (!confirm('Confirmar envio de "Sem Ocorrências"?')) return;
   const btn = document.getElementById('btn-sem-ocor');
   btn.disabled = true; btn.textContent = 'Enviando...';
@@ -1684,16 +1739,38 @@ async function carregarPresenca() {
   document.getElementById('presenca-loading').style.display = 'block';
   document.getElementById('presenca-corpo').style.display = 'none';
 
+  const fmtISO = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const agora = new Date();
-  const dataAlvo = new Date(agora);
-  if (diaPresenca === 'ontem') dataAlvo.setDate(dataAlvo.getDate() - 1);
-  const dataStr = `${dataAlvo.getFullYear()}-${String(dataAlvo.getMonth()+1).padStart(2,'0')}-${String(dataAlvo.getDate()).padStart(2,'0')}`;
+  const periodoSel = document.getElementById('presenca-periodo-sel')?.value || 'dia';
+
+  let dataIni, dataFim;
+  if (periodoSel === '7dias') {
+    const ini = new Date(agora); ini.setDate(ini.getDate() - 6);
+    dataIni = fmtISO(ini); dataFim = fmtISO(agora);
+  } else if (periodoSel === 'mes') {
+    const ini = new Date(agora.getFullYear(), agora.getMonth(), 1);
+    dataIni = fmtISO(ini); dataFim = fmtISO(agora);
+  } else if (periodoSel === 'personalizado') {
+    dataIni = document.getElementById('presenca-periodo-de').value;
+    dataFim = document.getElementById('presenca-periodo-ate').value;
+    if (!dataIni || !dataFim) {
+      document.getElementById('presenca-loading').style.display = 'none';
+      document.getElementById('presenca-corpo').style.display = 'block';
+      return;
+    }
+  } else {
+    const dataAlvo = new Date(agora);
+    if (diaPresenca === 'ontem') dataAlvo.setDate(dataAlvo.getDate() - 1);
+    dataIni = dataFim = fmtISO(dataAlvo);
+  }
+
+  const filtroQS = dataIni === dataFim ? `data=eq.${dataIni}` : `data=gte.${dataIni}&data=lte.${dataFim}`;
 
   try {
     const [escrivaes, regsExp, regsBO] = await Promise.all([
       supa.get('escrivaes', '?select=*&order=nome'),
-      supa.get('registros', `?data=eq.${dataStr}&select=escrivao,modalidade,delegacia`),
-      supa.get('registros_bo', `?data=eq.${dataStr}&select=escrivao,delegacia`)
+      supa.get('registros', `?${filtroQS}&select=escrivao,modalidade,delegacia,data`),
+      supa.get('registros_bo', `?${filtroQS}&select=escrivao,delegacia,data`)
     ]);
 
     const regsTodos = [...regsExp, ...regsBO.map(r => ({...r, modalidade:'bo'}))];
@@ -1703,7 +1780,7 @@ async function carregarPresenca() {
       envios[r.escrivao].modalidades.add(r.modalidade);
     });
 
-    renderPresenca(escrivaes, envios, dataStr, regsTodos);
+    renderPresenca(escrivaes, envios, dataIni, regsTodos);
   } catch(e) {
     document.getElementById('presenca-loading').textContent = 'Erro ao carregar.';
   }
@@ -1732,7 +1809,7 @@ async function buscarDadosCICC(data) {
       procedimentos[r.procedimento].total += r.quantidade;
       procedimentos[r.procedimento].linhas.push({ quantidade: String(r.quantidade), crime: r.crime || '', cidade: r.cidade || '' });
     });
-    plantao[polo] = { horario: linhasPolo[0]?.horario || '', procedimentos, semOcorrencias: false };
+    plantao[polo] = { horario: linhasPolo[0]?.horario || '', duracao: linhasPolo[0]?.duracao || 'Plantão 24h', procedimentos, semOcorrencias: false };
   });
 
   // BO
@@ -1985,6 +2062,7 @@ const CAMPOS_BO = [
 // ESTADO
 // ============================================================
 let usuarioLogado = null; // { nome, delegacia, isAdmin }
+let plantaoConfirmadoNestaSessao = false; // controla se já confirmou início do plantão nesta sessão de login
 let modalidadeAtual = '';
 let linhaCounters = {};
 
@@ -2062,6 +2140,7 @@ function _abrirFormularioReal(modalidade) {
       togglePoloOutro();
     }
     calcularFimPlantao();
+    solicitarConfirmacaoPlantao();
   } else {
     document.getElementById('meta-padrao').style.display = 'grid';
     document.getElementById('meta-plantao').style.display = 'none';
@@ -2076,6 +2155,8 @@ function _abrirFormularioReal(modalidade) {
         document.getElementById('meta-turno').value = 'Tarde';
       }
     }
+    document.getElementById('aviso-confirmar-plantao').style.display = 'none';
+    bloquearProcedimentosPlantao(false);
   }
 
   const campos = modalidade === 'expediente' ? CAMPOS_EXP : modalidade === 'plantao' ? CAMPOS_PLA : CAMPOS_BO;
@@ -2133,6 +2214,7 @@ function mostrarEscolhaDelegacia(delegacias) {
 
 function sair() {
   usuarioLogado = null;
+  plantaoConfirmadoNestaSessao = false;
   document.getElementById('app').style.display = 'none';
   document.getElementById('tela-login').classList.add('ativa');
   document.getElementById('login-nome').value = '';
@@ -2253,12 +2335,94 @@ function getPoloPlantao() {
   return sel.value;
 }
 
+// ============================================================
+// CONFIRMAÇÃO OBRIGATÓRIA DE INÍCIO DO PLANTÃO
+// ============================================================
+function bloquearProcedimentosPlantao(bloquear) {
+  const cont = document.getElementById('campos-container');
+  if (cont) {
+    cont.style.opacity = bloquear ? '0.35' : '1';
+    cont.style.pointerEvents = bloquear ? 'none' : 'auto';
+  }
+  const btnEnviar = document.getElementById('btn-enviar');
+  const btnSemOcor = document.getElementById('btn-sem-ocor');
+  if (btnEnviar) btnEnviar.disabled = bloquear;
+  if (btnSemOcor) btnSemOcor.disabled = bloquear;
+}
+
+function solicitarConfirmacaoPlantao() {
+  if (!plantaoConfirmadoNestaSessao) {
+    // Primeira vez na sessão: destaca os campos e exige confirmação explícita
+    document.getElementById('plantao-data-inicio').classList.add('campo-confirmar');
+    document.getElementById('plantao-hora-inicio').classList.add('campo-confirmar');
+    document.getElementById('aviso-confirmar-plantao').style.display = 'flex';
+    bloquearProcedimentosPlantao(true);
+  } else {
+    // Próximos registros: pede confirmação via modal
+    abrirModalConfirmarPlantao();
+  }
+}
+
+function confirmarInicioPlantaoPrimeiraVez() {
+  plantaoConfirmadoNestaSessao = true;
+  document.getElementById('plantao-data-inicio').classList.remove('campo-confirmar');
+  document.getElementById('plantao-hora-inicio').classList.remove('campo-confirmar');
+  document.getElementById('aviso-confirmar-plantao').style.display = 'none';
+  bloquearProcedimentosPlantao(false);
+}
+
+function abrirModalConfirmarPlantao() {
+  const dataInicio = document.getElementById('plantao-data-inicio').value;
+  const horaInicio = document.getElementById('plantao-hora-inicio').value;
+  document.getElementById('modal-confirmar-plantao-texto').textContent =
+    `Confirma que este plantão começou às ${horaInicio} do dia ${formatarDataBR(dataInicio)}?`;
+  document.getElementById('overlay-confirmar-plantao').classList.add('aberto');
+  bloquearProcedimentosPlantao(true);
+}
+
+function confirmarPlantaoModalSim() {
+  document.getElementById('overlay-confirmar-plantao').classList.remove('aberto');
+  bloquearProcedimentosPlantao(false);
+}
+
+function confirmarPlantaoModalCorrigir() {
+  document.getElementById('overlay-confirmar-plantao').classList.remove('aberto');
+  document.getElementById('plantao-data-inicio').classList.add('campo-confirmar');
+  document.getElementById('plantao-hora-inicio').classList.add('campo-confirmar');
+  document.getElementById('aviso-confirmar-plantao').style.display = 'flex';
+  document.getElementById('plantao-data-inicio').focus();
+  bloquearProcedimentosPlantao(true);
+}
+
+function toggleDuracaoOutro() {
+  const sel = document.getElementById('plantao-duracao-sel');
+  document.getElementById('plantao-duracao-outro').style.display = sel.value === 'outro' ? 'block' : 'none';
+}
+
+function getDuracaoPlantaoHoras() {
+  const sel = document.getElementById('plantao-duracao-sel');
+  if (!sel) return 24;
+  if (sel.value === 'outro') return parseInt(document.getElementById('plantao-duracao-outro').value) || 24;
+  return parseInt(sel.value) || 24;
+}
+
+function getDuracaoPlantaoTexto() {
+  const sel = document.getElementById('plantao-duracao-sel');
+  if (!sel) return 'Plantão 24h';
+  if (sel.value === 'outro') {
+    const h = parseInt(document.getElementById('plantao-duracao-outro').value) || 24;
+    return `Plantão ${h}h`;
+  }
+  return `Plantão ${sel.value}h`;
+}
+
 function calcularFimPlantao() {
   const dataInicio = document.getElementById('plantao-data-inicio').value;
   const horaInicio = document.getElementById('plantao-hora-inicio').value;
   if (!dataInicio || !horaInicio) return;
+  const horas = getDuracaoPlantaoHoras();
   const inicio = new Date(`${dataInicio}T${horaInicio}`);
-  const fim = new Date(inicio.getTime() + 24 * 60 * 60 * 1000);
+  const fim = new Date(inicio.getTime() + horas * 60 * 60 * 1000);
   document.getElementById('plantao-data-fim').value = `${fim.getFullYear()}-${String(fim.getMonth()+1).padStart(2,'0')}-${String(fim.getDate()).padStart(2,'0')}`;
   document.getElementById('plantao-hora-fim').value = `${String(fim.getHours()).padStart(2,'0')}:${String(fim.getMinutes()).padStart(2,'0')}`;
 }
@@ -2502,13 +2666,14 @@ function coletarDados() {
     const dataFim = document.getElementById('plantao-data-fim').value;
     const horaFim = document.getElementById('plantao-hora-fim').value;
     const localPlantao = getPoloPlantao();
-    const fmt = (d) => { const [y,m,dd] = d.split('-'); return `${dd}/${m}`; };
+    const fmt = (d) => { const [y,m,dd] = d.split('-'); return `${dd}/${m} (${getDiaSemana(d)})`; };
     resultado = {
       modalidade: modalidadeAtual,
       delegacia: localPlantao,
       escrivao: usuarioLogado.nome,
       data: dataInicio,
       horario: `Início: ${horaInicio}h de ${fmt(dataInicio)} | Final: ${horaFim}h de ${fmt(dataFim)}`,
+      duracao: getDuracaoPlantaoTexto(),
       turno: '',
       campos: {}
     };
@@ -3005,6 +3170,74 @@ function copiarResumoArea() {
 
 let _chartsInstances = {};
 
+async function salvarDashboardPDF() {
+  const btn = document.getElementById('btn-dashboard-pdf');
+  const txtOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando PDF...';
+
+  try {
+    const elemento = document.getElementById('dash-conteudo-pdf');
+    const canvas = await html2canvas(elemento, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const imgData = canvas.toDataURL('image/png');
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const larguraPagina = pdf.internal.pageSize.getWidth();
+    const alturaPagina = pdf.internal.pageSize.getHeight();
+    const margem = 10;
+    const larguraUtil = larguraPagina - margem * 2;
+    const alturaImg = (canvas.height * larguraUtil) / canvas.width;
+
+    // Cabeçalho
+    pdf.setFontSize(13);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('15ª DSPC/PATOS — Dashboard de Produtividade por Área', margem, margem + 4);
+    pdf.setFontSize(10);
+    pdf.setFont(undefined, 'normal');
+    const periodo = document.getElementById('dash-periodo-label').textContent || '';
+    pdf.text(periodo, margem, margem + 10);
+
+    let yAtual = margem + 16;
+    let alturaRestante = alturaImg;
+    let origemY = 0;
+    const alturaUtilPagina = alturaPagina - margem * 2 - 16;
+
+    if (alturaImg <= alturaUtilPagina) {
+      pdf.addImage(imgData, 'PNG', margem, yAtual, larguraUtil, alturaImg);
+    } else {
+      // Quebrar a imagem em múltiplas páginas
+      const escala = canvas.width / larguraUtil;
+      let fatiaAlturaPx = alturaUtilPagina * escala;
+      let offsetPx = 0;
+      let primeira = true;
+      while (offsetPx < canvas.height) {
+        const alturaFatia = Math.min(fatiaAlturaPx, canvas.height - offsetPx);
+        const canvasFatia = document.createElement('canvas');
+        canvasFatia.width = canvas.width;
+        canvasFatia.height = alturaFatia;
+        const ctx = canvasFatia.getContext('2d');
+        ctx.drawImage(canvas, 0, offsetPx, canvas.width, alturaFatia, 0, 0, canvas.width, alturaFatia);
+        const imgFatia = canvasFatia.toDataURL('image/png');
+        if (!primeira) pdf.addPage();
+        const alturaFatiaMm = (alturaFatia * larguraUtil) / canvas.width;
+        pdf.addImage(imgFatia, 'PNG', margem, primeira ? yAtual : margem, larguraUtil, alturaFatiaMm);
+        offsetPx += alturaFatia;
+        primeira = false;
+      }
+    }
+
+    const agora = new Date();
+    const carimbo = `${agora.getFullYear()}${String(agora.getMonth()+1).padStart(2,'0')}${String(agora.getDate()).padStart(2,'0')}_${String(agora.getHours()).padStart(2,'0')}${String(agora.getMinutes()).padStart(2,'0')}`;
+    pdf.save(`dashboard_area_${carimbo}.pdf`);
+  } catch(e) {
+    alert('Erro ao gerar PDF: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = txtOriginal;
+  }
+}
+
 function gerarDashboardArea() {
   const dados = window._dadosDashboard;
   if (!dados) return;
@@ -3284,6 +3517,7 @@ function montarTextoCICC(dados, dataISO) {
   let linhas = [];
 
   linhas.push('*POLÍCIA CIVIL*');
+  linhas.push('');
   linhas.push('*15ªDSPC/PATOS*');
   linhas.push('');
   linhas.push('*PRODUTIVIDADE DAS UNIDADES DA POLÍCIA CIVIL NA ÁREA DA 15ªDSPC/PATOS*');
@@ -3298,8 +3532,8 @@ function montarTextoCICC(dados, dataISO) {
   const polos = dados.plantao || {};
   const POLO_INFO = {
     'Central - Patos': { letra: 'a', nome: 'CENTRAL DE POLÍCIA DE PATOS' },
-    'Teixeira': { letra: 'b', nome: 'PLANTÃO NA DELEGACIA DE TEIXEIRA' },
-    'DHE': { letra: 'c', nome: 'PLANTÃO NA DELEGACIA DE HOMICÍDIOS E ENTORPECENTES DE PATOS - DHE' }
+    'DHE': { letra: 'b', nome: 'PLANTÃO NA DELEGACIA DE HOMICÍDIOS E ENTORPECENTES DE PATOS - DHE' },
+    'Teixeira': { letra: 'c', nome: 'PLANTÃO NA DELEGACIA DE TEIXEIRA' }
   };
   const nomesPolosArr = Object.keys(POLO_INFO);
 
@@ -3438,7 +3672,13 @@ function montarTextoCICC(dados, dataISO) {
   linhas.push('*I) PLANTÃO EXTRAORDINÁRIO*');
   linhas.push('');
 
-  nomesPolosArr.forEach((polo, idxPolo) => {
+  const polosComConteudo = nomesPolosArr.filter(polo => {
+    if (polo === 'Central - Patos') return true; // Central sempre aparece no detalhamento
+    const reg = polos[polo];
+    return reg && !reg.semOcorrencias;
+  });
+
+  polosComConteudo.forEach((polo, idxPolo) => {
     const { letra, nome } = POLO_INFO[polo];
     const reg = polos[polo];
     const inicio = reg?.horario?.split('|')[0]?.replace('Início:','').trim() || '';
@@ -3474,7 +3714,7 @@ function montarTextoCICC(dados, dataISO) {
         }
       });
     }
-    if (idxPolo < nomesPolosArr.length - 1) linhas.push(''); // espaço extra entre os polos
+    if (idxPolo < polosComConteudo.length - 1) linhas.push(''); // espaço extra entre os polos
   });
 
   // B-II — Setor de B.O.
@@ -3559,6 +3799,11 @@ async function iniciarPresenca() {
   diaPresenca = 'hoje';
   document.getElementById('tab-hoje').classList.add('ativa');
   document.getElementById('tab-ontem').classList.remove('ativa');
+  const selPeriodo = document.getElementById('presenca-periodo-sel');
+  if (selPeriodo) selPeriodo.value = 'dia';
+  document.getElementById('presenca-periodo-de').style.display = 'none';
+  document.getElementById('presenca-periodo-ate').style.display = 'none';
+  document.getElementById('presenca-periodo-sep').style.display = 'none';
   await carregarPresenca();
 }
 
@@ -3566,6 +3811,35 @@ function mudarTabPresenca(dia) {
   diaPresenca = dia;
   document.getElementById('tab-hoje').classList.toggle('ativa', dia === 'hoje');
   document.getElementById('tab-ontem').classList.toggle('ativa', dia === 'ontem');
+  // Selecionar um dia único nas abas volta o filtro de período para "Dia"
+  const selPeriodo = document.getElementById('presenca-periodo-sel');
+  if (selPeriodo && selPeriodo.value !== 'dia') {
+    selPeriodo.value = 'dia';
+    mudarPeriodoPresenca();
+    return;
+  }
+  carregarPresenca();
+}
+
+function mudarPeriodoPresenca() {
+  const sel = document.getElementById('presenca-periodo-sel').value;
+  const de = document.getElementById('presenca-periodo-de');
+  const ate = document.getElementById('presenca-periodo-ate');
+  const sep = document.getElementById('presenca-periodo-sep');
+  const ehPersonalizado = sel === 'personalizado';
+  de.style.display = ehPersonalizado ? 'inline-block' : 'none';
+  ate.style.display = ehPersonalizado ? 'inline-block' : 'none';
+  sep.style.display = ehPersonalizado ? 'inline' : 'none';
+  document.getElementById('tab-hoje').style.opacity = sel === 'dia' ? '1' : '0.4';
+  document.getElementById('tab-ontem').style.opacity = sel === 'dia' ? '1' : '0.4';
+
+  if (ehPersonalizado && (!de.value || !ate.value)) {
+    const fmtISO = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const hoje = new Date();
+    const seteDiasAtras = new Date(hoje); seteDiasAtras.setDate(hoje.getDate() - 6);
+    de.value = de.value || fmtISO(seteDiasAtras);
+    ate.value = ate.value || fmtISO(hoje);
+  }
   carregarPresenca();
 }
 
