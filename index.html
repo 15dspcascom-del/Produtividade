@@ -586,12 +586,12 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 .modal-edicao .fm-item input, .modal-edicao .fm-item select { width:100%; padding:9px 10px; border:1.5px solid var(--cinza-borda); border-radius:7px; font-size:13px; font-family:'Inter',sans-serif; }
 .modal-edicao-acoes { display:flex; gap:10px; margin-top:20px; }
 .modal-edicao-acoes button { flex:1; padding:11px; border-radius:8px; border:none; font-size:13px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; }
-.consulta-tabela { width: 100%; border-collapse: collapse; font-size: 12px; }
+.consulta-tabela { width: 100%; min-width: 1100px; border-collapse: collapse; font-size: 12px; }
 .consulta-tabela thead { background: var(--azul); color: white; }
 .consulta-tabela th { padding: 10px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; white-space: nowrap; }
 .consulta-tabela tbody tr { border-bottom: 1px solid var(--cinza-borda); }
 .consulta-tabela tbody tr:hover { background: rgba(10,22,40,0.03); }
-.consulta-tabela td { padding: 9px 14px; color: var(--texto); }
+.consulta-tabela td { padding: 9px 14px; color: var(--texto); vertical-align: top; }
 @media (max-width:768px) { .consulta-filtros { grid-template-columns: 1fr 1fr; } .kpi-grid { grid-template-columns: 1fr 1fr; } }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3484,6 +3484,16 @@ async function salvarCustodia() {
 }
 
 
+function completarDiaSemana(textoData, anoReferencia) {
+  if (!textoData) return textoData;
+  if (/\(.+-feira\)|\(domingo\)|\(sábado\)/i.test(textoData)) return textoData; // já contém o dia da semana
+  const m = textoData.match(/(\d{2})\/(\d{2})/);
+  if (!m) return textoData;
+  const [, ddStr, mmStr] = m;
+  const iso = `${anoReferencia}-${mmStr}-${ddStr}`;
+  return `${textoData} (${getDiaSemana(iso)})`;
+}
+
 function montarTextoCICC(dados, dataISO) {
   const [ano, mes, dia] = dataISO.split('-');
   const dataFmt = `${dia}/${mes}/${ano}`;
@@ -3540,8 +3550,10 @@ function montarTextoCICC(dados, dataISO) {
   nomesPolosArr.forEach((polo, idxPolo) => {
     const { letra, nome } = POLO_INFO[polo];
     const reg = polos[polo];
-    const inicio = reg?.horario?.split('|')[0]?.replace('Início:','').trim() || '';
-    const fim = reg?.horario?.split('|')[1]?.replace('Final:','').trim() || '';
+    let inicio = reg?.horario?.split('|')[0]?.replace('Início:','').trim() || '';
+    let fim = reg?.horario?.split('|')[1]?.replace('Final:','').trim() || '';
+    inicio = completarDiaSemana(inicio, ano);
+    fim = completarDiaSemana(fim, ano);
     if (idxPolo === 0 && inicio) {
       linhas.push(`*INÍCIO: ${inicio}*`);
       linhas.push(`*TÉRMINO: ${fim}*`);
@@ -3681,8 +3693,10 @@ function montarTextoCICC(dados, dataISO) {
   polosComConteudo.forEach((polo, idxPolo) => {
     const { letra, nome } = POLO_INFO[polo];
     const reg = polos[polo];
-    const inicio = reg?.horario?.split('|')[0]?.replace('Início:','').trim() || '';
-    const fim = reg?.horario?.split('|')[1]?.replace('Final:','').trim() || '';
+    let inicio = reg?.horario?.split('|')[0]?.replace('Início:','').trim() || '';
+    let fim = reg?.horario?.split('|')[1]?.replace('Final:','').trim() || '';
+    inicio = completarDiaSemana(inicio, ano);
+    fim = completarDiaSemana(fim, ano);
 
     linhas.push(`*${letra}) ${nome}*`);
     linhas.push('');
@@ -4027,16 +4041,23 @@ function renderConsulta(registros) {
   // Tabela
   document.getElementById('consulta-count').textContent = `${registros.length} registro(s) encontrado(s)`;
   const tbody = document.getElementById('consulta-tbody');
+  const formatarHorarioCelula = (h) => {
+    if (!h) return '—';
+    if (h.includes('|')) {
+      return h.split('|').map(p => `<span style="white-space:nowrap;display:block;">${p.trim()}</span>`).join('');
+    }
+    return `<span style="white-space:nowrap;">${h}</span>`;
+  };
   tbody.innerHTML = registros.map((r, idx) => `
     <tr>
-      <td>${formatarDataBR(r.data) || '—'}</td>
-      <td>${r.horario || r.turno || '—'}</td>
-      <td>${r.delegacia || '—'}</td>
-      <td>${r.escrivao || '—'}</td>
-      <td>${r.procedimento === 'SEM OCORRÊNCIAS' ? '<span style="background:rgba(200,168,75,0.15);color:var(--dourado);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">SEM OCORRÊNCIAS</span>' : (r.procedimento || '—')}</td>
-      <td>${r.quantidade || '—'}</td>
-      <td>${r.crime || '—'}</td>
-      <td>${r.cidade || '—'}</td>
+      <td style="white-space:nowrap;">${formatarDataBR(r.data) || '—'}</td>
+      <td>${formatarHorarioCelula(r.horario || r.turno)}</td>
+      <td style="white-space:nowrap;">${r.delegacia || '—'}</td>
+      <td style="white-space:nowrap;">${r.escrivao || '—'}</td>
+      <td style="white-space:nowrap;">${r.procedimento === 'SEM OCORRÊNCIAS' ? '<span style="background:rgba(200,168,75,0.15);color:var(--dourado);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">SEM OCORRÊNCIAS</span>' : (r.procedimento || '—')}</td>
+      <td style="white-space:nowrap;">${r.quantidade || '—'}</td>
+      <td style="max-width:260px;">${r.crime || '—'}</td>
+      <td style="white-space:nowrap;">${r.cidade || '—'}</td>
       <td style="white-space:nowrap;">${r.horaRegistro || '—'}</td>
       <td style="white-space:nowrap;">
         <button class="btn-acao-tabela" onclick="abrirEdicaoRegistro(${idx})" title="Editar">✏️</button>
