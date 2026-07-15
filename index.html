@@ -2131,8 +2131,9 @@ function _abrirFormularioReal(modalidade) {
   if (modalidade === 'plantao') {
     document.getElementById('meta-padrao').style.display = 'none';
     document.getElementById('meta-plantao').style.display = 'grid';
-    document.getElementById('plantao-data-inicio').value = hoje;
-    document.getElementById('plantao-hora-inicio').value = getHoraInicioPadrao(hoje);
+    const dataPlantaoPadrao = getDataPlantaoPadrao();
+    document.getElementById('plantao-data-inicio').value = dataPlantaoPadrao;
+    aplicarPadraoPlantao(dataPlantaoPadrao);
     document.getElementById('meta-escrivao-plantao').textContent = usuarioLogado.nome;
     const primeiroNomePlantao = (usuarioLogado.nome || '').trim().split(' ')[0].toLowerCase();
     if (['luciano', 'israel', 'emanoel'].includes(primeiroNomePlantao)) {
@@ -2394,12 +2395,35 @@ function confirmarPlantaoModalCorrigir() {
   bloquearProcedimentosPlantao(true);
 }
 
+function getDataPlantaoPadrao() {
+  const agora = new Date();
+  const antesDas0830 = agora.getHours() < 8 || (agora.getHours() === 8 && agora.getMinutes() < 30);
+  const alvo = new Date(agora);
+  if (antesDas0830) alvo.setDate(alvo.getDate() - 1); // até 8:30, considera o plantão do dia anterior
+  return `${alvo.getFullYear()}-${String(alvo.getMonth()+1).padStart(2,'0')}-${String(alvo.getDate()).padStart(2,'0')}`;
+}
+
 function getHoraInicioPadrao(dataISO) {
   if (!dataISO) return '08:00';
   const [y, m, d] = dataISO.split('-').map(Number);
   const diaSemana = new Date(y, m - 1, d).getDay(); // 0 = domingo, 6 = sábado
   const ehFimDeSemana = diaSemana === 0 || diaSemana === 6;
   return ehFimDeSemana ? '08:00' : '18:00';
+}
+
+function getDuracaoPadrao(dataISO) {
+  if (!dataISO) return '24';
+  const [y, m, d] = dataISO.split('-').map(Number);
+  const diaSemana = new Date(y, m - 1, d).getDay();
+  const ehFimDeSemana = diaSemana === 0 || diaSemana === 6;
+  return ehFimDeSemana ? '24' : '14';
+}
+
+function aplicarPadraoPlantao(dataISO) {
+  document.getElementById('plantao-hora-inicio').value = getHoraInicioPadrao(dataISO);
+  const selDuracao = document.getElementById('plantao-duracao-sel');
+  selDuracao.value = getDuracaoPadrao(dataISO);
+  toggleDuracaoOutro();
 }
 
 function toggleDuracaoOutro() {
@@ -2439,7 +2463,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const di = document.getElementById('plantao-data-inicio');
   const hi = document.getElementById('plantao-hora-inicio');
   if (di) di.addEventListener('change', () => {
-    hi.value = getHoraInicioPadrao(di.value);
+    aplicarPadraoPlantao(di.value);
     calcularFimPlantao();
   });
   if (hi) hi.addEventListener('change', calcularFimPlantao);
