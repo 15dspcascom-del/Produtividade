@@ -673,6 +673,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <button class="btn-novo" style="background:var(--dourado);color:var(--azul);" onclick="mostrarTela('consulta')">📊 Consultas e Dashboard</button>
           <button class="btn-novo" style="background:#6a0dad;color:white;" onclick="mostrarTela('relatorio')">📄 Relatório CICC</button>
           <button class="btn-novo" style="background:#c0392b;color:white;" onclick="mostrarTela('relatorio-area')">🗂 Relatório de Área</button>
+          <button class="btn-novo" style="background:#16a085;color:white;" onclick="mostrarTela('relatorio-bo')">📄 Relatório B.O.</button>
           <button class="btn-novo" style="background:#27ae60;color:white;" onclick="mostrarTela('relatorio-semanal')">📊 Rel. Resumido Semanal (Janielson)</button>
           <button class="btn-novo" style="background:#2c3e50;color:white;" onclick="fazerBackupCSV()" id="btn-backup-csv">💾 Backup Completo (CSV)</button>
           <button class="btn-novo" onclick="abrirModalEscrivao()">+ Novo Escrivão</button>
@@ -829,6 +830,67 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           </div>
           <!-- Cards por área -->
           <div id="dash-areas-corpo"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA DE RELATÓRIO — SETOR DE B.O. -->
+    <div id="tela-relatorio-bo" class="tela" style="flex-direction:column; padding:28px 32px; max-width:1000px; margin:0 auto; width:100%;">
+      <div class="admin-header">
+        <h2>📄 RELATÓRIO — SETOR DE B.O.</h2>
+        <button class="btn-voltar" onclick="mostrarTela('admin')">← Voltar</button>
+      </div>
+
+      <div style="background:var(--branco);border:1.5px solid var(--cinza-borda);border-radius:10px;padding:24px;margin-bottom:20px;">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+          <div class="fm-item">
+            <label>Tipo de Período</label>
+            <select id="bo-tipo-periodo" onchange="alternarTipoPeriodoBO()">
+              <option value="dia">Dia único</option>
+              <option value="periodo">Período</option>
+            </select>
+          </div>
+          <div class="fm-item" id="bo-wrap-dia">
+            <label>Data</label>
+            <input type="date" id="bo-data-unica" />
+          </div>
+          <div class="fm-item" id="bo-wrap-de" style="display:none;">
+            <label>De</label>
+            <input type="date" id="bo-periodo-de" />
+          </div>
+          <div class="fm-item" id="bo-wrap-ate" style="display:none;">
+            <label>Até</label>
+            <input type="date" id="bo-periodo-ate" />
+          </div>
+          <div class="fm-item">
+            <label>Servidor</label>
+            <select id="bo-filtro-servidor"><option value="">Todos</option></select>
+          </div>
+          <div class="fm-item">
+            <label>Turno</label>
+            <select id="bo-filtro-turno">
+              <option value="">Todos</option>
+              <option value="Manhã">Manhã</option>
+              <option value="Tarde">Tarde</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-enviar" style="max-width:220px;margin-top:18px;background:#16a085;" onclick="gerarRelatorioBO()">📊 Gerar Relatório</button>
+      </div>
+
+      <div id="bo-loading" style="display:none;text-align:center;padding:40px;color:var(--texto-leve);font-size:14px;">Carregando...</div>
+      <div id="bo-vazio" style="display:none;text-align:center;padding:40px;color:var(--texto-leve);font-size:14px;">Nenhum B.O. encontrado para os filtros selecionados.</div>
+
+      <div id="bo-resultado" style="display:none;">
+        <div style="margin-bottom:16px;">
+          <button class="btn-exportar" onclick="salvarRelatorioBOPDF()" id="btn-bo-pdf" style="background:#16a085;">📄 Salvar Relatório em PDF</button>
+        </div>
+        <div id="bo-conteudo-pdf" style="background:var(--branco);">
+          <div class="dashboard-kpis" id="bo-kpis" style="margin-bottom:20px;"></div>
+          <div class="dashboard-card">
+            <div class="dashboard-card-titulo">📈 B.O.s registrados no período</div>
+            <canvas id="chart-bo" height="90"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -1882,6 +1944,66 @@ async function gerarRelatorioArea() {
   finally { btn.disabled = false; txt.textContent = '🗂 Gerar Relatório de Área'; sp.style.display = 'none'; }
 }
 
+function paraFraseCase(t) {
+  if (!t) return t;
+  const s = String(t).trim();
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
+// Mescla entradas repetidas (mesmo "tipo") ocorridas em dias diferentes do período,
+// somando quantidades e normalizando a caixa das descrições.
+function mesclarDetalhesPeriodo(linhasArr, del, pad) {
+  const parseadas = linhasArr
+    .filter(l => parseInt(l.quantidade) && l.crime)
+    .map(l => {
+      const qtd = parseInt(l.quantidade);
+      const cidade = (l.cidade && l.cidade !== del) ? l.cidade : null;
+      const crimeBruto = String(l.crime).trim();
+      const m = crimeBruto.match(/^(.*?)\(([\s\S]*)\)\s*$/);
+      if (m) {
+        return { tipo: m[1].trim(), detalhe: paraFraseCase(m[2]), qtd, cidade };
+      }
+      return { tipo: paraFraseCase(crimeBruto), detalhe: '', qtd, cidade };
+    });
+
+  const porTipo = {};
+  const ordemTipos = [];
+  parseadas.forEach(p => {
+    if (!porTipo[p.tipo]) { porTipo[p.tipo] = []; ordemTipos.push(p.tipo); }
+    porTipo[p.tipo].push(p);
+  });
+
+  return ordemTipos.map(tipo => {
+    const grupo = porTipo[tipo];
+    const totalTipo = grupo.reduce((s, g) => s + g.qtd, 0);
+
+    const cidadesDistintas = [...new Set(grupo.map(g => g.cidade).filter(Boolean))];
+    const sufixoCidade = cidadesDistintas.length ? ` (${cidadesDistintas.join(', ')})` : '';
+
+    const temDetalhes = grupo.some(g => g.detalhe);
+    if (!temDetalhes) {
+      return `${pad(totalTipo)} ${tipo}${sufixoCidade}`;
+    }
+
+    const porDetalhe = {};
+    const ordemDetalhes = [];
+    grupo.forEach(g => {
+      const chave = g.detalhe || '';
+      if (!porDetalhe[chave]) { porDetalhe[chave] = { soma: 0, ocorrencias: 0 }; ordemDetalhes.push(chave); }
+      porDetalhe[chave].soma += g.qtd;
+      porDetalhe[chave].ocorrencias += 1;
+    });
+
+    const partes = ordemDetalhes.filter(d => d !== '').map(d => {
+      const info = porDetalhe[d];
+      return info.ocorrencias > 1 ? `${info.soma} - ${d}` : d;
+    });
+
+    return `${pad(totalTipo)} ${tipo} (${partes.join(', ')})${sufixoCidade}`;
+  });
+}
+
 async function gerarAreaPeriodo(ini, fim) {
   const rows = await supa.get('registros', `?data=gte.${ini}&data=lte.${fim}&modalidade=eq.expediente&quantidade=gt.0&select=*&order=data`);
 
@@ -1919,7 +2041,7 @@ async function gerarAreaPeriodo(ini, fim) {
         Object.entries(NOMES_PROC_AREA).forEach(([k, nome]) => {
           const p = procs[k]; if (!p || !parseInt(p.total)) return; temAlgo = true;
           const total = parseInt(p.total);
-          const det = p.linhas.filter(l => parseInt(l.quantidade) && l.crime).map(l => `${pad(parseInt(l.quantidade))} ${l.crime}${l.cidade && l.cidade !== del ? ' ('+l.cidade+')' : ''}`);
+          const det = mesclarDetalhesPeriodo(p.linhas, del, pad);
           linhas.push(det.length ? `${nome}: ${pad(total)} (${det.join('; ')})` : `${nome}: ${pad(total)}`);
           linhas.push('');
         });
@@ -2235,10 +2357,11 @@ function mostrarTela(id) {
   if (id === 'relatorio') iniciarRelatorio();
   if (id === 'relatorio-area') iniciarRelatorioArea();
   if (id === 'relatorio-semanal') iniciarRelatorioSemanal();
+  if (id === 'relatorio-bo') iniciarRelatorioBO();
 }
 
 function esconderTodasTelas() {
-  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta','tela-presenca','tela-relatorio','tela-relatorio-area','tela-relatorio-semanal'].forEach(id => {
+  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta','tela-presenca','tela-relatorio','tela-relatorio-area','tela-relatorio-semanal','tela-relatorio-bo'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.classList.remove('ativa'); el.style.display = 'none'; }
   });
@@ -3273,6 +3396,182 @@ async function salvarDashboardPDF() {
   }
 }
 
+// ============================================================
+// RELATÓRIO — SETOR DE B.O.
+// ============================================================
+function iniciarRelatorioBO() {
+  const hoje = new Date();
+  const hojeISO = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+  document.getElementById('bo-data-unica').value = hojeISO;
+  document.getElementById('bo-periodo-de').value = hojeISO;
+  document.getElementById('bo-periodo-ate').value = hojeISO;
+  document.getElementById('bo-tipo-periodo').value = 'dia';
+  alternarTipoPeriodoBO();
+  document.getElementById('bo-resultado').style.display = 'none';
+  document.getElementById('bo-vazio').style.display = 'none';
+  carregarServidoresBO();
+}
+
+async function carregarServidoresBO() {
+  const sel = document.getElementById('bo-filtro-servidor');
+  const valorAtual = sel.value;
+  try {
+    const escrivaes = await supa.get('escrivaes', '?select=nome,modalidades&order=nome');
+    const bos = escrivaes.filter(e => (e.modalidades || ['expediente','plantao','bo']).includes('bo'));
+    sel.innerHTML = '<option value="">Todos</option>' + bos.map(e => `<option value="${e.nome}">${e.nome}</option>`).join('');
+    if (valorAtual) sel.value = valorAtual;
+  } catch(e) { /* silencioso */ }
+}
+
+function alternarTipoPeriodoBO() {
+  const tipo = document.getElementById('bo-tipo-periodo').value;
+  document.getElementById('bo-wrap-dia').style.display = tipo === 'dia' ? 'block' : 'none';
+  document.getElementById('bo-wrap-de').style.display = tipo === 'periodo' ? 'block' : 'none';
+  document.getElementById('bo-wrap-ate').style.display = tipo === 'periodo' ? 'block' : 'none';
+}
+
+let chartBOInstance = null;
+
+async function salvarRelatorioBOPDF() {
+  const btn = document.getElementById('btn-bo-pdf');
+  const txtOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando PDF...';
+
+  try {
+    const elemento = document.getElementById('bo-conteudo-pdf');
+    const canvas = await html2canvas(elemento, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const imgData = canvas.toDataURL('image/png');
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const larguraPagina = pdf.internal.pageSize.getWidth();
+    const alturaPagina = pdf.internal.pageSize.getHeight();
+    const margem = 10;
+    const larguraUtil = larguraPagina - margem * 2;
+    const alturaImg = (canvas.height * larguraUtil) / canvas.width;
+
+    // Cabeçalho com os filtros usados
+    const tipo = document.getElementById('bo-tipo-periodo').value;
+    const periodoTxt = tipo === 'dia'
+      ? `Data: ${formatarDataBR(document.getElementById('bo-data-unica').value)}`
+      : `Período: ${formatarDataBR(document.getElementById('bo-periodo-de').value)} a ${formatarDataBR(document.getElementById('bo-periodo-ate').value)}`;
+    const servidor = document.getElementById('bo-filtro-servidor').value || 'Todos';
+    const turno = document.getElementById('bo-filtro-turno').value || 'Todos';
+
+    pdf.setFontSize(13);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('15ª DSPC/PATOS — Relatório do Setor de B.O.', margem, margem + 4);
+    pdf.setFontSize(10);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`${periodoTxt}   |   Servidor: ${servidor}   |   Turno: ${turno}`, margem, margem + 10);
+
+    let yAtual = margem + 16;
+    const alturaUtilPagina = alturaPagina - margem * 2 - 16;
+
+    if (alturaImg <= alturaUtilPagina) {
+      pdf.addImage(imgData, 'PNG', margem, yAtual, larguraUtil, alturaImg);
+    } else {
+      const escala = canvas.width / larguraUtil;
+      const fatiaAlturaPx = alturaUtilPagina * escala;
+      let offsetPx = 0;
+      let primeira = true;
+      while (offsetPx < canvas.height) {
+        const alturaFatia = Math.min(fatiaAlturaPx, canvas.height - offsetPx);
+        const canvasFatia = document.createElement('canvas');
+        canvasFatia.width = canvas.width;
+        canvasFatia.height = alturaFatia;
+        const ctx = canvasFatia.getContext('2d');
+        ctx.drawImage(canvas, 0, offsetPx, canvas.width, alturaFatia, 0, 0, canvas.width, alturaFatia);
+        const imgFatia = canvasFatia.toDataURL('image/png');
+        if (!primeira) pdf.addPage();
+        const alturaFatiaMm = (alturaFatia * larguraUtil) / canvas.width;
+        pdf.addImage(imgFatia, 'PNG', margem, primeira ? yAtual : margem, larguraUtil, alturaFatiaMm);
+        offsetPx += alturaFatia;
+        primeira = false;
+      }
+    }
+
+    const agora = new Date();
+    const carimbo = `${agora.getFullYear()}${String(agora.getMonth()+1).padStart(2,'0')}${String(agora.getDate()).padStart(2,'0')}_${String(agora.getHours()).padStart(2,'0')}${String(agora.getMinutes()).padStart(2,'0')}`;
+    pdf.save(`relatorio_bo_${carimbo}.pdf`);
+  } catch(e) {
+    alert('Erro ao gerar PDF: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = txtOriginal;
+  }
+}
+
+async function gerarRelatorioBO() {
+  document.getElementById('bo-resultado').style.display = 'none';
+  document.getElementById('bo-vazio').style.display = 'none';
+  document.getElementById('bo-loading').style.display = 'block';
+
+  const tipo = document.getElementById('bo-tipo-periodo').value;
+  let dataIni, dataFim;
+  if (tipo === 'dia') {
+    dataIni = dataFim = document.getElementById('bo-data-unica').value;
+  } else {
+    dataIni = document.getElementById('bo-periodo-de').value;
+    dataFim = document.getElementById('bo-periodo-ate').value;
+  }
+  if (!dataIni || !dataFim) {
+    document.getElementById('bo-loading').style.display = 'none';
+    alert('Selecione a(s) data(s).');
+    return;
+  }
+
+  const servidor = document.getElementById('bo-filtro-servidor').value;
+  const turno = document.getElementById('bo-filtro-turno').value;
+
+  let qs = dataIni === dataFim ? `?data=eq.${dataIni}` : `?data=gte.${dataIni}&data=lte.${dataFim}`;
+  if (servidor) qs += `&escrivao=eq.${encodeURIComponent(servidor)}`;
+  if (turno) qs += `&turno=eq.${encodeURIComponent(turno)}`;
+  qs += '&select=*';
+
+  try {
+    const registros = await supa.get('registros_bo', qs);
+    document.getElementById('bo-loading').style.display = 'none';
+
+    if (!registros.length) {
+      document.getElementById('bo-vazio').style.display = 'block';
+      return;
+    }
+
+    const validos = registros.filter(r => r.crime !== 'SEM OCORRÊNCIAS');
+    const total = validos.reduce((s, r) => s + (parseInt(r.quantidade) || 0), 0);
+
+    const porDia = {};
+    validos.forEach(r => { porDia[r.data] = (porDia[r.data] || 0) + (parseInt(r.quantidade) || 0); });
+    const diasComBO = Object.keys(porDia).length;
+    const media = diasComBO ? (total / diasComBO).toFixed(1) : '0.0';
+
+    document.getElementById('bo-kpis').innerHTML = `
+      <div class="dashboard-kpi"><div class="kpi-valor" style="color:var(--azul);">${total}</div><div class="kpi-label">Total de B.O.s</div></div>
+      <div class="dashboard-kpi"><div class="kpi-valor" style="color:var(--verde);">${diasComBO}</div><div class="kpi-label">Dias com Registro</div></div>
+      <div class="dashboard-kpi"><div class="kpi-valor" style="color:var(--dourado);">${media}</div><div class="kpi-label">Média por Dia</div></div>
+    `;
+
+    const diasOrdenados = Object.keys(porDia).sort();
+    const labels = diasOrdenados.map(d => formatarDataBR(d));
+    const valores = diasOrdenados.map(d => porDia[d]);
+
+    const ctx = document.getElementById('chart-bo').getContext('2d');
+    if (chartBOInstance) chartBOInstance.destroy();
+    chartBOInstance = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'B.O.s', data: valores, backgroundColor: '#16a085' }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    });
+
+    document.getElementById('bo-resultado').style.display = 'block';
+  } catch(e) {
+    document.getElementById('bo-loading').style.display = 'none';
+    alert('Erro ao gerar relatório: ' + e.message);
+  }
+}
+
 function gerarDashboardArea() {
   const dados = window._dadosDashboard;
   if (!dados) return;
@@ -3404,8 +3703,8 @@ function preencherCustodiaPadrao(dataISO) {
   const fimDate = new Date(inicioDate.getTime() + 24 * 60 * 60 * 1000);
   const fmt = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
   const isoFim = `${fimDate.getFullYear()}-${String(fimDate.getMonth()+1).padStart(2,'0')}-${String(fimDate.getDate()).padStart(2,'0')}`;
-  document.getElementById('cust-inicio').value = `08h do dia ${fmt(inicioDate)}, ${getDiaSemana(dataISO)}`;
-  document.getElementById('cust-final').value = `08h do dia ${fmt(fimDate)}, ${getDiaSemana(isoFim)}`;
+  document.getElementById('cust-inicio').value = `08h do dia ${fmt(inicioDate)} (${getDiaSemana(dataISO)})`;
+  document.getElementById('cust-final').value = `08h do dia ${fmt(fimDate)} (${getDiaSemana(isoFim)})`;
   document.getElementById('cust-duracao').value = 'Plantão 24h';
 }
 
