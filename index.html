@@ -1179,7 +1179,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <label>Duração do Plantão</label>
           <select id="plantao-duracao-sel" onchange="toggleDuracaoOutro(); calcularFimPlantao();">
             <option value="24">24 horas</option>
-            <option value="18">18 horas</option>
+            <option value="14">14 horas</option>
             <option value="outro">Outro</option>
           </select>
           <input type="number" id="plantao-duracao-outro" placeholder="Nº de horas" min="1" style="display:none;margin-top:6px;" oninput="calcularFimPlantao()" />
@@ -1194,7 +1194,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         </div>
         <div class="fm-item" style="grid-column: 1 / -1;">
           <label>Escrivão</label>
-          <input type="text" id="meta-escrivao-plantao" readonly />
+          <div id="meta-escrivao-plantao" style="font-size:14px;font-weight:600;color:var(--azul);padding:9px 2px;">—</div>
         </div>
       </div>
       <div id="aviso-confirmar-plantao" style="display:none;align-items:center;gap:12px;background:rgba(176,32,32,0.08);border:1.5px solid var(--vermelho);border-radius:8px;padding:12px 16px;margin-bottom:16px;">
@@ -2132,8 +2132,8 @@ function _abrirFormularioReal(modalidade) {
     document.getElementById('meta-padrao').style.display = 'none';
     document.getElementById('meta-plantao').style.display = 'grid';
     document.getElementById('plantao-data-inicio').value = hoje;
-    document.getElementById('plantao-hora-inicio').value = '08:00';
-    document.getElementById('meta-escrivao-plantao').value = usuarioLogado.nome;
+    document.getElementById('plantao-hora-inicio').value = getHoraInicioPadrao(hoje);
+    document.getElementById('meta-escrivao-plantao').textContent = usuarioLogado.nome;
     const primeiroNomePlantao = (usuarioLogado.nome || '').trim().split(' ')[0].toLowerCase();
     if (['luciano', 'israel', 'emanoel'].includes(primeiroNomePlantao)) {
       document.getElementById('plantao-local').value = 'DHE';
@@ -2394,6 +2394,14 @@ function confirmarPlantaoModalCorrigir() {
   bloquearProcedimentosPlantao(true);
 }
 
+function getHoraInicioPadrao(dataISO) {
+  if (!dataISO) return '08:00';
+  const [y, m, d] = dataISO.split('-').map(Number);
+  const diaSemana = new Date(y, m - 1, d).getDay(); // 0 = domingo, 6 = sábado
+  const ehFimDeSemana = diaSemana === 0 || diaSemana === 6;
+  return ehFimDeSemana ? '08:00' : '18:00';
+}
+
 function toggleDuracaoOutro() {
   const sel = document.getElementById('plantao-duracao-sel');
   document.getElementById('plantao-duracao-outro').style.display = sel.value === 'outro' ? 'block' : 'none';
@@ -2430,7 +2438,10 @@ function calcularFimPlantao() {
 document.addEventListener('DOMContentLoaded', () => {
   const di = document.getElementById('plantao-data-inicio');
   const hi = document.getElementById('plantao-hora-inicio');
-  if (di) di.addEventListener('change', calcularFimPlantao);
+  if (di) di.addEventListener('change', () => {
+    hi.value = getHoraInicioPadrao(di.value);
+    calcularFimPlantao();
+  });
   if (hi) hi.addEventListener('change', calcularFimPlantao);
 });
 
