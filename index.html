@@ -496,6 +496,13 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 .dashboard-kpi .kpi-valor { font-family: 'Rajdhani', sans-serif; font-size: 32px; font-weight: 700; line-height: 1; }
 .dashboard-kpi .kpi-label { font-size: 11px; color: var(--texto-leve); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 5px; }
 .dashboard-card { background: var(--branco); border: 1.5px solid var(--cinza-borda); border-radius: 10px; padding: 20px; }
+.bo-tipo-linha { display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--cinza-borda); }
+.bo-tipo-linha:last-child { border-bottom:none; }
+.bo-tipo-nome { flex:0 0 260px; font-size:13px; font-weight:600; color:var(--texto); }
+.bo-tipo-barra-wrap { flex:1; background:var(--cinza); border-radius:6px; overflow:hidden; height:16px; }
+.bo-tipo-barra { height:100%; background:#16a085; border-radius:6px; min-width:3px; }
+.bo-tipo-valor { flex:0 0 36px; text-align:right; font-size:13px; font-weight:700; color:var(--azul); }
+@media (max-width:640px) { .bo-tipo-nome { flex-basis:140px; font-size:12px; } }
 .dashboard-card-titulo { font-size: 12px; font-weight: 700; color: var(--azul); margin-bottom: 14px; letter-spacing: 0.3px; text-transform: uppercase; }
 
 /* Cards de área */
@@ -887,9 +894,13 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         </div>
         <div id="bo-conteudo-pdf" style="background:var(--branco);">
           <div class="dashboard-kpis" id="bo-kpis" style="margin-bottom:20px;"></div>
-          <div class="dashboard-card">
+          <div class="dashboard-card" style="margin-bottom:20px;">
             <div class="dashboard-card-titulo">📈 B.O.s registrados no período</div>
             <canvas id="chart-bo" height="90"></canvas>
+          </div>
+          <div class="dashboard-card">
+            <div class="dashboard-card-titulo">📋 Detalhamento por tipo de ocorrência</div>
+            <div id="bo-tipos-corpo"></div>
           </div>
         </div>
       </div>
@@ -3564,6 +3575,21 @@ async function gerarRelatorioBO() {
       data: { labels, datasets: [{ label: 'B.O.s', data: valores, backgroundColor: '#16a085' }] },
       options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
     });
+
+    // Detalhamento por tipo de ocorrência (mesmas opções da barra de rolagem do formulário de B.O.)
+    const porTipoCrime = {};
+    validos.forEach(r => {
+      const nomeTipo = (r.crime && r.crime.trim()) ? r.crime.trim() : 'Não informado';
+      porTipoCrime[nomeTipo] = (porTipoCrime[nomeTipo] || 0) + (parseInt(r.quantidade) || 0);
+    });
+    const tiposOrdenados = Object.entries(porTipoCrime).sort((a, b) => b[1] - a[1]);
+    const maiorValor = tiposOrdenados.length ? tiposOrdenados[0][1] : 1;
+    document.getElementById('bo-tipos-corpo').innerHTML = tiposOrdenados.map(([nome, qtd]) => `
+      <div class="bo-tipo-linha">
+        <div class="bo-tipo-nome">${nome}</div>
+        <div class="bo-tipo-barra-wrap"><div class="bo-tipo-barra" style="width:${Math.max(3, (qtd / maiorValor) * 100)}%;"></div></div>
+        <div class="bo-tipo-valor">${qtd}</div>
+      </div>`).join('');
 
     document.getElementById('bo-resultado').style.display = 'block';
   } catch(e) {
