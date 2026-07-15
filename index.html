@@ -2996,13 +2996,16 @@ function fecharMeusRegistros() {
 // ADMIN — GERENCIAR ESCRIVÃES
 // ============================================================
 
+let escrivaesListaAtual = [];
+
 function renderTabela(lista) {
+  escrivaesListaAtual = lista;
   const tbody = document.getElementById('tbody-escrivaes');
   tbody.innerHTML = '';
   if (lista.length === 0) {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--texto-leve);padding:24px;">Nenhum escrivão cadastrado.</td></tr>';
   } else {
-    lista.forEach(e => {
+    lista.forEach((e, idx) => {
       const delegacias = Array.isArray(e.delegacias) ? e.delegacias : [e.delegacia];
       const modalidades = e.modalidades || ['expediente','plantao','bo'];
       const badgesDel = delegacias.map(d => `<span class="badge-del">${d}</span>`).join(' ');
@@ -3014,14 +3017,23 @@ function renderTabela(lista) {
         <td style="display:flex;flex-wrap:wrap;gap:4px;padding:10px 16px;">${badgesDel}</td>
         <td>${badgesMod}</td>
         <td>
-          <button class="btn-editar" onclick='abrirModalEscrivao(${JSON.stringify(e)})'>Editar</button>
-          <button class="btn-excluir" onclick="excluirEscrivao('${e.nome}')">Excluir</button>
+          <button class="btn-editar" onclick="abrirModalEscrivaoPorIndice(${idx})">Editar</button>
+          <button class="btn-excluir" onclick="excluirEscrivaoPorIndice(${idx})">Excluir</button>
         </td>`;
       tbody.appendChild(tr);
     });
   }
   document.getElementById('admin-loading').style.display = 'none';
   document.getElementById('tabela-escrivaes').style.display = 'table';
+}
+
+function abrirModalEscrivaoPorIndice(idx) {
+  abrirModalEscrivao(escrivaesListaAtual[idx]);
+}
+
+function excluirEscrivaoPorIndice(idx) {
+  const e = escrivaesListaAtual[idx];
+  if (e) excluirEscrivao(e.nome);
 }
 
 function toggleDelegacias() {
