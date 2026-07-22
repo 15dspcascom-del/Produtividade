@@ -2171,6 +2171,7 @@ const CAMPOS_EXP = [
   { id:'operacoes', titulo:'Participação em Operações Policiais (pela equipe da DP)', sub:['quantidade','nome da operação','crime','cidade'] },
   { id:'diligencias', titulo:'Diligências Diversas', sub:['quantidade','descrição','crime','cidade'] },
   { id:'atendimentos', titulo:'Atendimentos Diversos', sub:['quantidade','descrição','cidade'] },
+  { id:'rel_final', titulo:'Relatório Final', sub:['quantidade','tipo de relatorio final'] },
 ];
 
 const CAMPOS_PLA = [
@@ -2185,6 +2186,7 @@ const CAMPOS_PLA = [
   { id:'veiculos_apreendidos', titulo:'Veículos Apreendidos', sub:['quantidade','descrição do veículo','placa','cidade'] },
   { id:'veiculos_recuperados', titulo:'Veículos Recuperados', sub:['quantidade','descrição do veículo','placa','cidade'] },
   { id:'outras_ocor', titulo:'Outras Ocorrências', sub:['quantidade','descrição','cidade'] },
+  { id:'rel_final', titulo:'Relatório Final', sub:['quantidade','tipo de relatorio final'] },
 ];
 
 const CAMPOS_BO = [
@@ -2645,6 +2647,16 @@ function renderInput(sub, campoId) {
         <input type="text" inputmode="numeric" value="0" class="qtd-input" readonly />
         <button type="button" class="btn-qtd" data-delta="1">+</button>
       </div>
+    </div>`;
+  }
+  if (sub === 'tipo de relatorio final') {
+    const opcoes = ['IP', 'BOC', 'TCO'];
+    const chips = opcoes.map(o => `<button type="button" class="chip-btn" onclick="chipSelecionar(this)">${o}</button>`).join('')
+      + `<button type="button" class="chip-btn chip-outros" onclick="chipSelecionar(this)">Outros</button>`;
+    return `<div class="c-grupo">
+      <label>PROCEDIMENTO</label>
+      <div class="chips-scroll">${chips}</div>
+      <input type="text" class="chip-input" placeholder="Procedimento" />
     </div>`;
   }
   if (sub === 'crime' && campoId === 'boletins') {
@@ -3225,7 +3237,7 @@ const NOMES_PROC_AREA = {
   armas: 'ARMAS APREENDIDAS', drogas: 'DROGAS APREENDIDAS',
   veiculos: 'VEÍCULOS ENC./DETRAN', veiculos_apreendidos: 'VEÍCULOS APREENDIDOS', veiculos_recuperados: 'VEÍCULOS RECUPERADOS', aud_custodia: 'AUDIÊNCIAS DE CUSTÓDIA',
   operacoes: 'OPERAÇÕES', diligencias: 'DILIGÊNCIAS',
-  atendimentos: 'ATENDIMENTOS DIVERSOS'
+  atendimentos: 'ATENDIMENTOS DIVERSOS', rel_final: 'RELATÓRIO FINAL'
 };
 
 const LETRAS = ['a','b','c','d','e','f'];
@@ -4032,7 +4044,7 @@ function montarTextoCICC(dados, dataISO) {
     ['cond_presos','Condução de Presos'], ['armas','Armas Apreendidas'], ['drogas','Drogas Apreendidas'],
     ['veiculos','Veículos Encaminhados/Devolvidos'], ['veiculos_apreendidos','Veículos Apreendidos'], ['veiculos_recuperados','Veículos Recuperados'], ['aud_custodia','Audiências de Custódia'],
     ['operacoes','Participação em Operações Policiais'], ['diligencias','Diligências Diversas'],
-    ['atendimentos','Atendimentos Diversos']
+    ['atendimentos','Atendimentos Diversos'], ['rel_final','Relatório Final']
   ];
 
   let numExp = 1;
