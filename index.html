@@ -3321,19 +3321,26 @@ function montarTextoArea(dados, dataISO) {
           temAlgo = true;
           const total = parseInt(p.total);
 
-          const detalhes = [];
+          const detalhesObjs = [];
           if (p.linhas && p.linhas.length > 0) {
             p.linhas.forEach(l => {
               const qtd = parseInt(l.quantidade) || 0;
               if (qtd === 0) return;
               const crime = l.crime || l['descrição'] || l['tipo (depoimento/declaração/interrogatório)'] || l['tipo de crime'] || l['nome da operação'] || '';
               const cidade = l.cidade || '';
-              if (crime) detalhes.push(`${pad(qtd)} ${crime}${cidade && cidade !== del ? ' (' + cidade + ')' : ''}`);
+              if (crime) detalhesObjs.push({ qtd, texto: `${crime}${cidade && cidade !== del ? ' (' + cidade + ')' : ''}` });
             });
           }
 
-          if (detalhes.length > 0) {
-            linhas.push(`${nome}: ${pad(total)} (${detalhes.join('; ')})`);
+          let detalhesTxt = '';
+          if (detalhesObjs.length === 1) {
+            detalhesTxt = detalhesObjs[0].texto; // um único item: não repete a quantidade
+          } else if (detalhesObjs.length > 1) {
+            detalhesTxt = detalhesObjs.map(d => `${pad(d.qtd)} ${d.texto}`).join('; ');
+          }
+
+          if (detalhesTxt) {
+            linhas.push(`${nome}: ${pad(total)} (${detalhesTxt})`);
           } else {
             linhas.push(`${nome}: ${pad(total)}`);
           }
