@@ -2127,7 +2127,7 @@ function mesclarDetalhesPeriodo(linhasArr, del, pad) {
 }
 
 async function gerarAreaPeriodo(ini, fim) {
-  const rows = await supa.getAll('registros', `?data=gte.${ini}&data=lte.${fim}&modalidade=eq.expediente&quantidade=gt.0&select=*&order=data`);
+  const rows = await supa.getAll('registros', `?data=gte.${ini}&data=lte.${fim}&modalidade=eq.expediente&select=*&order=data`);
 
   const exp = {};
   rows.forEach(r => {
@@ -3853,13 +3853,11 @@ function gerarDashboardArea() {
     const qtd = parseInt(r.quantidade) || 0;
     if (qtd > 0) totalProcsMap[r.procedimento] = (totalProcsMap[r.procedimento]||0) + qtd;
   });
-  const semOcor = registros.filter(r => r.procedimento === 'SEM OCORRÊNCIAS').length;
 
   document.getElementById('dash-kpis').innerHTML = `
     <div class="dashboard-kpi"><div class="kpi-valor" style="color:var(--azul);">${totalGeral}</div><div class="kpi-label">Total de Procedimentos</div></div>
     <div class="dashboard-kpi" style="border-color:var(--verde);"><div class="kpi-valor" style="color:var(--verde);">${delegaciasAtivas}</div><div class="kpi-label">Delegacias Ativas</div></div>
-    <div class="dashboard-kpi" style="border-color:var(--dourado);"><div class="kpi-valor" style="color:var(--dourado);">${Object.keys(totalProcsMap).length}</div><div class="kpi-label">Tipos de Procedimento</div></div>
-    <div class="dashboard-kpi" style="border-color:var(--vermelho);"><div class="kpi-valor" style="color:var(--vermelho);">${semOcor}</div><div class="kpi-label">Sem Ocorrências</div></div>`;
+    <div class="dashboard-kpi" style="border-color:var(--dourado);"><div class="kpi-valor" style="color:var(--dourado);">${Object.keys(totalProcsMap).length}</div><div class="kpi-label">Tipos de Procedimento</div></div>`;
 
   // ===== GRÁFICO LINHA: Evolução diária =====
   const porData = {};
