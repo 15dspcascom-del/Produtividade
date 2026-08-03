@@ -1463,6 +1463,20 @@ const supa = {
   async del(table, qs) {
     const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${qs}`, { method: 'DELETE', headers: this.h });
     if (!r.ok) throw new Error(await r.text());
+  },
+  // Busca todas as páginas de resultado (contorna o limite padrão de linhas do Supabase/PostgREST)
+  async getAll(table, qs = '', pageSize = 1000) {
+    let todos = [];
+    let offset = 0;
+    while (true) {
+      const sep = qs.includes('?') ? '&' : '?';
+      const pageQs = `${qs}${sep}limit=${pageSize}&offset=${offset}`;
+      const pagina = await this.get(table, pageQs);
+      todos = todos.concat(pagina);
+      if (pagina.length < pageSize) break;
+      offset += pageSize;
+    }
+    return todos;
   }
 };
 
@@ -1582,8 +1596,8 @@ async function fazerBackupCSV() {
   try {
     const [escrivaes, registros, registrosBO] = await Promise.all([
       supa.get('escrivaes', '?select=*&order=nome'),
-      supa.get('registros', '?select=*&order=data.desc'),
-      supa.get('registros_bo', '?select=*&order=data.desc')
+      supa.getAll('registros', '?select=*&order=data.desc'),
+      supa.getAll('registros_bo', '?select=*&order=data.desc')
     ]);
 
     const agora = new Date();
@@ -1835,7 +1849,7 @@ async function buscarRegistros() {
     if (!modalidade || modalidade === 'expediente' || modalidade === 'plantao') {
       let qsExp = qs;
       if (modalidade) qsExp += `&modalidade=eq.${modalidade}`;
-      const r = await supa.get('registros', qsExp + '&select=*');
+      const r = await supa.getAll('registros', qsExp + '&select=*');
       rows.push(...r.map(x => ({
         id: x.id, tabela: 'registros', raw: x,
         modalidade: x.modalidade, horaRegistro: x.hora_registro ? new Date(x.hora_registro).toLocaleString('pt-BR') : '',
@@ -1846,7 +1860,7 @@ async function buscarRegistros() {
     }
 
     if (!modalidade || modalidade === 'bo') {
-      const r = await supa.get('registros_bo', qs + (escrivao ? `&escrivao=eq.${encodeURIComponent(escrivao)}` : '') + (delegacia ? `&delegacia=eq.${encodeURIComponent(delegacia)}` : '') + '&select=*');
+      const r = await supa.getAll('registros_bo', qs + (escrivao ? `&escrivao=eq.${encodeURIComponent(escrivao)}` : '') + (delegacia ? `&delegacia=eq.${encodeURIComponent(delegacia)}` : '') + '&select=*');
       rows.push(...r.map(x => ({
         id: x.id, tabela: 'registros_bo', raw: x,
         modalidade: 'bo', horaRegistro: x.hora_registro ? new Date(x.hora_registro).toLocaleString('pt-BR') : '',
@@ -1902,8 +1916,8 @@ async function carregarPresenca() {
   try {
     const [escrivaes, regsExp, regsBO] = await Promise.all([
       supa.get('escrivaes', '?select=*&order=nome'),
-      supa.get('registros', `?${filtroQS}&select=escrivao,modalidade,delegacia,data`),
-      supa.get('registros_bo', `?${filtroQS}&select=escrivao,delegacia,data`)
+      supa.getAll('registros', `?${filtroQS}&select=escrivao,modalidade,delegacia,data`),
+      supa.getAll('registros_bo', `?${filtroQS}&select=escrivao,delegacia,data`)
     ]);
 
     const regsTodos = [...regsExp, ...regsBO.map(r => ({...r, modalidade:'bo'}))];
@@ -1923,7 +1937,7 @@ async function carregarPresenca() {
 // DADOS CICC (para relatórios)
 // ============================================================
 async function buscarCustodiaPeriodo(dataIni, dataFim) {
-  const rows = await supa.get('custodia', `?data=gte.${dataIni}&data=lte.${dataFim}&select=*&order=data.asc`);
+  const rows = await supa.getAll('custodia', `?data=gte.${dataIni}&data=lte.${dataFim}&select=*&order=data.asc`);
   const contarLinhas = (txt) => txt ? txt.split('\n').map(s => s.trim()).filter(Boolean).length : 0;
   const recebidosTotal = rows.reduce((s, r) => s + (parseInt(r.recebidos_qtd) || 0), 0);
   const audienciasTotal = rows.reduce((s, r) => s + contarLinhas(r.audiencias), 0);
@@ -1945,12 +1959,12 @@ async function buscarDadosCICC(dataIni, dataFim) {
   const filtroData = (fim === dataIni) ? `data=eq.${dataIni}` : `data=gte.${dataIni}&data=lte.${fim}`;
 
   const [regsExp, regsBO] = await Promise.all([
-    supa.get('registros', `?${filtroData}&modalidade=in.(expediente)&quantidade=gt.0&select=*`),
-    supa.get('registros_bo', `?${filtroData}&quantidade=gt.0&select=*`)
+    supa.getAll('registros', `?${filtroData}&modalidade=in.(expediente)&quantidade=gt.0&select=*`),
+    supa.getAll('registros_bo', `?${filtroData}&quantidade=gt.0&select=*`)
   ]);
 
   // Plantão
-  const regsPlantao = await supa.get('registros', `?${filtroData}&modalidade=eq.plantao&quantidade=gt.0&select=*`);
+  const regsPlantao = await supa.getAll('registros', `?${filtroData}&modalidade=eq.plantao&quantidade=gt.0&select=*`);
 
   // Montar estrutura compatível com as funções de relatório existentes
   const plantao = {};
@@ -2113,7 +2127,7 @@ function mesclarDetalhesPeriodo(linhasArr, del, pad) {
 }
 
 async function gerarAreaPeriodo(ini, fim) {
-  const rows = await supa.get('registros', `?data=gte.${ini}&data=lte.${fim}&modalidade=eq.expediente&quantidade=gt.0&select=*&order=data`);
+  const rows = await supa.getAll('registros', `?data=gte.${ini}&data=lte.${fim}&modalidade=eq.expediente&quantidade=gt.0&select=*&order=data`);
 
   const exp = {};
   rows.forEach(r => {
@@ -2184,7 +2198,7 @@ async function gerarRelatorioSemanal() {
   const sp = document.getElementById('spinner-sem');
   btn.disabled = true; txt.textContent = 'Buscando...'; sp.style.display = 'block';
   try {
-    const rows = await supa.get('registros', `?data=gte.${ini}&data=lte.${fim}&quantidade=gt.0&select=*`);
+    const rows = await supa.getAll('registros', `?data=gte.${ini}&data=lte.${fim}&quantidade=gt.0&select=*`);
     const texto = montarTextoSemanal(rows, ini, fim);
     document.getElementById('rsem-texto').value = texto;
     renderDetalhamentoSemanal(rows.map(r => ({ procedimento: r.procedimento, quantidade: r.quantidade, delegacia: r.delegacia, data: r.data, crime: r.crime, cidade: r.cidade, escrivao: r.escrivao, horaRegistro: r.hora_registro })));
@@ -3760,7 +3774,7 @@ async function gerarRelatorioBO() {
   qs += '&select=*';
 
   try {
-    const registros = await supa.get('registros_bo', qs);
+    const registros = await supa.getAll('registros_bo', qs);
     document.getElementById('bo-loading').style.display = 'none';
 
     if (!registros.length) {
@@ -4154,6 +4168,8 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
         linhas.push('');
       }
     }
+    linhas.push(`*${letra}) ${nome}:*`);
+    linhas.push('');
 
     if (!reg || reg.semOcorrencias) {
       linhas.push('Sem ocorrências');
@@ -4190,21 +4206,16 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
       linhas.push('');
     }
     linhas.push('');
-    linhas.push('*1) Situação Inicial da Carceragem (início do período):*');
-    linhas.push('');
-    linhas.push(`O período foi iniciado com ${cp.situacaoInicial || '00 presos'} custodiado(s) nas dependências da carceragem.`);
+    linhas.push(`*1) Total de Presos Recebidos no Período: ${pad(cp.recebidosTotal)}*`);
     linhas.push('');
     linhas.push('');
-    linhas.push(`*2) Total de Presos Recebidos no Período: ${pad(cp.recebidosTotal)}*`);
+    linhas.push(`*2) Total de Audiências de Custódia Realizadas no Período: ${pad(cp.audienciasTotal)}*`);
     linhas.push('');
     linhas.push('');
-    linhas.push(`*3) Total de Audiências de Custódia no Período: ${pad(cp.audienciasTotal)}*`);
+    linhas.push(`*3) Total de Transferências para Unidades Prisionais no Período: ${pad(cp.transferenciasTotal)}*`);
     linhas.push('');
     linhas.push('');
-    linhas.push(`*4) Total de Transferências para Unidades Prisionais no Período: ${pad(cp.transferenciasTotal)}*`);
-    linhas.push('');
-    linhas.push('');
-    linhas.push(`*5) Situação Final da Carceragem (fim do período): ${cp.situacaoFinal || '00 custodiados'}.*`);
+    linhas.push(`*4) Situação Final da Carceragem (ao fim do período): ${cp.situacaoFinal || '00 custodiados'}.*`);
     linhas.push('');
     linhas.push(''); // espaço extra antes da seção III
   } else {
@@ -4348,7 +4359,21 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
         if (parseInt(v.total) > 0 && nomesDetPla[k]) {
           linhas.push(`*${i++}) ${nomesDetPla[k]}: ${pad(v.total)}*`);
           linhas.push('');
-          (v.linhas || []).forEach(l => linhas.push(`${pad(l.quantidade)} ${l.crime||l['descrição']||''} (${l.cidade||''})`));
+          const agrupado = {};
+          const ordem = [];
+          (v.linhas || []).forEach(l => {
+            const qtd = parseInt(l.quantidade) || 0;
+            if (qtd === 0) return;
+            const crime = l.crime || l['descrição'] || '';
+            const cidade = l.cidade || '';
+            const chave = `${crime}|||${cidade}`;
+            if (!agrupado[chave]) { agrupado[chave] = { crime, cidade, total: 0 }; ordem.push(chave); }
+            agrupado[chave].total += qtd;
+          });
+          ordem.forEach(chave => {
+            const g = agrupado[chave];
+            linhas.push(`${pad(g.total)} ${g.crime} (${g.cidade})`);
+          });
           linhas.push('');
         }
       });
@@ -4367,8 +4392,20 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
     linhas.push('');
     linhas.push(`*1) BOLETIM DE OCORRÊNCIA: ${pad(t.total)}*`);
     linhas.push('');
+    const agrupadoBO = {};
+    const ordemBO = [];
     (t.linhas || []).forEach(l => {
-      linhas.push(`${l.crime||''} (${l.delegacia||''}): ${pad(l.quantidade)}`);
+      const qtd = parseInt(l.quantidade) || 0;
+      if (qtd === 0) return;
+      const crime = l.crime || '';
+      const delegaciaBO = l.delegacia || '';
+      const chave = `${crime}|||${delegaciaBO}`;
+      if (!agrupadoBO[chave]) { agrupadoBO[chave] = { crime, delegaciaBO, total: 0 }; ordemBO.push(chave); }
+      agrupadoBO[chave].total += qtd;
+    });
+    ordemBO.forEach(chave => {
+      const g = agrupadoBO[chave];
+      linhas.push(`${g.crime} (${g.delegaciaBO}): ${pad(g.total)}`);
     });
     linhas.push('');
   });
@@ -4383,16 +4420,24 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
     if (total === 0) return;
     linhas.push(`*${numDetExp++}) ${nome}: ${pad(total)}*`);
     linhas.push('');
-    // Detalhar por delegacia
+    // Detalhar por delegacia, agrupando entradas idênticas (mesmo crime + cidade)
     Object.entries(exp).forEach(([del, procs]) => {
       const p = procs[k];
       if (!p || !p.linhas?.length) return;
+      const agrupado = {};
+      const ordem = [];
       p.linhas.forEach(l => {
         const qtd = parseInt(l.quantidade) || 0;
         if (qtd === 0) return;
         const crime = l.crime || l['descrição'] || l['tipo (depoimento/declaração/interrogatório)'] || l['tipo de crime'] || '';
         const cidade = l.cidade || del;
-        linhas.push(`${pad(qtd)} ${crime ? crime + ' ' : ''}(${cidade}-PB)`);
+        const chave = `${crime}|||${cidade}`;
+        if (!agrupado[chave]) { agrupado[chave] = { crime, cidade, total: 0 }; ordem.push(chave); }
+        agrupado[chave].total += qtd;
+      });
+      ordem.forEach(chave => {
+        const g = agrupado[chave];
+        linhas.push(`${pad(g.total)} ${g.crime ? g.crime + ' ' : ''}(${g.cidade}-PB)`);
       });
     });
     linhas.push('');
