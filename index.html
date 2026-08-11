@@ -1464,6 +1464,11 @@ const supa = {
     const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${qs}`, { method: 'DELETE', headers: this.h });
     if (!r.ok) throw new Error(await r.text());
   },
+  async rpc(fnName, params = {}) {
+    const r = await fetch(`${SUPA_URL}/rest/v1/rpc/${fnName}`, { method: 'POST', headers: this.h, body: JSON.stringify(params) });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  },
   // Busca todas as páginas de resultado (contorna o limite padrão de linhas do Supabase/PostgREST)
   async getAll(table, qs = '', pageSize = 1000) {
     let todos = [];
@@ -1491,16 +1496,22 @@ async function fazerLogin() {
   erroEl.textContent = '';
   if (!nome || !senha) { erroEl.textContent = 'Preencha nome e senha.'; return; }
 
-  if (nome.toLowerCase() === 'admin' && senha === 'admin@15dspc') {
-    usuarioLogado = { nome: 'Administrador', delegacia: null, isAdmin: true };
-    entrarNoApp(); return;
-  }
-
   btn.textContent = 'Entrando...'; btn.disabled = true;
   try {
-    const rows = await supa.get('escrivaes', `?nome=eq.${encodeURIComponent(nome)}&select=*`);
-    if (!rows.length || rows[0].senha !== senha) { erroEl.textContent = 'Nome ou senha incorretos.'; return; }
-    const e = rows[0];
+    if (nome.toLowerCase() === 'admin') {
+      const okAdmin = await supa.rpc('verificar_login_admin', { p_senha: senha });
+      if (okAdmin) {
+        usuarioLogado = { nome: 'Administrador', delegacia: null, isAdmin: true };
+        entrarNoApp();
+      } else {
+        erroEl.textContent = 'Nome ou senha incorretos.';
+      }
+      return;
+    }
+
+    const resultado = await supa.rpc('verificar_login_escrivao', { p_nome: nome, p_senha: senha });
+    if (!resultado || !resultado.length) { erroEl.textContent = 'Nome ou senha incorretos.'; return; }
+    const e = resultado[0];
     usuarioLogado = { nome: e.nome, delegacias: e.delegacias || [], delegacia: (e.delegacias||[])[0] || '', modalidades: e.modalidades || ['expediente','plantao','bo'], isAdmin: false };
     entrarNoApp();
   } catch(err) { erroEl.textContent = 'Erro de conexão.'; }
@@ -1514,7 +1525,7 @@ async function carregarEscrivaes() {
   document.getElementById('admin-loading').style.display = 'block';
   document.getElementById('tabela-escrivaes').style.display = 'none';
   try {
-    const rows = await supa.get('escrivaes', '?select=*&order=nome');
+    const rows = await supa.get('escrivaes', '?select=nome,delegacias,modalidades&order=nome');
     renderTabela(rows);
   } catch(e) {
     document.getElementById('admin-loading').textContent = 'Erro ao carregar.';
@@ -1536,16 +1547,20 @@ async function salvarEscrivao() {
   const checks = document.querySelectorAll('#esc-delegacias-lista input[type="checkbox"]:checked');
   const delegacias = Array.from(checks).map(cb => cb.value);
 
-  if (!nome || !senha) { erroEl.textContent = 'Preencha nome e senha.'; return; }
+  if (!nome) { erroEl.textContent = 'Preencha o nome.'; return; }
+  if (!nomeAntigo && !senha) { erroEl.textContent = 'Defina uma senha para o novo escrivão.'; return; }
   if (modalidades.length === 0) { erroEl.textContent = 'Selecione ao menos uma modalidade.'; return; }
   if (modalidades.includes('expediente') && delegacias.length === 0) { erroEl.textContent = 'Selecione ao menos uma delegacia.'; return; }
 
   btnSalvar.textContent = 'Salvando...'; btnSalvar.disabled = true;
   try {
     if (nomeAntigo) {
-      await supa.patch('escrivaes', `nome=eq.${encodeURIComponent(nomeAntigo)}`, { nome, senha, delegacias, modalidades });
+      const payload = { nome, delegacias, modalidades };
+      await supa.patch('escrivaes', `nome=eq.${encodeURIComponent(nomeAntigo)}`, payload);
+      if (senha) await supa.rpc('definir_senha_escrivao', { p_nome: nome, p_senha: senha }); // só atualiza a senha se algo foi digitado
     } else {
-      await supa.post('escrivaes', { nome, senha, delegacias, modalidades });
+      await supa.post('escrivaes', { nome, delegacias, modalidades });
+      await supa.rpc('definir_senha_escrivao', { p_nome: nome, p_senha: senha });
     }
     fecharModalEsc(); carregarEscrivaes();
   } catch(e) {
@@ -1915,7 +1930,7 @@ async function carregarPresenca() {
 
   try {
     const [escrivaes, regsExp, regsBO] = await Promise.all([
-      supa.get('escrivaes', '?select=*&order=nome'),
+      supa.get('escrivaes', '?select=nome,delegacias,modalidades&order=nome'),
       supa.getAll('registros', `?${filtroQS}&select=escrivao,modalidade,delegacia,data`),
       supa.getAll('registros_bo', `?${filtroQS}&select=escrivao,delegacia,data`)
     ]);
@@ -3168,7 +3183,8 @@ function toggleDelegacias() {
 function abrirModalEscrivao(esc = null) {
   document.getElementById('modal-esc-titulo').textContent = esc ? 'Editar Escrivão' : 'Novo Escrivão';
   document.getElementById('esc-nome').value = esc ? esc.nome : '';
-  document.getElementById('esc-senha').value = esc ? esc.senha : '';
+  document.getElementById('esc-senha').value = '';
+  document.getElementById('esc-senha').placeholder = esc ? 'Deixe em branco para manter a senha atual' : 'Defina uma senha';
   document.getElementById('esc-id-edit').value = esc ? esc.nome : '';
   document.getElementById('msg-erro-esc').textContent = '';
 
