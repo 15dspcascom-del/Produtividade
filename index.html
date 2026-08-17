@@ -978,18 +978,6 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
             <input type="text" id="custform-duracao" placeholder="ex: Plantão 24h" />
           </div>
           <div class="fm-item">
-            <label>Servidor Responsável</label>
-            <select id="custform-servidor-sel" onchange="toggleCustFormServidor()">
-              <option value="">Selecione...</option>
-              <option value="IZAU">Izau</option>
-              <option value="RAFAEL">Rafael</option>
-              <option value="MARCOS">Marcos</option>
-              <option value="ELYSSON">Elysson</option>
-              <option value="Outro">Outro</option>
-            </select>
-            <input type="text" id="custform-servidor" placeholder="Digite o nome" style="display:none;margin-top:6px;" />
-          </div>
-          <div class="fm-item">
             <label>Presos no início</label>
             <input type="text" id="custform-ini-qtd" placeholder="ex: 01 preso custodiado" />
           </div>
@@ -1642,7 +1630,8 @@ async function salvarEscrivao() {
     }
     fecharModalEsc(); carregarEscrivaes();
   } catch(e) {
-    erroEl.textContent = e.message.includes('unique') ? 'Já existe um escrivão com esse nome.' : 'Erro ao salvar.';
+    console.error('Erro ao salvar escrivão:', e);
+    erroEl.textContent = e.message.includes('unique') ? 'Já existe um escrivão com esse nome.' : ('Erro ao salvar: ' + e.message);
   }
   finally { btnSalvar.textContent = 'Salvar'; btnSalvar.disabled = false; }
 }
@@ -2653,11 +2642,6 @@ function iniciarCustodiaCadastro() {
   carregarCustodiaFormExistente();
 }
 
-function toggleCustFormServidor() {
-  const sel = document.getElementById('custform-servidor-sel');
-  document.getElementById('custform-servidor').style.display = sel.value === 'Outro' ? 'block' : 'none';
-}
-
 function preencherCustodiaFormPadrao(dataISO) {
   if (!dataISO) return;
   const [ano, mes, dia] = dataISO.split('-').map(Number);
@@ -2685,17 +2669,6 @@ async function carregarCustodiaFormExistente() {
       if (c.final) document.getElementById('custform-final').value = c.final;
       document.getElementById('custform-duracao').value = c.duracao || 'Plantão 24h';
 
-      const selServ = document.getElementById('custform-servidor-sel');
-      const opcoes = Array.from(selServ.options).map(o => o.value);
-      if (c.servidor && opcoes.includes(c.servidor)) {
-        selServ.value = c.servidor;
-        document.getElementById('custform-servidor').style.display = 'none';
-      } else if (c.servidor) {
-        selServ.value = 'Outro';
-        document.getElementById('custform-servidor').style.display = 'block';
-        document.getElementById('custform-servidor').value = c.servidor;
-      }
-
       document.getElementById('custform-ini-qtd').value = c.inicial_qtd || '';
       document.getElementById('custform-recebidos-qtd').value = c.recebidos_qtd ?? 0;
       document.getElementById('custform-recebidos-nomes').value = c.recebidos_nomes || '';
@@ -2719,9 +2692,7 @@ async function salvarCustodiaFormUsuario() {
   const dataISO = document.getElementById('custform-data').value;
   if (!dataISO) { alert('Selecione a data do plantão de custódia.'); return; }
 
-  const servidor = document.getElementById('custform-servidor-sel').value === 'Outro'
-    ? document.getElementById('custform-servidor').value
-    : document.getElementById('custform-servidor-sel').value;
+  const servidor = usuarioLogado.nome;
 
   const payload = {
     data: dataISO,
