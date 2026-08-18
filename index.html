@@ -2231,7 +2231,6 @@ async function gerarAreaPeriodo(ini, fim) {
   linhas.push('*POLÍCIA CIVIL*'); linhas.push('');
   linhas.push('*15ª Delegacia Seccional, com sede em Patos/PB (15ª/PATOS)*'); linhas.push('');
   linhas.push('*PRODUTIVIDADE DAS UNIDADES DURANTE O EXPEDIENTE NORMAL DE TRABALHO (Seg a Sex - 08h às 18h)*'); linhas.push('');
-  linhas.push('*RELATÓRIO CONSOLIDADO — PERÍODO:*'); linhas.push('');
   linhas.push(`*DATA: ${periodoFmt}*`); linhas.push(''); linhas.push('');
 
   AREAS.forEach((area, areaIdx) => {
@@ -3597,8 +3596,6 @@ function montarTextoArea(dados, dataISO) {
   linhas.push('');
   linhas.push('*PRODUTIVIDADE DAS UNIDADES DURANTE O EXPEDIENTE NORMAL DE TRABALHO (Seg a Sex - 08h às 18h)*');
   linhas.push('');
-  linhas.push('*RELATÓRIO CONSOLIDADO:*');
-  linhas.push('');
   linhas.push(`*DATA: ${dataFmt}, ${diaSemana}, 08h às 18h.*`);
   linhas.push('');
   linhas.push('');
@@ -4322,11 +4319,24 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
   linhas.push('');
   linhas.push('*PRODUTIVIDADE DAS UNIDADES DA POLÍCIA CIVIL NA ÁREA DA 15ªDSPC/PATOS*');
   linhas.push('');
+  linhas.push('Unidades:');
+  linhas.push('');
+  linhas.push('I) Plantão Extraordinário;');
+  linhas.push('a) Central de Policia;');
+  linhas.push('b) DHE;');
+  linhas.push('c) Teixeira.');
+  linhas.push('');
+  linhas.push('II) Setor de Custódia;');
+  linhas.push('');
+  linhas.push('III) Setor de Boletim de Ocorrências;');
+  linhas.push('');
+  linhas.push('IV) Delegacias: Consolidado diário das Delegacias.');
+  linhas.push('');
   linhas.push('*A) RESUMOS:*');
   linhas.push('');
 
   // I — Plantão Extraordinário
-  linhas.push('*I) PRODUTIVIDADE NO PLANTÃO EXTRAORDINÁRIO:*');
+  linhas.push('*I) PLANTÃO EXTRAORDINÁRIO:*');
   linhas.push('');
 
   const polos = dados.plantao || {};
@@ -4378,11 +4388,10 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
     linhas.push('');
     linhas.push('Obs.: vide detalhamento no final deste relatório.');
     linhas.push('');
-    linhas.push(''); // espaço extra sempre, inclusive antes da seção II
   });
 
   // Custódia
-  linhas.push('*II) PRODUTIVIDADE DO SETOR DE CUSTÓDIA DA CENTRAL DE POLÍCIA DE PATOS:*');
+  linhas.push('*II) SETOR DE CUSTÓDIA DA CENTRAL DE POLÍCIA DE PATOS:*');
   linhas.push('');
 
   if (periodoInfo) {
@@ -4393,19 +4402,14 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
       linhas.push(`Servidor(es) Responsável(is) no Período: ${cp.servidores.join(', ').toUpperCase()}`);
       linhas.push('');
     }
-    linhas.push('');
     linhas.push(`*1) Total de Presos Recebidos no Período: ${pad(cp.recebidosTotal)}*`);
-    linhas.push('');
     linhas.push('');
     linhas.push(`*2) Total de Audiências de Custódia Realizadas no Período: ${pad(cp.audienciasTotal)}*`);
     linhas.push('');
-    linhas.push('');
     linhas.push(`*3) Total de Transferências para Unidades Prisionais no Período: ${pad(cp.transferenciasTotal)}*`);
-    linhas.push('');
     linhas.push('');
     linhas.push(`*4) Situação Final da Carceragem (ao fim do período): ${cp.situacaoFinal || '00 custodiados'}.*`);
     linhas.push('');
-    linhas.push(''); // espaço extra antes da seção III
   } else {
     if (custInicio) linhas.push(`*INÍCIO: ${custInicio}*`);
     if (custFinal) linhas.push(`*FINAL: ${custFinal}*`);
@@ -4416,11 +4420,9 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
       linhas.push(`Servidor Responsável pelo plantão: ${custServidor.toUpperCase()}`);
       linhas.push('');
     }
-    linhas.push('');
     linhas.push('*1) Situação Inicial da Carceragem:*');
     linhas.push('');
     linhas.push(`O plantão foi iniciado às ${custInicio || '08h00'}, com ${custIniQtd || '00 presos'} custodiado(s) nas dependências da carceragem.`);
-    linhas.push('');
     linhas.push('');
     linhas.push(`*2) Presos Recebidos Durante o Plantão: ${pad(custRecQtd)}*`);
     if (custRecNomes) {
@@ -4428,12 +4430,11 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
       linhas.push(formatarNomes(custRecNomes));
     }
     linhas.push('');
-    linhas.push('');
-    linhas.push('*3) Audiências de Custódia:*');
+    const qtdAudiencias = custAud ? custAud.split('\n').map(s => s.trim()).filter(Boolean).length : 0;
+    linhas.push(`*3) Audiências de Custódia: ${pad(qtdAudiencias)}*`);
     linhas.push('');
     if (custAud) linhas.push(formatarNomes(custAud));
     else linhas.push('Nenhuma.');
-    linhas.push('');
     linhas.push('');
     linhas.push(`*4) Transferências para Unidades Prisionais: ${pad(custTransfQtd)}*`);
     if (custTransfNomes) {
@@ -4441,28 +4442,33 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
       linhas.push(formatarNomes(custTransfNomes));
     }
     linhas.push('');
-    linhas.push('');
     linhas.push(`*5) Situação Final da Carceragem: ${custFinalQtd || '00 custodiados'}.*`);
     linhas.push('');
-    linhas.push(''); // espaço extra antes da seção III
   }
 
   // Setor de B.O.
-  linhas.push('*III) PRODUTIVIDADE DO SETOR DE BOLETIM DE OCORRÊNCIA DA CENTRAL DE POLÍCIA (08h às 18h – SEG/SEX):*');
+  linhas.push('*III) SETOR DE BOLETIM DE OCORRÊNCIA DA CENTRAL DE PATOS*');
   linhas.push('');
-  linhas.push(periodoInfo ? `*PERÍODO: ${periodoFmt}*` : `*08h às 18h de ${dataFmt} (${diaSemana})*`);
+  if (periodoInfo) {
+    linhas.push(`*PERÍODO: ${periodoFmt}*`);
+  } else {
+    linhas.push(`*DIA: ${dataFmt} (${diaSemana})*`);
+    linhas.push('');
+    linhas.push('*08h às 18h*');
+  }
   linhas.push('');
   const totalBO = (dados.bo?.manha?.total || 0) + (dados.bo?.tarde?.total || 0);
   linhas.push(`1) BOLETIM DE OCORRÊNCIA: ${pad(totalBO)}`);
   linhas.push('');
   linhas.push('Obs.: vide detalhamento no final deste relatório.');
   linhas.push('');
-  linhas.push(''); // espaço extra antes da seção IV
 
-  // Expediente
-  linhas.push(`*IV) PRODUTIVIDADE DAS UNIDADES DURANTE O EXPEDIENTE NORMAL DE TRABALHO (08h às 18h - SEG/SEX):*`);
+  // Delegacias (Expediente)
+  linhas.push('*IV) DELEGACIAS:*');
   linhas.push('');
-  linhas.push(periodoInfo ? `PERÍODO: ${periodoFmt}.` : `DATA: ${dataFmt}, ${diaSemana}, 08h às 18h.`);
+  linhas.push('*CONSOLIDADO DIÁRIO DAS DELEGACIAS DURANTE O EXPEDIENTE NORMAL DE TRABALHO (08h às 18h - SEG a SEX):*');
+  linhas.push('');
+  linhas.push(periodoInfo ? `*PERÍODO: ${periodoFmt}.*` : `*DATA: ${dataFmt}, ${diaSemana}, 08h às 18h.*`);
   linhas.push('');
 
   const exp = dados.expediente || {};
@@ -4492,12 +4498,10 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
   linhas.push('');
   linhas.push('Obs.: vide detalhamento no final deste relatório.');
   linhas.push('');
-  linhas.push(''); // espaço extra antes da seção B
 
   // ===== SEÇÃO B — DETALHAMENTO =====
   linhas.push('*B) DETALHAMENTO DAS OCORRÊNCIAS:*');
   linhas.push('');
-  linhas.push(''); // espaço extra antes do primeiro item (I) do detalhamento
 
   // B-I — Plantão
   linhas.push('*I) PLANTÃO EXTRAORDINÁRIO*');
@@ -4546,7 +4550,6 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
       Object.entries(procs).forEach(([k, v]) => {
         if (parseInt(v.total) > 0 && nomesDetPla[k]) {
           linhas.push(`*${i++}) ${nomesDetPla[k]}: ${pad(v.total)}*`);
-          linhas.push('');
           const agrupado = {};
           const ordem = [];
           (v.linhas || []).forEach(l => {
@@ -4558,15 +4561,18 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
             if (!agrupado[chave]) { agrupado[chave] = { crime, cidade, total: 0 }; ordem.push(chave); }
             agrupado[chave].total += qtd;
           });
-          ordem.forEach(chave => {
-            const g = agrupado[chave];
-            linhas.push(`${pad(g.total)} ${g.crime} (${g.cidade})`);
-          });
+          if (ordem.length) {
+            linhas.push('');
+            ordem.forEach(chave => {
+              const g = agrupado[chave];
+              linhas.push(`${pad(g.total)} ${g.crime} (${g.cidade})`);
+            });
+          }
           linhas.push('');
         }
       });
     }
-    if (idxPolo < polosComConteudo.length - 1) linhas.push(''); // espaço extra entre os polos
+    if (idxPolo < polosComConteudo.length - 1) linhas.push('');
   });
 
   // B-II — Setor de B.O.
@@ -4579,7 +4585,6 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
     linhas.push(periodoInfo ? `*${horTurno} — Período: ${periodoFmt}*` : `*${horTurno} de ${dataFmt} (${diaSemana})*`);
     linhas.push('');
     linhas.push(`*1) BOLETIM DE OCORRÊNCIA: ${pad(t.total)}*`);
-    linhas.push('');
     const agrupadoBO = {};
     const ordemBO = [];
     (t.linhas || []).forEach(l => {
@@ -4591,15 +4596,20 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
       if (!agrupadoBO[chave]) { agrupadoBO[chave] = { crime, delegaciaBO, total: 0 }; ordemBO.push(chave); }
       agrupadoBO[chave].total += qtd;
     });
-    ordemBO.forEach(chave => {
-      const g = agrupadoBO[chave];
-      linhas.push(`${g.crime} (${g.delegaciaBO}): ${pad(g.total)}`);
-    });
+    if (ordemBO.length) {
+      linhas.push('');
+      ordemBO.forEach(chave => {
+        const g = agrupadoBO[chave];
+        linhas.push(`${g.crime} (${g.delegaciaBO}): ${pad(g.total)}`);
+      });
+    }
     linhas.push('');
   });
 
   // B-III — Expediente
-  linhas.push(`*c) PRODUTIVIDADE DAS UNIDADES DURANTE O EXPEDIENTE NORMAL DE TRABALHO (08h às 18h - SEG/SEX):*`);
+  linhas.push('*c) PRODUTIVIDADE NAS DELEGACIAS DURANTE O EXPEDIENTE NORMAL DE TRABALHO (08h às 18h - SEG/SEX).*');
+  linhas.push('');
+  linhas.push('CONSOLIDADO:');
   linhas.push('');
 
   let numDetExp = 1;
@@ -4631,7 +4641,6 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
     linhas.push('');
   });
 
-  linhas.push('');
   linhas.push('_Assessoria de Estatística 15ªDSPC/Patos_');
 
   return linhas.join('\n');
