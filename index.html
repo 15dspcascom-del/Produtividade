@@ -1773,7 +1773,9 @@ async function enviar() {
             modalidade: modalidadeAtual,
             procedimento: campo.id,
             quantidade: qtd,
-            crime: item.crime || item['tipo (depoimento/declaração/interrogatório)'] || item['tipo de crime'] || item['descrição'] || item['nome da operação'] || null,
+            crime: (campo.id === 'armas' && (item.descrição || item.calibre))
+              ? `${item.descrição || ''}${item.descrição && item.calibre ? ' - Calibre ' : (item.calibre ? 'Calibre ' : '')}${item.calibre || ''}`.trim()
+              : (item.crime || item['tipo (depoimento/declaração/interrogatório)'] || item['tipo de crime'] || item['descrição'] || item['nome da operação'] || null),
             cidade: item.cidade || null,
             turno: dados.turno || null,
             duracao: dados.duracao || null
@@ -2355,7 +2357,7 @@ const CAMPOS_EXP = [
   { id:'despachos', titulo:'Despachos e Deliberações', sub:['quantidade'] },
   { id:'rel_missao', titulo:'Relatórios de Missão Confeccionados pela Equipe', sub:['quantidade'] },
   { id:'cond_presos', titulo:'Condução de Presos', sub:['quantidade','crime','cidade'] },
-  { id:'armas', titulo:'Armas Apreendidas', sub:['quantidade','descrição','crime','cidade'] },
+  { id:'armas', titulo:'Armas Apreendidas', sub:['quantidade','descrição','calibre','cidade'] },
   { id:'drogas', titulo:'Drogas Apreendidas', sub:['quantidade','descrição','cidade'] },
   { id:'veiculos', titulo:'Veículos Encaminhados ao Fórum/DETRAN ou Devolvidos', sub:['quantidade','descrição do veículo','placa','cidade'] },
   { id:'veiculos_apreendidos', titulo:'Veículos Apreendidos', sub:['quantidade','descrição do veículo','placa','cidade'] },
@@ -2593,6 +2595,12 @@ function voltarSelecao() {
 
 function toggleExameOutro(sel) {
   const outro = sel.parentElement.querySelector('.exame-tipo-outro');
+  if (outro) outro.style.display = sel.value === 'Outros' ? 'block' : 'none';
+  if (sel.value !== 'Outros' && outro) outro.value = '';
+}
+
+function toggleCalibreOutro(sel) {
+  const outro = sel.parentElement.querySelector('.calibre-outro');
   if (outro) outro.style.display = sel.value === 'Outros' ? 'block' : 'none';
   if (sel.value !== 'Outros' && outro) outro.value = '';
 }
@@ -2979,6 +2987,19 @@ function renderInput(sub, campoId) {
       <input type="text" class="chip-input" placeholder="Delegacia" />
     </div>`;
   }
+  if (sub === 'calibre' && campoId === 'armas') {
+    const calibres = ['.38', '.40', '9mm', '.32', '.380', 'Calibre 12', '.22', '.45', '5.56mm', '7.62mm'];
+    const opts = calibres.map(c => `<option>${c}</option>`).join('');
+    return `<div class="c-grupo">
+      <label>CALIBRE</label>
+      <select class="calibre-sel" onchange="toggleCalibreOutro(this)">
+        <option value="">Selecione...</option>
+        ${opts}
+        <option value="Outros">Outros</option>
+      </select>
+      <input type="text" class="calibre-outro" placeholder="Digite o calibre" style="display:none;margin-top:4px;" />
+    </div>`;
+  }
   if (sub === 'cidade') {
     const cidadePadrao = getCidadePadrao();
     const opts = CIDADES.map(c => `<option${c===cidadePadrao?' selected':''}>${c}</option>`).join('');
@@ -3177,6 +3198,10 @@ function coletarDados() {
       campo.sub.forEach((sub, i) => {
         if (sub === 'quantidade') {
           obj[sub] = linha.querySelector('.qtd-input')?.value || '0';
+        } else if (sub === 'calibre' && campo.id === 'armas') {
+          const sel = linha.querySelector('.calibre-sel');
+          const outro = linha.querySelector('.calibre-outro');
+          obj[sub] = sel?.value === 'Outros' ? (outro?.value || 'Outros') : (sel?.value || '');
         } else if (sub === 'cidade') {
           const sel = linha.querySelector('.cidade-sel');
           const outro = linha.querySelector('.cidade-outro');
@@ -3200,8 +3225,8 @@ function coletarDados() {
           const crime = crimeSel?.value === 'Outros' ? (crimeOutro?.value || 'Outros') : (crimeSel?.value || '');
           obj[sub] = tipo && crime ? `${tipo} - ${crime}` : (tipo || crime || '');
         } else {
-          const textInputs = Array.from(linha.querySelectorAll('input:not(.qtd-input):not(.cidade-outro):not(.proc-pje-outro):not(.crime-bo-outro):not(.exame-tipo-outro)'));
-          const subIdx = campo.sub.filter((s,i) => i < campo.sub.indexOf(sub) && !['quantidade','cidade','tipo (depoimento/declaração/interrogatório)'].includes(s) && !(s === 'procedimento' && campo.id === 'prot_pje') && !(s === 'crime' && campo.id === 'bos_ip')).length;
+          const textInputs = Array.from(linha.querySelectorAll('input:not(.qtd-input):not(.cidade-outro):not(.proc-pje-outro):not(.crime-bo-outro):not(.exame-tipo-outro):not(.calibre-outro)'));
+          const subIdx = campo.sub.filter((s,i) => i < campo.sub.indexOf(sub) && !['quantidade','cidade','tipo (depoimento/declaração/interrogatório)'].includes(s) && !(s === 'procedimento' && campo.id === 'prot_pje') && !(s === 'crime' && campo.id === 'bos_ip') && !(s === 'calibre' && campo.id === 'armas')).length;
           obj[sub] = textInputs[subIdx]?.value || '';
         }
       });
@@ -4301,6 +4326,11 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
 
   const periodoFmt = periodoInfo ? `${formatarDataBR(periodoInfo.dataIni)} a ${formatarDataBR(periodoInfo.dataFim)}` : '';
 
+  // Sábado e domingo não têm expediente normal nem setor de B.O. — essas seções somem do relatório
+  const [anoDia, mesDia, diaDia] = dataISO.split('-').map(Number);
+  const diaSemanaNum = new Date(anoDia, mesDia - 1, diaDia).getDay(); // 0 = domingo, 6 = sábado
+  const ehFimDeSemana = !periodoInfo && (diaSemanaNum === 0 || diaSemanaNum === 6);
+
   const formatarNomes = (txt) => {
     if (!txt) return '';
     const nomes = txt.split('\n').map(l => l.trim()).filter(Boolean);
@@ -4326,12 +4356,14 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
   linhas.push('b) DHE;');
   linhas.push('c) Teixeira.');
   linhas.push('');
-  linhas.push('II) Setor de Custódia;');
+  linhas.push(`II) Setor de Custódia${ehFimDeSemana ? '.' : ';'}`);
   linhas.push('');
-  linhas.push('III) Setor de Boletim de Ocorrências;');
-  linhas.push('');
-  linhas.push('IV) Delegacias: Consolidado diário das Delegacias.');
-  linhas.push('');
+  if (!ehFimDeSemana) {
+    linhas.push('III) Setor de Boletim de Ocorrências;');
+    linhas.push('');
+    linhas.push('IV) Delegacias: Consolidado diário das Delegacias.');
+    linhas.push('');
+  }
   linhas.push('*A) RESUMOS:*');
   linhas.push('');
 
@@ -4446,31 +4478,6 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
     linhas.push('');
   }
 
-  // Setor de B.O.
-  linhas.push('*III) SETOR DE BOLETIM DE OCORRÊNCIA DA CENTRAL DE PATOS*');
-  linhas.push('');
-  if (periodoInfo) {
-    linhas.push(`*PERÍODO: ${periodoFmt}*`);
-  } else {
-    linhas.push(`*DIA: ${dataFmt} (${diaSemana})*`);
-    linhas.push('');
-    linhas.push('*08h às 18h*');
-  }
-  linhas.push('');
-  const totalBO = (dados.bo?.manha?.total || 0) + (dados.bo?.tarde?.total || 0);
-  linhas.push(`1) BOLETIM DE OCORRÊNCIA: ${pad(totalBO)}`);
-  linhas.push('');
-  linhas.push('Obs.: vide detalhamento no final deste relatório.');
-  linhas.push('');
-
-  // Delegacias (Expediente)
-  linhas.push('*IV) DELEGACIAS:*');
-  linhas.push('');
-  linhas.push('*CONSOLIDADO DIÁRIO DAS DELEGACIAS DURANTE O EXPEDIENTE NORMAL DE TRABALHO (08h às 18h - SEG a SEX):*');
-  linhas.push('');
-  linhas.push(periodoInfo ? `*PERÍODO: ${periodoFmt}.*` : `*DATA: ${dataFmt}, ${diaSemana}, 08h às 18h.*`);
-  linhas.push('');
-
   const exp = dados.expediente || {};
   const totaisExp = calcularTotaisExp(exp);
   const nomesExpResumo = [
@@ -4487,17 +4494,44 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
     ['operacoes','Participação em Operações Policiais'], ['diligencias','Diligências Diversas'],
     ['atendimentos','Atendimentos Diversos'], ['rel_final','Relatório Final']
   ];
-
-  let numExp = 1;
   const SIGLAS_SEM_CAIXA_ALTA = ['bos', 'apfs', 'aafai', 'tcos', 'bocs'];
-  nomesExpResumo.forEach(([k, nome]) => {
-    const total = totaisExp[k] || 0;
-    const nomeFmt = SIGLAS_SEM_CAIXA_ALTA.includes(k) ? nome : nome.toUpperCase();
-    if (total > 0) linhas.push(`${numExp++}) ${nomeFmt}: ${pad(total)}`);
-  });
-  linhas.push('');
-  linhas.push('Obs.: vide detalhamento no final deste relatório.');
-  linhas.push('');
+
+  if (!ehFimDeSemana) {
+    // Setor de B.O.
+    linhas.push('*III) SETOR DE BOLETIM DE OCORRÊNCIA DA CENTRAL DE PATOS*');
+    linhas.push('');
+    if (periodoInfo) {
+      linhas.push(`*PERÍODO: ${periodoFmt}*`);
+    } else {
+      linhas.push(`*DIA: ${dataFmt} (${diaSemana})*`);
+      linhas.push('');
+      linhas.push('*08h às 18h*');
+    }
+    linhas.push('');
+    const totalBO = (dados.bo?.manha?.total || 0) + (dados.bo?.tarde?.total || 0);
+    linhas.push(`1) BOLETIM DE OCORRÊNCIA: ${pad(totalBO)}`);
+    linhas.push('');
+    linhas.push('Obs.: vide detalhamento no final deste relatório.');
+    linhas.push('');
+
+    // Delegacias (Expediente)
+    linhas.push('*IV) DELEGACIAS:*');
+    linhas.push('');
+    linhas.push('*CONSOLIDADO DIÁRIO DAS DELEGACIAS DURANTE O EXPEDIENTE NORMAL DE TRABALHO (08h às 18h - SEG a SEX):*');
+    linhas.push('');
+    linhas.push(periodoInfo ? `*PERÍODO: ${periodoFmt}.*` : `*DATA: ${dataFmt}, ${diaSemana}, 08h às 18h.*`);
+    linhas.push('');
+
+    let numExp = 1;
+    nomesExpResumo.forEach(([k, nome]) => {
+      const total = totaisExp[k] || 0;
+      const nomeFmt = SIGLAS_SEM_CAIXA_ALTA.includes(k) ? nome : nome.toUpperCase();
+      if (total > 0) linhas.push(`${numExp++}) ${nomeFmt}: ${pad(total)}`);
+    });
+    linhas.push('');
+    linhas.push('Obs.: vide detalhamento no final deste relatório.');
+    linhas.push('');
+  }
 
   // ===== SEÇÃO B — DETALHAMENTO =====
   linhas.push('*B) DETALHAMENTO DAS OCORRÊNCIAS:*');
@@ -4575,71 +4609,73 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
     if (idxPolo < polosComConteudo.length - 1) linhas.push('');
   });
 
-  // B-II — Setor de B.O.
-  linhas.push('*b) SETOR BOLETIM DE OCORRÊNCIAS*');
-  linhas.push('');
-  ['manha','tarde'].forEach(turno => {
-    const t = dados.bo?.[turno];
-    if (!t) return;
-    const horTurno = turno === 'manha' ? '08h às 13h' : '13h às 18h';
-    linhas.push(periodoInfo ? `*${horTurno} — Período: ${periodoFmt}*` : `*${horTurno} de ${dataFmt} (${diaSemana})*`);
+  if (!ehFimDeSemana) {
+    // B-II — Setor de B.O.
+    linhas.push('*b) SETOR BOLETIM DE OCORRÊNCIAS*');
     linhas.push('');
-    linhas.push(`*1) BOLETIM DE OCORRÊNCIA: ${pad(t.total)}*`);
-    const agrupadoBO = {};
-    const ordemBO = [];
-    (t.linhas || []).forEach(l => {
-      const qtd = parseInt(l.quantidade) || 0;
-      if (qtd === 0) return;
-      const crime = l.crime || '';
-      const delegaciaBO = l.delegacia || '';
-      const chave = `${crime}|||${delegaciaBO}`;
-      if (!agrupadoBO[chave]) { agrupadoBO[chave] = { crime, delegaciaBO, total: 0 }; ordemBO.push(chave); }
-      agrupadoBO[chave].total += qtd;
-    });
-    if (ordemBO.length) {
+    ['manha','tarde'].forEach(turno => {
+      const t = dados.bo?.[turno];
+      if (!t) return;
+      const horTurno = turno === 'manha' ? '08h às 13h' : '13h às 18h';
+      linhas.push(periodoInfo ? `*${horTurno} — Período: ${periodoFmt}*` : `*${horTurno} de ${dataFmt} (${diaSemana})*`);
       linhas.push('');
-      ordemBO.forEach(chave => {
-        const g = agrupadoBO[chave];
-        linhas.push(`${g.crime} (${g.delegaciaBO}): ${pad(g.total)}`);
-      });
-    }
-    linhas.push('');
-  });
-
-  // B-III — Expediente
-  linhas.push('*c) PRODUTIVIDADE NAS DELEGACIAS DURANTE O EXPEDIENTE NORMAL DE TRABALHO (08h às 18h - SEG/SEX).*');
-  linhas.push('');
-  linhas.push('CONSOLIDADO:');
-  linhas.push('');
-
-  let numDetExp = 1;
-  nomesExpResumo.forEach(([k, nome]) => {
-    const total = totaisExp[k] || 0;
-    if (total === 0) return;
-    linhas.push(`*${numDetExp++}) ${nome}: ${pad(total)}*`);
-    linhas.push('');
-    // Detalhar por delegacia, agrupando entradas idênticas (mesmo crime + cidade)
-    Object.entries(exp).forEach(([del, procs]) => {
-      const p = procs[k];
-      if (!p || !p.linhas?.length) return;
-      const agrupado = {};
-      const ordem = [];
-      p.linhas.forEach(l => {
+      linhas.push(`*1) BOLETIM DE OCORRÊNCIA: ${pad(t.total)}*`);
+      const agrupadoBO = {};
+      const ordemBO = [];
+      (t.linhas || []).forEach(l => {
         const qtd = parseInt(l.quantidade) || 0;
         if (qtd === 0) return;
-        const crime = l.crime || l['descrição'] || l['tipo (depoimento/declaração/interrogatório)'] || l['tipo de crime'] || '';
-        const cidade = l.cidade || del;
-        const chave = `${crime}|||${cidade}`;
-        if (!agrupado[chave]) { agrupado[chave] = { crime, cidade, total: 0 }; ordem.push(chave); }
-        agrupado[chave].total += qtd;
+        const crime = l.crime || '';
+        const delegaciaBO = l.delegacia || '';
+        const chave = `${crime}|||${delegaciaBO}`;
+        if (!agrupadoBO[chave]) { agrupadoBO[chave] = { crime, delegaciaBO, total: 0 }; ordemBO.push(chave); }
+        agrupadoBO[chave].total += qtd;
       });
-      ordem.forEach(chave => {
-        const g = agrupado[chave];
-        linhas.push(`${pad(g.total)} ${g.crime ? g.crime + ' ' : ''}(${g.cidade}-PB)`);
-      });
+      if (ordemBO.length) {
+        linhas.push('');
+        ordemBO.forEach(chave => {
+          const g = agrupadoBO[chave];
+          linhas.push(`${g.crime} (${g.delegaciaBO}): ${pad(g.total)}`);
+        });
+      }
+      linhas.push('');
     });
+
+    // B-III — Expediente
+    linhas.push('*c) PRODUTIVIDADE NAS DELEGACIAS DURANTE O EXPEDIENTE NORMAL DE TRABALHO (08h às 18h - SEG/SEX).*');
     linhas.push('');
-  });
+    linhas.push('CONSOLIDADO:');
+    linhas.push('');
+
+    let numDetExp = 1;
+    nomesExpResumo.forEach(([k, nome]) => {
+      const total = totaisExp[k] || 0;
+      if (total === 0) return;
+      linhas.push(`*${numDetExp++}) ${nome}: ${pad(total)}*`);
+      linhas.push('');
+      // Detalhar por delegacia, agrupando entradas idênticas (mesmo crime + cidade)
+      Object.entries(exp).forEach(([del, procs]) => {
+        const p = procs[k];
+        if (!p || !p.linhas?.length) return;
+        const agrupado = {};
+        const ordem = [];
+        p.linhas.forEach(l => {
+          const qtd = parseInt(l.quantidade) || 0;
+          if (qtd === 0) return;
+          const crime = l.crime || l['descrição'] || l['tipo (depoimento/declaração/interrogatório)'] || l['tipo de crime'] || '';
+          const cidade = l.cidade || del;
+          const chave = `${crime}|||${cidade}`;
+          if (!agrupado[chave]) { agrupado[chave] = { crime, cidade, total: 0 }; ordem.push(chave); }
+          agrupado[chave].total += qtd;
+        });
+        ordem.forEach(chave => {
+          const g = agrupado[chave];
+          linhas.push(`${pad(g.total)} ${g.crime ? g.crime + ' ' : ''}(${g.cidade}-PB)`);
+        });
+      });
+      linhas.push('');
+    });
+  }
 
   linhas.push('_Assessoria de Estatística 15ªDSPC/Patos_');
 
