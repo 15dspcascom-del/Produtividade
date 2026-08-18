@@ -4294,6 +4294,15 @@ async function salvarCustodia() {
 }
 
 
+// Normaliza um texto (crime/descrição) para servir de chave de agrupamento,
+// ignorando maiúsculo/minúsculo, espaços extras e plural simples (ex: "Furto" = "furtos")
+function normalizarParaAgrupar(txt) {
+  if (!txt) return '';
+  let s = txt.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (s.length > 3 && s.endsWith('s')) s = s.slice(0, -1);
+  return s;
+}
+
 function completarDiaSemana(textoData, anoReferencia) {
   if (!textoData) return textoData;
   if (/\(.+-feira\)|\(domingo\)|\(sábado\)/i.test(textoData)) return textoData; // já contém o dia da semana
@@ -4655,7 +4664,7 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
       if (total === 0) return;
       linhas.push(`*${numDetExp++}) ${nome}: ${pad(total)}*`);
       linhas.push('');
-      // Detalhar por delegacia, agrupando entradas idênticas (mesmo crime + cidade)
+      // Detalhar por delegacia, agrupando entradas idênticas (ignorando maiúsculo/minúsculo e plural)
       Object.entries(exp).forEach(([del, procs]) => {
         const p = procs[k];
         if (!p || !p.linhas?.length) return;
@@ -4664,15 +4673,14 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
         p.linhas.forEach(l => {
           const qtd = parseInt(l.quantidade) || 0;
           if (qtd === 0) return;
-          const crime = l.crime || l['descrição'] || l['tipo (depoimento/declaração/interrogatório)'] || l['tipo de crime'] || '';
-          const cidade = l.cidade || del;
-          const chave = `${crime}|||${cidade}`;
-          if (!agrupado[chave]) { agrupado[chave] = { crime, cidade, total: 0 }; ordem.push(chave); }
+          const crimeOriginal = (l.crime || l['descrição'] || l['tipo (depoimento/declaração/interrogatório)'] || l['tipo de crime'] || '').trim();
+          const chave = normalizarParaAgrupar(crimeOriginal);
+          if (!agrupado[chave]) { agrupado[chave] = { crime: crimeOriginal, total: 0 }; ordem.push(chave); }
           agrupado[chave].total += qtd;
         });
         ordem.forEach(chave => {
           const g = agrupado[chave];
-          linhas.push(`${pad(g.total)} ${g.crime ? g.crime + ' ' : ''}(${g.cidade}-PB)`);
+          linhas.push(`${pad(g.total)} ${g.crime ? g.crime + ' ' : ''}(${del}-PB)`);
         });
       });
       linhas.push('');
