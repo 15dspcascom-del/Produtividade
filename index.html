@@ -4353,8 +4353,8 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
   linhas.push('');
   linhas.push('I) Plantão Extraordinário;');
   linhas.push('a) Central de Policia;');
-  linhas.push('b) DHE;');
-  linhas.push('c) Teixeira.');
+  linhas.push(`b) DHE${ehFimDeSemana ? ';' : '.'}`);
+  if (ehFimDeSemana) linhas.push('c) Teixeira.');
   linhas.push('');
   linhas.push(`II) Setor de Custódia${ehFimDeSemana ? '.' : ';'}`);
   linhas.push('');
@@ -4377,7 +4377,9 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
     'DHE': { letra: 'b', nome: 'PLANTÃO NA DELEGACIA DE HOMICÍDIOS E ENTORPECENTES DE PATOS - DHE' },
     'Teixeira': { letra: 'c', nome: 'PLANTÃO NA DELEGACIA DE TEIXEIRA' }
   };
-  const nomesPolosArr = Object.keys(POLO_INFO);
+  const nomesPolosArrTodos = Object.keys(POLO_INFO);
+  // Teixeira só funciona no fim de semana — some do relatório em dias de semana
+  const nomesPolosArr = ehFimDeSemana ? nomesPolosArrTodos : nomesPolosArrTodos.filter(p => p !== 'Teixeira');
 
   nomesPolosArr.forEach((polo, idxPolo) => {
     const { letra, nome } = POLO_INFO[polo];
