@@ -2039,6 +2039,13 @@ function alternarTipoPeriodoCICC() {
   document.getElementById('rel-wrap-periodo').style.display = tipo === 'periodo' ? 'flex' : 'none';
 }
 
+// Retorna o conjunto de delegacias que enviaram QUALQUER registro de expediente no dia,
+// incluindo "Sem Ocorrências" (que não conta como "não enviou").
+async function buscarDelegaciasQueEnviaram(dataISO) {
+  const rows = await supa.getAll('registros', `?data=eq.${dataISO}&modalidade=eq.expediente&select=delegacia`);
+  return new Set(rows.map(r => r.delegacia));
+}
+
 async function buscarDadosCICC(dataIni, dataFim) {
   const fim = dataFim || dataIni;
   const filtroData = (fim === dataIni) ? `data=eq.${dataIni}` : `data=gte.${dataIni}&data=lte.${fim}`;
@@ -2130,7 +2137,8 @@ async function gerarRelatorioArea() {
       const data = document.getElementById('rarea-data').value;
       if (!data) { alert('Selecione a data.'); return; }
       const dados = await buscarDadosCICC(data);
-      texto = montarTextoArea(dados, data);
+      const delegaciasEnviaram = await buscarDelegaciasQueEnviaram(data);
+      texto = montarTextoArea(dados, data, delegaciasEnviaram);
       document.getElementById('rarea-resumo').style.display = 'none';
       document.getElementById('rarea-dashboard').style.display = 'none';
     } else {
@@ -3619,7 +3627,7 @@ function mudarTabArea(tab) {
 
 
 
-function montarTextoArea(dados, dataISO) {
+function montarTextoArea(dados, dataISO, delegaciasEnviaram) {
   const [ano, mes, dia] = dataISO.split('-');
   const dataFmt = `${dia}/${mes}/${ano}`;
   const diaSemana = document.getElementById('rarea-diaSemana').value;
@@ -3691,6 +3699,17 @@ function montarTextoArea(dados, dataISO) {
       linhas.push(''); // sempre dobra o espaço, inclusive antes da assinatura final
     });
   });
+
+  if (delegaciasEnviaram) {
+    const naoEnviaram = TODAS_DELEGACIAS.filter(d => !delegaciasEnviaram.has(d));
+    if (naoEnviaram.length) {
+      linhas.push('*Delegacias que não enviaram registro:*');
+      linhas.push('');
+      linhas.push(naoEnviaram.join(', '));
+      linhas.push('');
+      linhas.push('');
+    }
+  }
 
   linhas.push('_Assessoria de Estatística 15aDSPC/Patos_');
   return linhas.join('\n');
