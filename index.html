@@ -1070,10 +1070,10 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
             <label>Servidor Responsável</label>
             <select id="cust-servidor-sel" onchange="toggleCustServidor()">
               <option value="">Selecione...</option>
-              <option value="IZAU">Izau</option>
+              <option value="IZAÚ">Izaú</option>
               <option value="RAFAEL">Rafael</option>
               <option value="MARCOS">Marcos</option>
-              <option value="ELYSSON">Elysson</option>
+              <option value="ELYSON">Elyson</option>
               <option value="Outro">Outro</option>
             </select>
             <input type="text" id="cust-servidor" placeholder="Digite o nome" style="display:none;margin-top:6px;" />
@@ -2406,7 +2406,7 @@ function entrarNoApp() {
   document.getElementById('tela-login').classList.remove('ativa');
   document.getElementById('app').style.display = 'flex';
   document.getElementById('app').style.flexDirection = 'column';
-  document.getElementById('badge-usuario').textContent = usuarioLogado.nome;
+  document.getElementById('badge-usuario').textContent = MAPA_SERVIDOR_CUSTODIA[usuarioLogado.nome] || usuarioLogado.nome;
 
   if (usuarioLogado.isAdmin) {
     mostrarTela('admin');
@@ -2695,12 +2695,24 @@ async function carregarCustodiaFormExistente() {
   }
 }
 
+// Mapeamento do nome de login (usuarioLogado.nome) para o nome correto do servidor no relatório
+const MAPA_SERVIDOR_CUSTODIA = {
+  'Elysson_custodia': 'Elyson',
+  'Marcos_custodia': 'Marcos',
+  'Izau_custodia': 'Izaú',
+  'Rafael_custodia': 'Rafael'
+};
+
+function getNomeServidorCustodia() {
+  return MAPA_SERVIDOR_CUSTODIA[usuarioLogado.nome] || usuarioLogado.nome;
+}
+
 async function salvarCustodiaFormUsuario() {
   const btn = document.getElementById('btn-salvar-custodia-form');
   const dataISO = document.getElementById('custform-data').value;
   if (!dataISO) { alert('Selecione a data do plantão de custódia.'); return; }
 
-  const servidor = usuarioLogado.nome;
+  const servidor = getNomeServidorCustodia();
 
   const payload = {
     data: dataISO,
@@ -4412,6 +4424,7 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
     linhas.push(`*${letra}) ${nome}:*`);
     linhas.push('');
 
+    let temOcorrenciasPolo = false;
     if (!reg || reg.semOcorrencias) {
       linhas.push('Sem ocorrências');
     } else {
@@ -4425,12 +4438,16 @@ function montarTextoCICC(dados, dataISO, periodoInfo) {
       Object.entries(procs).forEach(([k,v]) => {
         if (parseInt(v.total) > 0 && nomesProcResumido[k]) {
           linhas.push(`${i++}) ${nomesProcResumido[k]}: ${pad(v.total)}`);
+          temOcorrenciasPolo = true;
         }
       });
+      if (!temOcorrenciasPolo) linhas.push('Sem ocorrências');
     }
     linhas.push('');
-    linhas.push('Obs.: vide detalhamento no final deste relatório.');
-    linhas.push('');
+    if (temOcorrenciasPolo) {
+      linhas.push('Obs.: vide detalhamento no final deste relatório.');
+      linhas.push('');
+    }
   });
 
   // Custódia
