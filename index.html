@@ -1349,7 +1349,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <select id="meta-turno"><option value="Manhã">Manhã</option><option value="Tarde">Tarde</option></select>
         </div>
         <div class="fm-item">
-          <label>Escrivão</label>
+          <label id="label-escrivao-padrao">Escrivão</label>
           <input type="text" id="meta-escrivao" readonly />
         </div>
       </div>
@@ -1391,7 +1391,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <input type="time" id="plantao-hora-fim" value="08:00" />
         </div>
         <div class="fm-item" style="grid-column: 1 / -1;">
-          <label>Escrivão</label>
+          <label id="label-escrivao-plantao">Escrivão</label>
           <div id="meta-escrivao-plantao" style="font-size:14px;font-weight:600;color:var(--azul);padding:9px 2px;">—</div>
         </div>
       </div>
@@ -1585,7 +1585,7 @@ async function fazerLogin() {
     const resultado = await supa.rpc('verificar_login_escrivao', { p_nome: nome, p_senha: senha });
     if (!resultado || !resultado.length) { erroEl.textContent = 'Nome ou senha incorretos.'; return; }
     const e = resultado[0];
-    usuarioLogado = { nome: e.nome, delegacias: e.delegacias || [], delegacia: (e.delegacias||[])[0] || '', modalidades: e.modalidades || ['expediente','plantao','bo'], isAdmin: false };
+    usuarioLogado = { nome: e.nome, cargo: e.cargo || 'Escrivão', delegacias: e.delegacias || [], delegacia: (e.delegacias||[])[0] || '', modalidades: e.modalidades || ['expediente','plantao','bo'], isAdmin: false };
     entrarNoApp();
   } catch(err) { erroEl.textContent = 'Erro de conexão.'; }
   finally { btn.textContent = 'ENTRAR'; btn.disabled = false; }
@@ -2481,6 +2481,7 @@ function _abrirFormularioReal(modalidade) {
     document.getElementById('plantao-data-inicio').value = dataPlantaoPadrao;
     aplicarPadraoPlantao(dataPlantaoPadrao);
     document.getElementById('meta-escrivao-plantao').textContent = usuarioLogado.nome;
+    document.getElementById('label-escrivao-plantao').textContent = usuarioLogado.cargo || 'Escrivão';
     const primeiroNomePlantao = (usuarioLogado.nome || '').trim().split(' ')[0].toLowerCase();
     if (['luciano', 'israel', 'emanoel'].includes(primeiroNomePlantao)) {
       document.getElementById('plantao-local').value = 'DHE';
@@ -2493,6 +2494,7 @@ function _abrirFormularioReal(modalidade) {
     document.getElementById('meta-plantao').style.display = 'none';
     document.getElementById('meta-data').value = hoje;
     document.getElementById('meta-escrivao').value = usuarioLogado.nome;
+    document.getElementById('label-escrivao-padrao').textContent = usuarioLogado.cargo || 'Escrivão';
     document.getElementById('wrap-turno').style.display = modalidade === 'bo' ? 'block' : 'none';
     document.getElementById('wrap-horario').style.display = modalidade === 'bo' ? 'none' : 'block';
     document.getElementById('meta-horario').value = modalidade === 'expediente' ? '08h às 18h' : '';
