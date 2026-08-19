@@ -694,6 +694,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <thead>
             <tr>
               <th>Nome</th>
+              <th>Cargo</th>
               <th>Delegacia</th>
               <th>Modalidades</th>
               <th>Ações</th>
@@ -1421,6 +1422,12 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
     <input class="f-input" type="text" id="esc-nome" placeholder="Nome do escrivão" />
     <label class="f-label">Senha</label>
     <input class="f-input" type="text" id="esc-senha" placeholder="Defina uma senha" />
+    <label class="f-label">Cargo</label>
+    <select class="f-input" id="esc-cargo">
+      <option value="Escrivão">Escrivão</option>
+      <option value="Delegado">Delegado</option>
+      <option value="Investigador">Investigador</option>
+    </select>
     <label class="f-label" style="margin-top:4px;">Modalidades permitidas</label>
     <div class="esc-modalidades">
       <label><input type="checkbox" id="mod-expediente" value="expediente" onchange="toggleDelegacias()"> Expediente</label>
@@ -1591,7 +1598,7 @@ async function carregarEscrivaes() {
   document.getElementById('admin-loading').style.display = 'block';
   document.getElementById('tabela-escrivaes').style.display = 'none';
   try {
-    const rows = await supa.get('escrivaes', '?select=nome,delegacias,modalidades&order=nome');
+    const rows = await supa.get('escrivaes', '?select=nome,cargo,delegacias,modalidades&order=nome');
     renderTabela(rows);
   } catch(e) {
     document.getElementById('admin-loading').textContent = 'Erro ao carregar.';
@@ -1601,6 +1608,7 @@ async function carregarEscrivaes() {
 async function salvarEscrivao() {
   const nome = document.getElementById('esc-nome').value.trim();
   const senha = document.getElementById('esc-senha').value.trim();
+  const cargo = document.getElementById('esc-cargo').value;
   const nomeAntigo = document.getElementById('esc-id-edit').value;
   const erroEl = document.getElementById('msg-erro-esc');
   const btnSalvar = document.querySelector('#overlay-esc .btn-salvar');
@@ -1622,11 +1630,11 @@ async function salvarEscrivao() {
   btnSalvar.textContent = 'Salvando...'; btnSalvar.disabled = true;
   try {
     if (nomeAntigo) {
-      const payload = { nome, delegacias, modalidades };
+      const payload = { nome, cargo, delegacias, modalidades };
       await supa.patch('escrivaes', `nome=eq.${encodeURIComponent(nomeAntigo)}`, payload);
       if (senha) await supa.rpc('definir_senha_escrivao', { p_nome: nome, p_senha: senha }); // só atualiza a senha se algo foi digitado
     } else {
-      await supa.post('escrivaes', { nome, delegacias, modalidades });
+      await supa.post('escrivaes', { nome, cargo, delegacias, modalidades });
       await supa.rpc('definir_senha_escrivao', { p_nome: nome, p_senha: senha });
     }
     fecharModalEsc(); carregarEscrivaes();
@@ -2607,6 +2615,18 @@ function toggleExameOutro(sel) {
   if (sel.value !== 'Outros' && outro) outro.value = '';
 }
 
+function toggleCrimeBOOutro(sel) {
+  const outro = sel.parentElement.querySelector('.crime-bo-outro');
+  if (outro) outro.style.display = sel.value === 'Outros' ? 'block' : 'none';
+  if (sel.value !== 'Outros' && outro) outro.value = '';
+}
+
+function toggleDelegaciaBOOutro(sel) {
+  const outro = sel.parentElement.querySelector('.delegacia-bo-outro');
+  if (outro) outro.style.display = sel.value === 'Outros' ? 'block' : 'none';
+  if (sel.value !== 'Outros' && outro) outro.value = '';
+}
+
 function toggleCalibreOutro(sel) {
   const outro = sel.parentElement.querySelector('.calibre-outro');
   if (outro) outro.style.display = sel.value === 'Outros' ? 'block' : 'none';
@@ -2939,15 +2959,16 @@ function renderCampos(campos) {
     const sec = document.createElement('div');
     sec.className = 'c-secao';
     sec.id = 'sec-' + campo.id;
+    const abrirDeCara = campos.length === 1; // se só tem uma seção (ex: Setor de B.O.), já vem aberta
     sec.innerHTML = `
-      <div class="c-secao-head" onclick="toggleSec('${campo.id}')">
+      <div class="c-secao-head${abrirDeCara ? ' aberto' : ''}" onclick="toggleSec('${campo.id}')">
         <div class="c-secao-head-esq">
           <div class="c-num">${idx+1}</div>
           <h3>${campo.titulo}</h3>
         </div>
         <span class="c-toggle">▾</span>
       </div>
-      <div class="c-body" id="body-${campo.id}">
+      <div class="c-body${abrirDeCara ? ' aberto' : ''}" id="body-${campo.id}">
         <div id="linhas-${campo.id}">${renderLinha(campo,0,false)}</div>
         <button class="btn-add-linha" onclick="addLinha('${campo.id}',${JSON.stringify(campo).replace(/"/g,'&quot;')})">+ Adicionar linha</button>
       </div>`;
@@ -2987,24 +3008,28 @@ function renderInput(sub, campoId) {
     </div>`;
   }
   if (sub === 'crime' && campoId === 'boletins') {
-    const crimes = ['Placa clonada','Estelionato','Ameaça','Perda ou extravio de documento','Envio de Pix - chave errada','Solicitação de exame químico metalográfico','Violência doméstica','Perda de celular'];
-    const chips = crimes.map(c => `<button type="button" class="chip-btn" onclick="chipSelecionar(this)">${c}</button>`).join('')
-      + `<button type="button" class="chip-btn chip-outros" onclick="chipSelecionar(this)">Outros</button>`;
+    const crimes = ['Perda ou extravio de documento','Placa clonada','Estelionato','Ameaça','Envio de Pix - chave errada','Solicitação de exame químico metalográfico','Violência doméstica','Perda de celular'];
+    const opts = crimes.map(c => `<option${c==='Perda ou extravio de documento'?' selected':''}>${c}</option>`).join('');
     return `<div class="c-grupo">
       <label>CRIME / OCORRÊNCIA</label>
-      <div class="chips-scroll">${chips}</div>
-      <input type="text" class="chip-input" placeholder="Crime / Ocorrência" />
+      <select class="crime-bo-sel" onchange="toggleCrimeBOOutro(this)">
+        ${opts}
+        <option value="Outros">Outros</option>
+      </select>
+      <input type="text" class="crime-bo-outro" placeholder="Digite o crime / ocorrência" style="display:none;margin-top:4px;" />
     </div>`;
   }
   if (sub === 'delegacia' && campoId === 'boletins') {
     const iniciais = ['2ª DD','1ª DD','DRF'];
     const listaDelegacias = [...iniciais, ...TODAS_DELEGACIAS.filter(d => !iniciais.includes(d))];
-    const chips = listaDelegacias.map(d => `<button type="button" class="chip-btn" onclick="chipSelecionar(this)">${d}</button>`).join('')
-      + `<button type="button" class="chip-btn chip-outros" onclick="chipSelecionar(this)">Outros</button>`;
+    const opts = listaDelegacias.map(d => `<option${d==='1ª DD'?' selected':''}>${d}</option>`).join('');
     return `<div class="c-grupo">
       <label>DELEGACIA</label>
-      <div class="chips-scroll">${chips}</div>
-      <input type="text" class="chip-input" placeholder="Delegacia" />
+      <select class="delegacia-bo-sel" onchange="toggleDelegaciaBOOutro(this)">
+        ${opts}
+        <option value="Outros">Outros</option>
+      </select>
+      <input type="text" class="delegacia-bo-outro" placeholder="Digite a delegacia" style="display:none;margin-top:4px;" />
     </div>`;
   }
   if (sub === 'calibre' && campoId === 'armas') {
@@ -3222,6 +3247,14 @@ function coletarDados() {
           const sel = linha.querySelector('.calibre-sel');
           const outro = linha.querySelector('.calibre-outro');
           obj[sub] = sel?.value === 'Outros' ? (outro?.value || 'Outros') : (sel?.value || '');
+        } else if (sub === 'crime' && campo.id === 'boletins') {
+          const sel = linha.querySelector('.crime-bo-sel');
+          const outro = linha.querySelector('.crime-bo-outro');
+          obj[sub] = sel?.value === 'Outros' ? (outro?.value || 'Outros') : (sel?.value || '');
+        } else if (sub === 'delegacia' && campo.id === 'boletins') {
+          const sel = linha.querySelector('.delegacia-bo-sel');
+          const outro = linha.querySelector('.delegacia-bo-outro');
+          obj[sub] = sel?.value === 'Outros' ? (outro?.value || 'Outros') : (sel?.value || '');
         } else if (sub === 'cidade') {
           const sel = linha.querySelector('.cidade-sel');
           const outro = linha.querySelector('.cidade-outro');
@@ -3359,7 +3392,7 @@ function renderTabela(lista) {
   const tbody = document.getElementById('tbody-escrivaes');
   tbody.innerHTML = '';
   if (lista.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--texto-leve);padding:24px;">Nenhum escrivão cadastrado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--texto-leve);padding:24px;">Nenhum escrivão cadastrado.</td></tr>';
   } else {
     lista.forEach((e, idx) => {
       const delegacias = Array.isArray(e.delegacias) ? e.delegacias : [e.delegacia];
@@ -3370,6 +3403,7 @@ function renderTabela(lista) {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${e.nome}</td>
+        <td>${e.cargo || 'Escrivão'}</td>
         <td style="display:flex;flex-wrap:wrap;gap:4px;padding:10px 16px;">${badgesDel}</td>
         <td>${badgesMod}</td>
         <td>
@@ -3403,6 +3437,7 @@ function abrirModalEscrivao(esc = null) {
   document.getElementById('esc-senha').value = '';
   document.getElementById('esc-senha').placeholder = esc ? 'Deixe em branco para manter a senha atual' : 'Defina uma senha';
   document.getElementById('esc-id-edit').value = esc ? esc.nome : '';
+  document.getElementById('esc-cargo').value = esc?.cargo || 'Escrivão';
   document.getElementById('msg-erro-esc').textContent = '';
 
   // Modalidades
