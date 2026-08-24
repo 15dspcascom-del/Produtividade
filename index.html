@@ -1198,15 +1198,11 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <div style="font-size:12px;color:var(--texto-leve);margin-bottom:16px;" id="naoenvio-ilustrado-periodo"></div>
           <div class="dashboard-card" id="card-chart-expediente" style="margin-bottom:16px;display:none;">
             <div class="dashboard-card-titulo">📋 Expediente — Dias sem envio por Delegacia (seg a sex)</div>
-            <canvas id="chart-naoenvio-expediente" height="100"></canvas>
+            <canvas id="chart-naoenvio-expediente"></canvas>
           </div>
-          <div class="dashboard-card" id="card-chart-plantao" style="margin-bottom:16px;display:none;">
+          <div class="dashboard-card" id="card-chart-plantao" style="display:none;">
             <div class="dashboard-card-titulo">🕐 Plantão — Dias sem envio por Polo</div>
-            <canvas id="chart-naoenvio-plantao" height="70"></canvas>
-          </div>
-          <div class="dashboard-card" id="card-chart-bo" style="display:none;">
-            <div class="dashboard-card-titulo">📄 Setor de B.O. — Dias sem envio por Usuário (seg a sex)</div>
-            <canvas id="chart-naoenvio-bo" height="100"></canvas>
+            <canvas id="chart-naoenvio-plantao"></canvas>
           </div>
         </div>
       </div>
@@ -2173,10 +2169,13 @@ function copiarRelatorioNaoEnvio() {
   alert('✓ Texto copiado!');
 }
 
-let _chartsNaoEnvio = { expediente: null, plantao: null, bo: null };
+let _chartsNaoEnvio = { expediente: null, plantao: null };
 
 function _montarChartNaoEnvio(canvasId, itens, cor) {
-  const ctx = document.getElementById(canvasId).getContext('2d');
+  const canvas = document.getElementById(canvasId);
+  // Altura proporcional à quantidade de itens, pra nenhuma barra/rótulo ficar espremido ou sumir
+  canvas.style.height = `${Math.max(70, itens.length * 32)}px`;
+  const ctx = canvas.getContext('2d');
   return new Chart(ctx, {
     type: 'bar',
     data: {
@@ -2189,8 +2188,12 @@ function _montarChartNaoEnvio(canvasId, itens, cor) {
     options: {
       indexAxis: 'y',
       responsive: true,
+      maintainAspectRatio: false,
       plugins: { legend: { position: 'bottom' } },
-      scales: { x: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } }, y: { stacked: true } }
+      scales: {
+        x: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } },
+        y: { stacked: true, ticks: { autoSkip: false } } // garante que TODAS as delegacias/polos apareçam, mesmo com muitos itens
+      }
     }
   });
 }
@@ -2198,11 +2201,11 @@ function _montarChartNaoEnvio(canvasId, itens, cor) {
 function gerarRelatorioNaoEnvioIlustrado() {
   const dados = calcularFalhasEnvio();
   if (!dados) { alert('Aguarde os dados carregarem e tente novamente.'); return; }
-  const { periodoFmt, totalDias, delegaciasComFalha, polosComFalha, usuariosBOComFalha } = dados;
+  const { periodoFmt, totalDias, delegaciasComFalha, polosComFalha } = dados;
 
   document.getElementById('naoenvio-resultado').style.display = 'none';
 
-  if (!delegaciasComFalha.length && !polosComFalha.length && !usuariosBOComFalha.length) {
+  if (!delegaciasComFalha.length && !polosComFalha.length) {
     document.getElementById('naoenvio-ilustrado-resultado').style.display = 'none';
     document.getElementById('naoenvio-vazio').style.display = 'block';
     document.getElementById('naoenvio-vazio').scrollIntoView({ behavior: 'smooth' });
@@ -2224,14 +2227,8 @@ function gerarRelatorioNaoEnvioIlustrado() {
   const cardPla = document.getElementById('card-chart-plantao');
   if (polosComFalha.length) {
     cardPla.style.display = 'block';
-    _chartsNaoEnvio.plantao = _montarChartNaoEnvio('chart-naoenvio-plantao', polosComFalha, '#16a085');
+    _chartsNaoEnvio.plantao = _montarChartNaoEnvio('chart-naoenvio-plantao', polosComFalha, '#c0392b');
   } else cardPla.style.display = 'none';
-
-  const cardBO = document.getElementById('card-chart-bo');
-  if (usuariosBOComFalha.length) {
-    cardBO.style.display = 'block';
-    _chartsNaoEnvio.bo = _montarChartNaoEnvio('chart-naoenvio-bo', usuariosBOComFalha, '#c8a84b');
-  } else cardBO.style.display = 'none';
 
   document.getElementById('naoenvio-ilustrado-resultado').style.display = 'block';
   document.getElementById('naoenvio-ilustrado-resultado').scrollIntoView({ behavior: 'smooth' });
