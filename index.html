@@ -683,6 +683,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <button class="btn-novo" style="background:#c0392b;color:white;" onclick="mostrarTela('relatorio-area')">🗂 Relatório de Área</button>
           <button class="btn-novo" style="background:#16a085;color:white;" onclick="mostrarTela('relatorio-bo')">📄 Relatório B.O.</button>
           <button class="btn-novo" style="background:#2c3e50;color:white;" onclick="mostrarTela('backup')">💾 Backup Diário</button>
+          <button class="btn-novo" style="background:#7b241c;color:white;" onclick="mostrarTela('custodia-cadastro')">🔐 Custódia</button>
           <button class="btn-novo" style="background:#27ae60;color:white;" onclick="mostrarTela('relatorio-semanal')">📊 Rel. Resumido Semanal (Janielson)</button>
           <button class="btn-novo" style="background:#2c3e50;color:white;" onclick="fazerBackupCSV()" id="btn-backup-csv">💾 Backup Completo (CSV)</button>
           <button class="btn-novo" onclick="abrirModalEscrivao()">+ Novo Escrivão</button>
@@ -952,7 +953,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
     <!-- TELA DE CADASTRO DE CUSTÓDIA (escrivões com modalidade Custódia) -->
     <div id="tela-custodia-cadastro" class="tela" style="flex-direction:column; padding:28px 32px; max-width:800px; margin:0 auto; width:100%;">
       <div class="form-header">
-        <button class="btn-voltar" onclick="voltarSelecao()">← Voltar</button>
+        <button class="btn-voltar" onclick="voltarDaCustodia()">← Voltar</button>
         <h2>🔐 CADASTRO DE CUSTÓDIA</h2>
       </div>
 
@@ -1008,7 +1009,10 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           </div>
         </div>
 
-        <button class="btn-enviar" style="max-width:280px;margin-top:20px;background:#7b241c;" onclick="salvarCustodiaFormUsuario()" id="btn-salvar-custodia-form">💾 Salvar Dados da Custódia</button>
+        <div style="display:flex;gap:12px;margin-top:20px;">
+          <button class="btn-enviar" style="max-width:280px;background:#7b241c;" onclick="salvarCustodiaFormUsuario()" id="btn-salvar-custodia-form">💾 Salvar Dados da Custódia</button>
+          <button class="btn-enviar" style="max-width:220px;background:transparent;border:1.5px solid var(--vermelho);color:var(--vermelho);display:none;" onclick="excluirCustodiaFormUsuario()" id="btn-excluir-custodia-form">🗑️ Excluir Registro</button>
+        </div>
       </div>
     </div>
 
@@ -2683,10 +2687,16 @@ function toggleCrimeOutro(sel) {
 // ============================================================
 // CADASTRO DE CUSTÓDIA (tela do próprio escrivão de custódia)
 // ============================================================
+function voltarDaCustodia() {
+  if (usuarioLogado && usuarioLogado.isAdmin) mostrarTela('admin');
+  else voltarSelecao();
+}
+
 function iniciarCustodiaCadastro() {
   const hoje = new Date();
   const hojeISO = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
   document.getElementById('custform-data').value = hojeISO;
+  document.getElementById('btn-excluir-custodia-form').style.display = usuarioLogado.isAdmin ? 'block' : 'none';
   carregarCustodiaFormExistente();
 }
 
@@ -2780,6 +2790,36 @@ async function salvarCustodiaFormUsuario() {
     carregarCustodiaFormExistente();
   } catch (e) {
     alert('Erro ao salvar: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = txtOriginal;
+  }
+}
+
+async function excluirCustodiaFormUsuario() {
+  const dataISO = document.getElementById('custform-data').value;
+  if (!dataISO) { alert('Selecione a data do registro a excluir.'); return; }
+  if (!confirm(`Excluir o registro de custódia do dia ${formatarDataBR(dataISO)}? Essa ação não pode ser desfeita.`)) return;
+
+  const btn = document.getElementById('btn-excluir-custodia-form');
+  btn.disabled = true;
+  const txtOriginal = btn.textContent;
+  btn.textContent = '⏳ Excluindo...';
+
+  try {
+    await supa.del('custodia', `data=eq.${dataISO}`);
+    alert('✓ Registro excluído com sucesso!');
+    // Limpa os campos e recarrega o estado padrão pra data selecionada
+    document.getElementById('custform-recebidos-qtd').value = 0;
+    document.getElementById('custform-recebidos-nomes').value = '';
+    document.getElementById('custform-audiencias').value = '';
+    document.getElementById('custform-transf-qtd').value = 0;
+    document.getElementById('custform-transf-nomes').value = '';
+    document.getElementById('custform-ini-qtd').value = '';
+    document.getElementById('custform-final-qtd').value = '';
+    carregarCustodiaFormExistente();
+  } catch (e) {
+    alert('Erro ao excluir: ' + e.message);
   } finally {
     btn.disabled = false;
     btn.textContent = txtOriginal;
@@ -4362,7 +4402,6 @@ async function salvarCustodia() {
     btn.textContent = txtOriginal;
   }
 }
-
 
 // Normaliza um texto (crime/descrição) para servir de chave de agrupamento,
 // ignorando maiúsculo/minúsculo, espaços extras e plural simples (ex: "Furto" = "furtos")
