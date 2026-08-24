@@ -675,7 +675,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
     <!-- ADMIN -->
     <div id="tela-admin" class="tela" style="flex-direction:column;">
       <div class="admin-header">
-        <h2>GERENCIAR ESCRIVÃES</h2>
+        <h2>GERENCIAR USUÁRIOS</h2>
         <div style="display:flex;gap:10px;">
           <button class="btn-novo" style="background:var(--verde);color:white;" onclick="mostrarTela('presenca')">✅ Envios do Dia</button>
           <button class="btn-novo" style="background:var(--dourado);color:var(--azul);" onclick="mostrarTela('consulta')">📊 Consultas e Dashboard</button>
@@ -2023,6 +2023,12 @@ async function buscarRegistros() {
 // ============================================================
 // RELATÓRIO DE NÃO ENVIO — delegacias/polos/usuários que não enviaram no período
 // ============================================================
+function contarDiasNoPeriodo(dataIniISO, dataFimISO) {
+  const ini = new Date(dataIniISO + 'T00:00:00');
+  const fim = new Date(dataFimISO + 'T00:00:00');
+  return Math.round((fim - ini) / (1000 * 60 * 60 * 24)) + 1;
+}
+
 function gerarRelatorioNaoEnvio() {
   const dataIni = ultimoPeriodoIniPresenca;
   const dataFim = ultimoPeriodoFimPresenca;
@@ -2031,38 +2037,65 @@ function gerarRelatorioNaoEnvio() {
   const regs = ultimoRegsPresenca || [];
   const escrivaes = ultimoEscrivaesPresenca || [];
   const periodoFmt = dataIni === dataFim ? formatarDataBR(dataIni) : `${formatarDataBR(dataIni)} a ${formatarDataBR(dataFim)}`;
+  const totalDias = contarDiasNoPeriodo(dataIni, dataFim);
 
-  // Expediente — delegacias que não enviaram (qualquer envio, inclusive "Sem Ocorrências", conta como enviou)
-  const delegaciasEnviaram = new Set(regs.filter(r => r.modalidade === 'expediente').map(r => r.delegacia));
-  const delegaciasNaoEnviaram = TODAS_DELEGACIAS.filter(d => !delegaciasEnviaram.has(d));
+  // Expediente — dias enviados x dias sem envio, por delegacia (qualquer envio, inclusive "Sem Ocorrências", conta como enviado naquele dia)
+  const diasPorDelegacia = {};
+  regs.filter(r => r.modalidade === 'expediente').forEach(r => {
+    if (!diasPorDelegacia[r.delegacia]) diasPorDelegacia[r.delegacia] = new Set();
+    diasPorDelegacia[r.delegacia].add(r.data);
+  });
+  const delegaciasComFalha = TODAS_DELEGACIAS.map(d => {
+    const diasEnviados = diasPorDelegacia[d] ? diasPorDelegacia[d].size : 0;
+    return { nome: d, diasEnviados, diasSemEnvio: totalDias - diasEnviados };
+  }).filter(x => x.diasSemEnvio > 0);
 
-  // Plantão — por polo (não dá pra cobrar por usuário específico, já que a escala varia)
-  const polosEnviaram = new Set(regs.filter(r => r.modalidade === 'plantao').map(r => r.delegacia));
-  const polosNaoEnviaram = POLOS_PLANTAO.filter(p => !polosEnviaram.has(p));
+  // Plantão — dias enviados x dias sem envio, por polo (não dá pra cobrar por usuário específico, já que a escala varia)
+  const diasPorPolo = {};
+  regs.filter(r => r.modalidade === 'plantao').forEach(r => {
+    if (!diasPorPolo[r.delegacia]) diasPorPolo[r.delegacia] = new Set();
+    diasPorPolo[r.delegacia].add(r.data);
+  });
+  const polosComFalha = POLOS_PLANTAO.map(p => {
+    const diasEnviados = diasPorPolo[p] ? diasPorPolo[p].size : 0;
+    return { nome: p, diasEnviados, diasSemEnvio: totalDias - diasEnviados };
+  }).filter(x => x.diasSemEnvio > 0);
 
-  // Setor de B.O. — por usuário (aqui dá pra cobrar por pessoa, já que é um setor fixo)
-  const boEnviaram = new Set(regs.filter(r => r.modalidade === 'bo').map(r => r.escrivao));
+  // Setor de B.O. — dias enviados x dias sem envio, por usuário (aqui dá pra cobrar por pessoa, já que é um setor fixo)
+  const diasPorUsuarioBO = {};
+  regs.filter(r => r.modalidade === 'bo').forEach(r => {
+    if (!diasPorUsuarioBO[r.escrivao]) diasPorUsuarioBO[r.escrivao] = new Set();
+    diasPorUsuarioBO[r.escrivao].add(r.data);
+  });
   const usuariosBO = escrivaes.filter(e => (e.modalidades || ['expediente','plantao','bo']).includes('bo'));
-  const usuariosBONaoEnviaram = usuariosBO.filter(e => !boEnviaram.has(e.nome)).map(e => e.nome);
+  const usuariosBOComFalha = usuariosBO.map(e => {
+    const diasEnviados = diasPorUsuarioBO[e.nome] ? diasPorUsuarioBO[e.nome].size : 0;
+    return { nome: e.nome, diasEnviados, diasSemEnvio: totalDias - diasEnviados };
+  }).filter(x => x.diasSemEnvio > 0);
+
+  const formatarLinha = (x) => `${x.nome}: ${x.diasEnviados}/${totalDias} dias enviados (${x.diasSemEnvio} sem envio)`;
 
   const linhas = [];
   linhas.push('*15ª DSPC/PATOS*');
   linhas.push('');
   linhas.push('*RELATÓRIO DE NÃO ENVIO DE PRODUTIVIDADE*');
   linhas.push('');
-  linhas.push(`*PERÍODO: ${periodoFmt}*`);
+  linhas.push(`*PERÍODO: ${periodoFmt} (${totalDias} dia${totalDias !== 1 ? 's' : ''})*`);
   linhas.push('');
-  linhas.push('*EXPEDIENTE — Delegacias que não enviaram:*');
+  linhas.push('*EXPEDIENTE — Delegacias com dias sem envio:*');
   linhas.push('');
-  linhas.push(delegaciasNaoEnviaram.length ? delegaciasNaoEnviaram.join(', ') : 'Todas as delegacias enviaram no período.');
+  if (delegaciasComFalha.length) delegaciasComFalha.forEach(x => linhas.push(formatarLinha(x)));
+  else linhas.push('Todas as delegacias enviaram em todos os dias do período.');
   linhas.push('');
-  linhas.push('*PLANTÃO — Polos que não enviaram:*');
+  linhas.push('*PLANTÃO — Polos com dias sem envio:*');
   linhas.push('');
-  linhas.push(polosNaoEnviaram.length ? polosNaoEnviaram.join(', ') : 'Todos os polos enviaram no período.');
+  if (polosComFalha.length) polosComFalha.forEach(x => linhas.push(formatarLinha(x)));
+  else linhas.push('Todos os polos enviaram em todos os dias do período.');
   linhas.push('');
-  linhas.push('*SETOR DE B.O. — Usuários que não enviaram:*');
+  linhas.push('*SETOR DE B.O. — Usuários com dias sem envio:*');
   linhas.push('');
-  linhas.push(usuariosBONaoEnviaram.length ? usuariosBONaoEnviaram.join(', ') : 'Todos os usuários do B.O. enviaram no período.');
+  if (usuariosBOComFalha.length) usuariosBOComFalha.forEach(x => linhas.push(formatarLinha(x)));
+  else linhas.push('Todos os usuários do B.O. enviaram em todos os dias do período.');
   linhas.push('');
   linhas.push('_Assessoria de Estatística 15ªDSPC/Patos_');
 
