@@ -506,6 +506,18 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 @media (max-width:640px) { .bo-tipo-nome { flex-basis:140px; font-size:12px; } }
 .dashboard-card-titulo { font-size: 12px; font-weight: 700; color: var(--azul); margin-bottom: 14px; letter-spacing: 0.3px; text-transform: uppercase; }
 
+.naoenvio-linha { display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--cinza-borda); }
+.naoenvio-linha:last-child { border-bottom:none; }
+.naoenvio-nome { flex:0 0 180px; font-size:13px; font-weight:600; color:var(--texto); }
+.naoenvio-barra-wrap { flex:1; display:flex; background:var(--cinza); border-radius:6px; overflow:hidden; height:18px; }
+.naoenvio-barra-enviado { height:100%; background:#1a7a4a; }
+.naoenvio-barra-semenvio { height:100%; background:#c0392b; }
+.naoenvio-valor { flex:0 0 60px; text-align:right; font-size:12px; font-weight:700; color:var(--vermelho); }
+.naoenvio-legenda { display:flex; gap:18px; margin-bottom:14px; font-size:12px; color:var(--texto-leve); }
+.naoenvio-legenda span { display:inline-flex; align-items:center; gap:6px; }
+.naoenvio-legenda i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+@media (max-width:640px) { .naoenvio-nome { flex-basis:110px; font-size:12px; } }
+
 /* Cards de área */
 .dash-area-bloco { margin-bottom: 20px; }
 .dash-area-header {
@@ -1198,11 +1210,11 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <div style="font-size:12px;color:var(--texto-leve);margin-bottom:16px;" id="naoenvio-ilustrado-periodo"></div>
           <div class="dashboard-card" id="card-chart-expediente" style="margin-bottom:16px;display:none;">
             <div class="dashboard-card-titulo">📋 Expediente — Dias sem envio por Delegacia (seg a sex)</div>
-            <canvas id="chart-naoenvio-expediente"></canvas>
+            <div id="barras-naoenvio-expediente"></div>
           </div>
           <div class="dashboard-card" id="card-chart-plantao" style="display:none;">
             <div class="dashboard-card-titulo">🕐 Plantão — Dias sem envio por Polo</div>
-            <canvas id="chart-naoenvio-plantao"></canvas>
+            <div id="barras-naoenvio-plantao"></div>
           </div>
         </div>
       </div>
@@ -2169,33 +2181,24 @@ function copiarRelatorioNaoEnvio() {
   alert('✓ Texto copiado!');
 }
 
-let _chartsNaoEnvio = { expediente: null, plantao: null };
-
-function _montarChartNaoEnvio(canvasId, itens, cor) {
-  const canvas = document.getElementById(canvasId);
-  // Altura proporcional à quantidade de itens, pra nenhuma barra/rótulo ficar espremido ou sumir
-  canvas.style.height = `${Math.max(70, itens.length * 32)}px`;
-  const ctx = canvas.getContext('2d');
-  return new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: itens.map(x => x.nome),
-      datasets: [
-        { label: 'Dias enviados', data: itens.map(x => x.diasEnviados), backgroundColor: '#1a7a4a' },
-        { label: 'Dias sem envio', data: itens.map(x => x.diasSemEnvio), backgroundColor: cor }
-      ]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
-      scales: {
-        x: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } },
-        y: { stacked: true, ticks: { autoSkip: false } } // garante que TODAS as delegacias/polos apareçam, mesmo com muitos itens
-      }
-    }
-  });
+function _montarBarrasNaoEnvio(itens) {
+  const legenda = `<div class="naoenvio-legenda">
+    <span><i style="background:#1a7a4a;"></i> Dias enviados</span>
+    <span><i style="background:#c0392b;"></i> Dias sem envio</span>
+  </div>`;
+  const linhas = itens.map(x => {
+    const pctEnviado = x.totalDias > 0 ? (x.diasEnviados / x.totalDias) * 100 : 0;
+    const pctSemEnvio = x.totalDias > 0 ? (x.diasSemEnvio / x.totalDias) * 100 : 0;
+    return `<div class="naoenvio-linha">
+      <div class="naoenvio-nome">${x.nome}</div>
+      <div class="naoenvio-barra-wrap">
+        <div class="naoenvio-barra-enviado" style="width:${pctEnviado}%;"></div>
+        <div class="naoenvio-barra-semenvio" style="width:${pctSemEnvio}%;"></div>
+      </div>
+      <div class="naoenvio-valor">${x.diasSemEnvio}/${x.totalDias}</div>
+    </div>`;
+  }).join('');
+  return legenda + linhas;
 }
 
 function gerarRelatorioNaoEnvioIlustrado() {
@@ -2215,19 +2218,16 @@ function gerarRelatorioNaoEnvioIlustrado() {
 
   document.getElementById('naoenvio-ilustrado-periodo').textContent = `Período: ${periodoFmt} (${totalDias} dia${totalDias !== 1 ? 's' : ''})`;
 
-  // Destrói gráficos anteriores antes de recriar
-  Object.values(_chartsNaoEnvio).forEach(c => { if (c) c.destroy(); });
-
   const cardExp = document.getElementById('card-chart-expediente');
   if (delegaciasComFalha.length) {
     cardExp.style.display = 'block';
-    _chartsNaoEnvio.expediente = _montarChartNaoEnvio('chart-naoenvio-expediente', delegaciasComFalha, '#c0392b');
+    document.getElementById('barras-naoenvio-expediente').innerHTML = _montarBarrasNaoEnvio(delegaciasComFalha);
   } else cardExp.style.display = 'none';
 
   const cardPla = document.getElementById('card-chart-plantao');
   if (polosComFalha.length) {
     cardPla.style.display = 'block';
-    _chartsNaoEnvio.plantao = _montarChartNaoEnvio('chart-naoenvio-plantao', polosComFalha, '#c0392b');
+    document.getElementById('barras-naoenvio-plantao').innerHTML = _montarBarrasNaoEnvio(polosComFalha);
   } else cardPla.style.display = 'none';
 
   document.getElementById('naoenvio-ilustrado-resultado').style.display = 'block';
