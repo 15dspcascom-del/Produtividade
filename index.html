@@ -1172,8 +1172,9 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         <button class="presenca-tab" id="tab-view-usuario" onclick="mudarVisualizacaoPresenca('usuario')">👤 Por Usuário</button>
       </div>
 
-      <div style="margin-top:14px;">
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
         <button class="btn-exportar" onclick="gerarRelatorioNaoEnvio()" style="background:#c0392b;">📄 Gerar Relatório de Não Envio</button>
+        <button class="btn-exportar" onclick="gerarRelatorioNaoEnvioIlustrado()" style="background:#6a0dad;">📊 Gerar Relatório Ilustrado</button>
       </div>
 
       <div id="naoenvio-resultado" style="display:none;margin-top:14px;background:var(--branco);border:1.5px solid var(--cinza-borda);border-radius:10px;padding:18px;">
@@ -1182,6 +1183,32 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <button class="btn-exportar" onclick="copiarRelatorioNaoEnvio()" style="background:var(--verde);">📋 Copiar Tudo</button>
         </div>
         <textarea id="naoenvio-texto" rows="16" readonly style="width:100%;padding:14px;border:1.5px solid var(--cinza-borda);border-radius:8px;font-size:13px;font-family:monospace;line-height:1.7;background:var(--cinza);color:var(--texto);resize:vertical;"></textarea>
+      </div>
+
+      <div id="naoenvio-vazio" style="display:none;margin-top:14px;text-align:center;padding:24px;color:var(--verde);font-weight:600;background:rgba(26,122,74,0.08);border-radius:10px;">
+        ✓ Ninguém ficou com dias sem envio no período selecionado!
+      </div>
+
+      <div id="naoenvio-ilustrado-resultado" style="display:none;margin-top:14px;background:var(--branco);border:1.5px solid var(--cinza-borda);border-radius:10px;padding:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <strong style="font-size:13px;color:var(--azul);">Relatório Ilustrado de Não Envio</strong>
+          <button class="btn-exportar" onclick="salvarNaoEnvioIlustradoPDF()" id="btn-naoenvio-pdf" style="background:#6a0dad;">📄 Salvar em PDF</button>
+        </div>
+        <div id="naoenvio-ilustrado-conteudo">
+          <div style="font-size:12px;color:var(--texto-leve);margin-bottom:16px;" id="naoenvio-ilustrado-periodo"></div>
+          <div class="dashboard-card" id="card-chart-expediente" style="margin-bottom:16px;display:none;">
+            <div class="dashboard-card-titulo">📋 Expediente — Dias sem envio por Delegacia (seg a sex)</div>
+            <canvas id="chart-naoenvio-expediente" height="100"></canvas>
+          </div>
+          <div class="dashboard-card" id="card-chart-plantao" style="margin-bottom:16px;display:none;">
+            <div class="dashboard-card-titulo">🕐 Plantão — Dias sem envio por Polo</div>
+            <canvas id="chart-naoenvio-plantao" height="70"></canvas>
+          </div>
+          <div class="dashboard-card" id="card-chart-bo" style="display:none;">
+            <div class="dashboard-card-titulo">📄 Setor de B.O. — Dias sem envio por Usuário (seg a sex)</div>
+            <canvas id="chart-naoenvio-bo" height="100"></canvas>
+          </div>
+        </div>
       </div>
 
       <div id="presenca-loading" style="text-align:center;padding:40px;color:var(--texto-leve);font-size:14px;">Carregando...</div>
@@ -2029,51 +2056,84 @@ function contarDiasNoPeriodo(dataIniISO, dataFimISO) {
   return Math.round((fim - ini) / (1000 * 60 * 60 * 24)) + 1;
 }
 
-function gerarRelatorioNaoEnvio() {
+// Lista cada dia do período com seu dia da semana (0=domingo ... 6=sábado)
+function listarDiasNoPeriodo(dataIniISO, dataFimISO) {
+  const dias = [];
+  let d = new Date(dataIniISO + 'T00:00:00');
+  const fim = new Date(dataFimISO + 'T00:00:00');
+  while (d <= fim) {
+    const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    dias.push({ iso, diaSemana: d.getDay() });
+    d.setDate(d.getDate() + 1);
+  }
+  return dias;
+}
+
+function calcularFalhaEnvio(nome, diasRelevantes, diasComEnvioSet) {
+  const totalRelevantes = diasRelevantes.length;
+  const diasEnviados = diasRelevantes.filter(d => diasComEnvioSet.has(d.iso)).length;
+  return { nome, diasEnviados, totalDias: totalRelevantes, diasSemEnvio: totalRelevantes - diasEnviados };
+}
+
+// Calcula, para o período já carregado na tela de Envios do Dia, quem tem dias sem envio —
+// respeitando que Expediente e B.O. só funcionam de seg a sex, e que o plantão de Teixeira só
+// funciona sáb/dom (Central - Patos e DHE funcionam todos os dias).
+function calcularFalhasEnvio() {
   const dataIni = ultimoPeriodoIniPresenca;
   const dataFim = ultimoPeriodoFimPresenca;
-  if (!dataIni || !dataFim) { alert('Aguarde os dados carregarem e tente novamente.'); return; }
+  if (!dataIni || !dataFim) return null;
 
   const regs = ultimoRegsPresenca || [];
   const escrivaes = ultimoEscrivaesPresenca || [];
   const periodoFmt = dataIni === dataFim ? formatarDataBR(dataIni) : `${formatarDataBR(dataIni)} a ${formatarDataBR(dataFim)}`;
-  const totalDias = contarDiasNoPeriodo(dataIni, dataFim);
 
-  // Expediente — dias enviados x dias sem envio, por delegacia (qualquer envio, inclusive "Sem Ocorrências", conta como enviado naquele dia)
+  const todosDias = listarDiasNoPeriodo(dataIni, dataFim);
+  const diasUteis = todosDias.filter(d => d.diaSemana >= 1 && d.diaSemana <= 5);
+  const diasFimDeSemana = todosDias.filter(d => d.diaSemana === 0 || d.diaSemana === 6);
+
+  // Expediente — só conta dias úteis (seg a sex)
   const diasPorDelegacia = {};
   regs.filter(r => r.modalidade === 'expediente').forEach(r => {
     if (!diasPorDelegacia[r.delegacia]) diasPorDelegacia[r.delegacia] = new Set();
     diasPorDelegacia[r.delegacia].add(r.data);
   });
-  const delegaciasComFalha = TODAS_DELEGACIAS.map(d => {
-    const diasEnviados = diasPorDelegacia[d] ? diasPorDelegacia[d].size : 0;
-    return { nome: d, diasEnviados, diasSemEnvio: totalDias - diasEnviados };
-  }).filter(x => x.diasSemEnvio > 0);
+  const delegaciasComFalha = TODAS_DELEGACIAS
+    .map(d => calcularFalhaEnvio(d, diasUteis, diasPorDelegacia[d] || new Set()))
+    .filter(x => x.totalDias > 0 && x.diasSemEnvio > 0);
 
-  // Plantão — dias enviados x dias sem envio, por polo (não dá pra cobrar por usuário específico, já que a escala varia)
+  // Plantão — Central-Patos e DHE contam todos os dias; Teixeira só sábado/domingo
   const diasPorPolo = {};
   regs.filter(r => r.modalidade === 'plantao').forEach(r => {
     if (!diasPorPolo[r.delegacia]) diasPorPolo[r.delegacia] = new Set();
     diasPorPolo[r.delegacia].add(r.data);
   });
-  const polosComFalha = POLOS_PLANTAO.map(p => {
-    const diasEnviados = diasPorPolo[p] ? diasPorPolo[p].size : 0;
-    return { nome: p, diasEnviados, diasSemEnvio: totalDias - diasEnviados };
-  }).filter(x => x.diasSemEnvio > 0);
+  const polosComFalha = POLOS_PLANTAO
+    .map(p => {
+      const diasRelevantes = p === 'Teixeira' ? diasFimDeSemana : todosDias;
+      return calcularFalhaEnvio(p, diasRelevantes, diasPorPolo[p] || new Set());
+    })
+    .filter(x => x.totalDias > 0 && x.diasSemEnvio > 0);
 
-  // Setor de B.O. — dias enviados x dias sem envio, por usuário (aqui dá pra cobrar por pessoa, já que é um setor fixo)
+  // Setor de B.O. — só conta dias úteis (seg a sex)
   const diasPorUsuarioBO = {};
   regs.filter(r => r.modalidade === 'bo').forEach(r => {
     if (!diasPorUsuarioBO[r.escrivao]) diasPorUsuarioBO[r.escrivao] = new Set();
     diasPorUsuarioBO[r.escrivao].add(r.data);
   });
   const usuariosBO = escrivaes.filter(e => (e.modalidades || ['expediente','plantao','bo']).includes('bo'));
-  const usuariosBOComFalha = usuariosBO.map(e => {
-    const diasEnviados = diasPorUsuarioBO[e.nome] ? diasPorUsuarioBO[e.nome].size : 0;
-    return { nome: e.nome, diasEnviados, diasSemEnvio: totalDias - diasEnviados };
-  }).filter(x => x.diasSemEnvio > 0);
+  const usuariosBOComFalha = usuariosBO
+    .map(e => calcularFalhaEnvio(e.nome, diasUteis, diasPorUsuarioBO[e.nome] || new Set()))
+    .filter(x => x.totalDias > 0 && x.diasSemEnvio > 0);
 
-  const formatarLinha = (x) => `${x.nome}: ${x.diasEnviados}/${totalDias} dias enviados (${x.diasSemEnvio} sem envio)`;
+  return { dataIni, dataFim, periodoFmt, totalDias: todosDias.length, delegaciasComFalha, polosComFalha, usuariosBOComFalha };
+}
+
+function gerarRelatorioNaoEnvio() {
+  const dados = calcularFalhasEnvio();
+  if (!dados) { alert('Aguarde os dados carregarem e tente novamente.'); return; }
+  const { periodoFmt, totalDias, delegaciasComFalha, polosComFalha, usuariosBOComFalha } = dados;
+
+  const formatarLinha = (x) => `${x.nome}: ${x.diasEnviados}/${x.totalDias} dias enviados (${x.diasSemEnvio} sem envio)`;
 
   const linhas = [];
   linhas.push('*15ª DSPC/PATOS*');
@@ -2082,23 +2142,25 @@ function gerarRelatorioNaoEnvio() {
   linhas.push('');
   linhas.push(`*PERÍODO: ${periodoFmt} (${totalDias} dia${totalDias !== 1 ? 's' : ''})*`);
   linhas.push('');
-  linhas.push('*EXPEDIENTE — Delegacias com dias sem envio:*');
+  linhas.push('*EXPEDIENTE — Delegacias com dias sem envio (seg a sex):*');
   linhas.push('');
   if (delegaciasComFalha.length) delegaciasComFalha.forEach(x => linhas.push(formatarLinha(x)));
-  else linhas.push('Todas as delegacias enviaram em todos os dias do período.');
+  else linhas.push('Todas as delegacias enviaram em todos os dias úteis do período.');
   linhas.push('');
   linhas.push('*PLANTÃO — Polos com dias sem envio:*');
   linhas.push('');
   if (polosComFalha.length) polosComFalha.forEach(x => linhas.push(formatarLinha(x)));
-  else linhas.push('Todos os polos enviaram em todos os dias do período.');
+  else linhas.push('Todos os polos enviaram em todos os dias aplicáveis do período.');
   linhas.push('');
-  linhas.push('*SETOR DE B.O. — Usuários com dias sem envio:*');
+  linhas.push('*SETOR DE B.O. — Usuários com dias sem envio (seg a sex):*');
   linhas.push('');
   if (usuariosBOComFalha.length) usuariosBOComFalha.forEach(x => linhas.push(formatarLinha(x)));
-  else linhas.push('Todos os usuários do B.O. enviaram em todos os dias do período.');
+  else linhas.push('Todos os usuários do B.O. enviaram em todos os dias úteis do período.');
   linhas.push('');
   linhas.push('_Assessoria de Estatística 15ªDSPC/Patos_');
 
+  document.getElementById('naoenvio-ilustrado-resultado').style.display = 'none';
+  document.getElementById('naoenvio-vazio').style.display = 'none';
   document.getElementById('naoenvio-texto').value = linhas.join('\n');
   document.getElementById('naoenvio-resultado').style.display = 'block';
   document.getElementById('naoenvio-resultado').scrollIntoView({ behavior: 'smooth' });
@@ -2111,8 +2173,134 @@ function copiarRelatorioNaoEnvio() {
   alert('✓ Texto copiado!');
 }
 
+let _chartsNaoEnvio = { expediente: null, plantao: null, bo: null };
+
+function _montarChartNaoEnvio(canvasId, itens, cor) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  return new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: itens.map(x => x.nome),
+      datasets: [
+        { label: 'Dias enviados', data: itens.map(x => x.diasEnviados), backgroundColor: '#1a7a4a' },
+        { label: 'Dias sem envio', data: itens.map(x => x.diasSemEnvio), backgroundColor: cor }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: { legend: { position: 'bottom' } },
+      scales: { x: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } }, y: { stacked: true } }
+    }
+  });
+}
+
+function gerarRelatorioNaoEnvioIlustrado() {
+  const dados = calcularFalhasEnvio();
+  if (!dados) { alert('Aguarde os dados carregarem e tente novamente.'); return; }
+  const { periodoFmt, totalDias, delegaciasComFalha, polosComFalha, usuariosBOComFalha } = dados;
+
+  document.getElementById('naoenvio-resultado').style.display = 'none';
+
+  if (!delegaciasComFalha.length && !polosComFalha.length && !usuariosBOComFalha.length) {
+    document.getElementById('naoenvio-ilustrado-resultado').style.display = 'none';
+    document.getElementById('naoenvio-vazio').style.display = 'block';
+    document.getElementById('naoenvio-vazio').scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  document.getElementById('naoenvio-vazio').style.display = 'none';
+
+  document.getElementById('naoenvio-ilustrado-periodo').textContent = `Período: ${periodoFmt} (${totalDias} dia${totalDias !== 1 ? 's' : ''})`;
+
+  // Destrói gráficos anteriores antes de recriar
+  Object.values(_chartsNaoEnvio).forEach(c => { if (c) c.destroy(); });
+
+  const cardExp = document.getElementById('card-chart-expediente');
+  if (delegaciasComFalha.length) {
+    cardExp.style.display = 'block';
+    _chartsNaoEnvio.expediente = _montarChartNaoEnvio('chart-naoenvio-expediente', delegaciasComFalha, '#c0392b');
+  } else cardExp.style.display = 'none';
+
+  const cardPla = document.getElementById('card-chart-plantao');
+  if (polosComFalha.length) {
+    cardPla.style.display = 'block';
+    _chartsNaoEnvio.plantao = _montarChartNaoEnvio('chart-naoenvio-plantao', polosComFalha, '#16a085');
+  } else cardPla.style.display = 'none';
+
+  const cardBO = document.getElementById('card-chart-bo');
+  if (usuariosBOComFalha.length) {
+    cardBO.style.display = 'block';
+    _chartsNaoEnvio.bo = _montarChartNaoEnvio('chart-naoenvio-bo', usuariosBOComFalha, '#c8a84b');
+  } else cardBO.style.display = 'none';
+
+  document.getElementById('naoenvio-ilustrado-resultado').style.display = 'block';
+  document.getElementById('naoenvio-ilustrado-resultado').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function salvarNaoEnvioIlustradoPDF() {
+  const btn = document.getElementById('btn-naoenvio-pdf');
+  const txtOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando PDF...';
+
+  try {
+    const elemento = document.getElementById('naoenvio-ilustrado-conteudo');
+    const canvas = await html2canvas(elemento, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const imgData = canvas.toDataURL('image/png');
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const larguraPagina = pdf.internal.pageSize.getWidth();
+    const alturaPagina = pdf.internal.pageSize.getHeight();
+    const margem = 10;
+    const larguraUtil = larguraPagina - margem * 2;
+    const alturaImg = (canvas.height * larguraUtil) / canvas.width;
+
+    pdf.setFontSize(13);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('15ª DSPC/PATOS — Relatório Ilustrado de Não Envio', margem, margem + 4);
+
+    let yAtual = margem + 12;
+    const alturaUtilPagina = alturaPagina - margem * 2 - 12;
+
+    if (alturaImg <= alturaUtilPagina) {
+      pdf.addImage(imgData, 'PNG', margem, yAtual, larguraUtil, alturaImg);
+    } else {
+      const escala = canvas.width / larguraUtil;
+      const fatiaAlturaPx = alturaUtilPagina * escala;
+      let offsetPx = 0;
+      let primeira = true;
+      while (offsetPx < canvas.height) {
+        const alturaFatia = Math.min(fatiaAlturaPx, canvas.height - offsetPx);
+        const canvasFatia = document.createElement('canvas');
+        canvasFatia.width = canvas.width;
+        canvasFatia.height = alturaFatia;
+        const ctx = canvasFatia.getContext('2d');
+        ctx.drawImage(canvas, 0, offsetPx, canvas.width, alturaFatia, 0, 0, canvas.width, alturaFatia);
+        const imgFatia = canvasFatia.toDataURL('image/png');
+        if (!primeira) pdf.addPage();
+        const alturaFatiaMm = (alturaFatia * larguraUtil) / canvas.width;
+        pdf.addImage(imgFatia, 'PNG', margem, primeira ? yAtual : margem, larguraUtil, alturaFatiaMm);
+        offsetPx += alturaFatia;
+        primeira = false;
+      }
+    }
+
+    const agora = new Date();
+    const carimbo = `${agora.getFullYear()}${String(agora.getMonth()+1).padStart(2,'0')}${String(agora.getDate()).padStart(2,'0')}_${String(agora.getHours()).padStart(2,'0')}${String(agora.getMinutes()).padStart(2,'0')}`;
+    pdf.save(`relatorio_nao_envio_${carimbo}.pdf`);
+  } catch(e) {
+    alert('Erro ao gerar PDF: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = txtOriginal;
+  }
+}
+
 async function carregarPresenca() {
   document.getElementById('naoenvio-resultado').style.display = 'none';
+  document.getElementById('naoenvio-ilustrado-resultado').style.display = 'none';
+  document.getElementById('naoenvio-vazio').style.display = 'none';
   document.getElementById('presenca-loading').style.display = 'block';
   document.getElementById('presenca-corpo').style.display = 'none';
 
