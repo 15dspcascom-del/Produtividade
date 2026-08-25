@@ -2178,12 +2178,17 @@ function copiarRelatorioNaoEnvio() {
 }
 
 function _montarBarrasNaoEnvio(itens) {
+  const ordenados = [...itens].sort((a, b) => {
+    const pctA = a.totalDias > 0 ? a.diasEnviados / a.totalDias : 0;
+    const pctB = b.totalDias > 0 ? b.diasEnviados / b.totalDias : 0;
+    return pctA - pctB; // quem enviou menos primeiro
+  });
   const cabecalho = `<div class="naoenvio-linha naoenvio-cabecalho">
     <div class="naoenvio-nome">Delegacia / Polo</div>
     <div class="naoenvio-dias">Dias Enviados</div>
     <div class="naoenvio-valor">%</div>
   </div>`;
-  const linhas = itens.map(x => {
+  const linhas = ordenados.map(x => {
     const pct = x.totalDias > 0 ? Math.round((x.diasEnviados / x.totalDias) * 100) : 0;
     const cor = pct === 0 ? 'var(--vermelho)' : (pct === 100 ? 'var(--verde)' : 'var(--dourado)');
     return `<div class="naoenvio-linha">
