@@ -2408,8 +2408,11 @@ async function adicionarCardComLinhasAoPDF(pdf, elTitulo, elLinhas, estado, marg
   let inicioPx = 0;
   let i = 0;
   let tentouPaginaNova = false;
+  let contadorSeguranca = 0;
 
   while (i < fimLinhasPx.length) {
+    contadorSeguranca++;
+    if (contadorSeguranca > 500) break; // trava de segurança absoluta contra qualquer travamento
     const espacoRestantePx = ((alturaPagina - margem) - estado.y) * pxPerMm;
 
     // Acha até onde dá pra ir sem estourar o espaço restante da página atual
@@ -2425,6 +2428,7 @@ async function adicionarCardComLinhasAoPDF(pdf, elTitulo, elLinhas, estado, marg
         pdf.addPage();
         estado.y = margem;
         tentouPaginaNova = true;
+        await new Promise(r => setTimeout(r, 0)); // deixa o navegador "respirar"
         continue;
       }
       // Segurança: mesmo numa página em branco não coube — força essa linha sozinha pra não travar
@@ -2446,6 +2450,7 @@ async function adicionarCardComLinhasAoPDF(pdf, elTitulo, elLinhas, estado, marg
     i = ultimoIndiceQueCabe + 1;
 
     if (i < fimLinhasPx.length) { pdf.addPage(); estado.y = margem; }
+    await new Promise(r => setTimeout(r, 0)); // deixa o navegador "respirar" a cada página
   }
   estado.y += 6; // espaço antes do próximo card
 }
