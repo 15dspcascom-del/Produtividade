@@ -2390,8 +2390,6 @@ async function salvarNaoEnvioIlustradoPDF() {
 // Adiciona um card (título + lista de linhas) ao PDF, cortando de página SEMPRE
 // entre uma linha e outra, nunca no meio de uma linha da tabela.
 async function adicionarCardComLinhasAoPDF(pdf, elTitulo, elLinhas, estado, margem, larguraUtil, alturaPagina) {
-  const alturaUtilPagina = alturaPagina - margem * 2;
-
   // Título do card
   const canvasTitulo = await html2canvas(elTitulo, { scale: 2, backgroundColor: '#ffffff' });
   const alturaTituloMm = (canvasTitulo.height * larguraUtil) / canvasTitulo.width;
@@ -2403,37 +2401,51 @@ async function adicionarCardComLinhasAoPDF(pdf, elTitulo, elLinhas, estado, marg
   const canvasLinhas = await html2canvas(elLinhas, { scale: 2, backgroundColor: '#ffffff' });
   const pxPerMm = canvasLinhas.width / larguraUtil;
 
-  // Posição (em px do canvas) de cada linha, pra nunca cortar uma linha ao meio
+  // Posição (fim) de cada linha em px do canvas, na ordem — pra nunca cortar uma linha ao meio
   const escalaReal = canvasLinhas.width / elLinhas.offsetWidth;
-  const limitesPx = Array.from(elLinhas.children).map(el => (el.offsetTop + el.offsetHeight) * escalaReal);
+  const fimLinhasPx = Array.from(elLinhas.children).map(el => (el.offsetTop + el.offsetHeight) * escalaReal);
 
-  let offsetPx = 0;
-  while (offsetPx < canvasLinhas.height - 1) {
-    const espacoRestanteMm = (alturaPagina - margem) - estado.y;
-    const espacoRestantePx = espacoRestanteMm * pxPerMm;
+  let inicioPx = 0;
+  let i = 0;
+  let tentouPaginaNova = false;
 
-    // Acha o maior limite de linha que ainda cabe no espaço restante da página atual
-    let corte = limitesPx.find(l => l > offsetPx && l - offsetPx > espacoRestantePx);
-    let fimFatia = corte !== undefined ? limitesPx[limitesPx.indexOf(corte) - 1] : canvasLinhas.height;
-    if (fimFatia === undefined || fimFatia <= offsetPx) {
-      // Nem uma linha cabe no espaço restante: pula pra próxima página antes de tentar de novo
-      pdf.addPage();
-      estado.y = margem;
-      continue;
+  while (i < fimLinhasPx.length) {
+    const espacoRestantePx = ((alturaPagina - margem) - estado.y) * pxPerMm;
+
+    // Acha até onde dá pra ir sem estourar o espaço restante da página atual
+    let ultimoIndiceQueCabe = -1;
+    for (let j = i; j < fimLinhasPx.length; j++) {
+      if (fimLinhasPx[j] - inicioPx <= espacoRestantePx) ultimoIndiceQueCabe = j;
+      else break;
     }
 
-    const alturaFatiaPx = fimFatia - offsetPx;
+    if (ultimoIndiceQueCabe === -1) {
+      if (!tentouPaginaNova) {
+        // Nem uma linha cabe: tenta de novo numa página em branco (espaço máximo)
+        pdf.addPage();
+        estado.y = margem;
+        tentouPaginaNova = true;
+        continue;
+      }
+      // Segurança: mesmo numa página em branco não coube — força essa linha sozinha pra não travar
+      ultimoIndiceQueCabe = i;
+    }
+    tentouPaginaNova = false;
+
+    const fimFatiaPx = fimLinhasPx[ultimoIndiceQueCabe];
+    const alturaFatiaPx = fimFatiaPx - inicioPx;
     const canvasFatia = document.createElement('canvas');
     canvasFatia.width = canvasLinhas.width;
     canvasFatia.height = alturaFatiaPx;
-    canvasFatia.getContext('2d').drawImage(canvasLinhas, 0, offsetPx, canvasLinhas.width, alturaFatiaPx, 0, 0, canvasLinhas.width, alturaFatiaPx);
+    canvasFatia.getContext('2d').drawImage(canvasLinhas, 0, inicioPx, canvasLinhas.width, alturaFatiaPx, 0, 0, canvasLinhas.width, alturaFatiaPx);
 
     const alturaFatiaMm = alturaFatiaPx / pxPerMm;
     pdf.addImage(canvasFatia.toDataURL('image/png'), 'PNG', margem, estado.y, larguraUtil, alturaFatiaMm);
     estado.y += alturaFatiaMm;
-    offsetPx = fimFatia;
+    inicioPx = fimFatiaPx;
+    i = ultimoIndiceQueCabe + 1;
 
-    if (offsetPx < canvasLinhas.height - 1) { pdf.addPage(); estado.y = margem; }
+    if (i < fimLinhasPx.length) { pdf.addPage(); estado.y = margem; }
   }
   estado.y += 6; // espaço antes do próximo card
 }
