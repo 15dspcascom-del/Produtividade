@@ -510,9 +510,9 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 .naoenvio-linha:last-child { border-bottom:none; }
 .naoenvio-linha.naoenvio-cabecalho { font-size:10px; font-weight:700; color:var(--texto-leve); text-transform:uppercase; letter-spacing:0.5px; padding-bottom:8px; }
 .naoenvio-nome { flex:1; font-size:13px; font-weight:600; color:var(--texto); }
-.naoenvio-dias { flex:0 0 110px; font-size:13px; color:var(--texto); }
+.naoenvio-dias { flex:0 0 220px; font-size:13px; color:var(--texto); text-align:center; }
 .naoenvio-valor { flex:0 0 60px; text-align:right; font-size:13px; font-weight:700; }
-@media (max-width:640px) { .naoenvio-nome { font-size:12px; } .naoenvio-dias { flex-basis:80px; font-size:12px; } }
+@media (max-width:640px) { .naoenvio-nome { font-size:12px; } .naoenvio-dias { flex-basis:130px; font-size:11px; } }
 
 /* Cards de área */
 .dash-area-bloco { margin-bottom: 20px; }
@@ -2101,9 +2101,10 @@ function calcularFalhasEnvio() {
     if (!diasPorDelegacia[r.delegacia]) diasPorDelegacia[r.delegacia] = new Set();
     diasPorDelegacia[r.delegacia].add(r.data);
   });
-  const delegaciasComFalha = TODAS_DELEGACIAS
+  const delegaciasTodas = TODAS_DELEGACIAS
     .map(d => calcularFalhaEnvio(d, diasUteis, diasPorDelegacia[d] || new Set()))
-    .filter(x => x.totalDias > 0 && x.diasSemEnvio > 0);
+    .filter(x => x.totalDias > 0);
+  const delegaciasComFalha = delegaciasTodas.filter(x => x.diasSemEnvio > 0);
 
   // Plantão — Central-Patos e DHE contam todos os dias; Teixeira só sábado/domingo
   const diasPorPolo = {};
@@ -2111,12 +2112,13 @@ function calcularFalhasEnvio() {
     if (!diasPorPolo[r.delegacia]) diasPorPolo[r.delegacia] = new Set();
     diasPorPolo[r.delegacia].add(r.data);
   });
-  const polosComFalha = POLOS_PLANTAO
+  const polosTodos = POLOS_PLANTAO
     .map(p => {
       const diasRelevantes = p === 'Teixeira' ? diasFimDeSemana : todosDias;
       return calcularFalhaEnvio(p, diasRelevantes, diasPorPolo[p] || new Set());
     })
-    .filter(x => x.totalDias > 0 && x.diasSemEnvio > 0);
+    .filter(x => x.totalDias > 0);
+  const polosComFalha = polosTodos.filter(x => x.diasSemEnvio > 0);
 
   // Setor de B.O. — só conta dias úteis (seg a sex)
   const diasPorUsuarioBO = {};
@@ -2129,7 +2131,7 @@ function calcularFalhasEnvio() {
     .map(e => calcularFalhaEnvio(e.nome, diasUteis, diasPorUsuarioBO[e.nome] || new Set()))
     .filter(x => x.totalDias > 0 && x.diasSemEnvio > 0);
 
-  return { dataIni, dataFim, periodoFmt, totalDias: todosDias.length, delegaciasComFalha, polosComFalha, usuariosBOComFalha };
+  return { dataIni, dataFim, periodoFmt, totalDias: todosDias.length, delegaciasComFalha, polosComFalha, usuariosBOComFalha, delegaciasTodas, polosTodos };
 }
 
 function gerarRelatorioNaoEnvio() {
@@ -2185,7 +2187,7 @@ function _montarBarrasNaoEnvio(itens) {
   });
   const cabecalho = `<div class="naoenvio-linha naoenvio-cabecalho">
     <div class="naoenvio-nome">Delegacia / Polo</div>
-    <div class="naoenvio-dias">Dias Enviados</div>
+    <div class="naoenvio-dias">Dias com Envio / Dias sem Envio</div>
     <div class="naoenvio-valor">%</div>
   </div>`;
   const linhas = ordenados.map(x => {
@@ -2193,7 +2195,7 @@ function _montarBarrasNaoEnvio(itens) {
     const cor = pct === 0 ? 'var(--vermelho)' : (pct === 100 ? 'var(--verde)' : 'var(--dourado)');
     return `<div class="naoenvio-linha">
       <div class="naoenvio-nome">${x.nome}</div>
-      <div class="naoenvio-dias">${x.diasEnviados}/${x.totalDias}</div>
+      <div class="naoenvio-dias">${x.diasEnviados} / ${x.diasSemEnvio}</div>
       <div class="naoenvio-valor" style="color:${cor};">${pct}%</div>
     </div>`;
   }).join('');
@@ -2203,11 +2205,11 @@ function _montarBarrasNaoEnvio(itens) {
 function gerarRelatorioNaoEnvioIlustrado() {
   const dados = calcularFalhasEnvio();
   if (!dados) { alert('Aguarde os dados carregarem e tente novamente.'); return; }
-  const { periodoFmt, totalDias, delegaciasComFalha, polosComFalha } = dados;
+  const { periodoFmt, totalDias, delegaciasTodas, polosTodos } = dados;
 
   document.getElementById('naoenvio-resultado').style.display = 'none';
 
-  if (!delegaciasComFalha.length && !polosComFalha.length) {
+  if (!delegaciasTodas.length && !polosTodos.length) {
     document.getElementById('naoenvio-ilustrado-resultado').style.display = 'none';
     document.getElementById('naoenvio-vazio').style.display = 'block';
     document.getElementById('naoenvio-vazio').scrollIntoView({ behavior: 'smooth' });
@@ -2218,15 +2220,15 @@ function gerarRelatorioNaoEnvioIlustrado() {
   document.getElementById('naoenvio-ilustrado-periodo').textContent = `Período: ${periodoFmt} (${totalDias} dia${totalDias !== 1 ? 's' : ''})`;
 
   const cardExp = document.getElementById('card-chart-expediente');
-  if (delegaciasComFalha.length) {
+  if (delegaciasTodas.length) {
     cardExp.style.display = 'block';
-    document.getElementById('barras-naoenvio-expediente').innerHTML = _montarBarrasNaoEnvio(delegaciasComFalha);
+    document.getElementById('barras-naoenvio-expediente').innerHTML = _montarBarrasNaoEnvio(delegaciasTodas);
   } else cardExp.style.display = 'none';
 
   const cardPla = document.getElementById('card-chart-plantao');
-  if (polosComFalha.length) {
+  if (polosTodos.length) {
     cardPla.style.display = 'block';
-    document.getElementById('barras-naoenvio-plantao').innerHTML = _montarBarrasNaoEnvio(polosComFalha);
+    document.getElementById('barras-naoenvio-plantao').innerHTML = _montarBarrasNaoEnvio(polosTodos);
   } else cardPla.style.display = 'none';
 
   document.getElementById('naoenvio-ilustrado-resultado').style.display = 'block';
