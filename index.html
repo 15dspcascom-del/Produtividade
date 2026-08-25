@@ -1184,6 +1184,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
       <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
         <button class="btn-exportar" onclick="gerarRelatorioNaoEnvio()" style="background:#c0392b;">📄 Gerar Relatório de Não Envio</button>
         <button class="btn-exportar" onclick="gerarRelatorioNaoEnvioIlustrado()" style="background:#6a0dad;">📊 Gerar Relatório Ilustrado</button>
+        <button class="btn-exportar" onclick="abrirModalFeriados()" style="background:var(--dourado);color:var(--azul);">📅 Gerenciar Feriados</button>
       </div>
 
       <div id="naoenvio-resultado" style="display:none;margin-top:14px;background:var(--branco);border:1.5px solid var(--cinza-borda);border-radius:10px;padding:18px;">
@@ -1204,7 +1205,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <button class="btn-exportar" onclick="salvarNaoEnvioIlustradoPDF()" id="btn-naoenvio-pdf" style="background:#6a0dad;">📄 Salvar em PDF</button>
         </div>
         <div id="naoenvio-ilustrado-conteudo">
-          <div style="font-size:12px;color:var(--texto-leve);margin-bottom:16px;" id="naoenvio-ilustrado-periodo"></div>
+          <div style="font-size:13px;color:var(--texto);margin-bottom:16px;" id="naoenvio-ilustrado-periodo"></div>
           <div class="dashboard-card" id="card-chart-expediente" style="margin-bottom:16px;display:none;">
             <div class="dashboard-card-titulo">📋 Expediente — Dias sem envio por Delegacia (seg a sex)</div>
             <div id="barras-naoenvio-expediente"></div>
@@ -1387,6 +1388,32 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         <div class="modal-edicao-acoes">
           <button onclick="confirmarCustodiaModalCorrigir()" style="background:var(--cinza);color:var(--texto);">✏️ Corrigir</button>
           <button onclick="confirmarCustodiaModalSim()" style="background:var(--verde);color:white;">✓ Confirmar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Gestão de Feriados -->
+    <div class="modal-edicao-overlay" id="overlay-feriados">
+      <div class="modal-edicao" style="max-width:460px;">
+        <h3 style="color:var(--azul);margin-bottom:16px;">📅 Gerenciar Feriados</h3>
+        <p style="font-size:12px;color:var(--texto-leve);margin-bottom:16px;">Dias marcados aqui não contam contra as delegacias/setores nos relatórios de não envio (Expediente e B.O.).</p>
+
+        <div style="display:flex;gap:10px;margin-bottom:16px;align-items:flex-end;">
+          <div class="fm-item" style="flex:1;">
+            <label>Data</label>
+            <input type="date" id="feriado-data" />
+          </div>
+          <div class="fm-item" style="flex:2;">
+            <label>Descrição</label>
+            <input type="text" id="feriado-descricao" placeholder="ex: Independência do Brasil" />
+          </div>
+          <button class="btn-enviar" style="max-width:100px;background:var(--verde);" onclick="salvarFeriado()">+ Add</button>
+        </div>
+
+        <div id="lista-feriados" style="max-height:260px;overflow-y:auto;border-top:1px solid var(--cinza-borda);"></div>
+
+        <div class="modal-edicao-acoes" style="margin-top:18px;">
+          <button onclick="fecharModalFeriados()" style="background:var(--cinza);color:var(--texto);">Fechar</button>
         </div>
       </div>
     </div>
@@ -2083,6 +2110,68 @@ function calcularFalhaEnvio(nome, diasRelevantes, diasComEnvioSet) {
 // Calcula, para o período já carregado na tela de Envios do Dia, quem tem dias sem envio —
 // respeitando que Expediente e B.O. só funcionam de seg a sex, e que o plantão de Teixeira só
 // funciona sáb/dom (Central - Patos e DHE funcionam todos os dias).
+// ============================================================
+// GESTÃO DE FERIADOS
+// ============================================================
+async function abrirModalFeriados() {
+  document.getElementById('overlay-feriados').classList.add('aberto');
+  document.getElementById('feriado-data').value = '';
+  document.getElementById('feriado-descricao').value = '';
+  await carregarListaFeriados();
+}
+
+function fecharModalFeriados() {
+  document.getElementById('overlay-feriados').classList.remove('aberto');
+  carregarPresenca(); // recarrega os relatórios já considerando eventuais mudanças nos feriados
+}
+
+async function carregarListaFeriados() {
+  const cont = document.getElementById('lista-feriados');
+  cont.innerHTML = '<p style="color:var(--texto-leve);font-size:12px;padding:10px 0;">Carregando...</p>';
+  try {
+    const feriados = await supa.get('feriados', '?select=*&order=data');
+    todosFeriados = feriados;
+    if (!feriados.length) {
+      cont.innerHTML = '<p style="color:var(--texto-leve);font-size:12px;padding:10px 0;">Nenhum feriado cadastrado.</p>';
+      return;
+    }
+    cont.innerHTML = feriados.map(f => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--cinza-borda);">
+        <div>
+          <strong style="font-size:13px;color:var(--texto);">${formatarDataBR(f.data)}</strong>
+          <span style="font-size:12px;color:var(--texto-leve);margin-left:8px;">${f.descricao || ''}</span>
+        </div>
+        <button onclick="excluirFeriado('${f.data}')" style="background:none;border:none;color:var(--vermelho);font-size:12px;cursor:pointer;font-weight:600;">🗑️ Excluir</button>
+      </div>`).join('');
+  } catch(e) {
+    cont.innerHTML = '<p style="color:var(--vermelho);font-size:12px;padding:10px 0;">Erro ao carregar feriados.</p>';
+  }
+}
+
+async function salvarFeriado() {
+  const data = document.getElementById('feriado-data').value;
+  const descricao = document.getElementById('feriado-descricao').value.trim();
+  if (!data) { alert('Selecione a data do feriado.'); return; }
+  try {
+    await supa.upsert('feriados', { data, descricao }, 'data');
+    document.getElementById('feriado-data').value = '';
+    document.getElementById('feriado-descricao').value = '';
+    await carregarListaFeriados();
+  } catch(e) {
+    alert('Erro ao salvar feriado: ' + e.message);
+  }
+}
+
+async function excluirFeriado(dataISO) {
+  if (!confirm(`Excluir o feriado de ${formatarDataBR(dataISO)}?`)) return;
+  try {
+    await supa.del('feriados', `data=eq.${dataISO}`);
+    await carregarListaFeriados();
+  } catch(e) {
+    alert('Erro ao excluir feriado: ' + e.message);
+  }
+}
+
 function calcularFalhasEnvio() {
   const dataIni = ultimoPeriodoIniPresenca;
   const dataFim = ultimoPeriodoFimPresenca;
@@ -2093,7 +2182,8 @@ function calcularFalhasEnvio() {
   const periodoFmt = dataIni === dataFim ? formatarDataBR(dataIni) : `${formatarDataBR(dataIni)} a ${formatarDataBR(dataFim)}`;
 
   const todosDias = listarDiasNoPeriodo(dataIni, dataFim);
-  const diasUteis = todosDias.filter(d => d.diaSemana >= 1 && d.diaSemana <= 5);
+  const feriadosSet = new Set(todosFeriados.map(f => f.data));
+  const diasUteis = todosDias.filter(d => d.diaSemana >= 1 && d.diaSemana <= 5 && !feriadosSet.has(d.iso));
   const diasFimDeSemana = todosDias.filter(d => d.diaSemana === 0 || d.diaSemana === 6);
 
   // Expediente — só conta dias úteis (seg a sex)
@@ -2132,7 +2222,7 @@ function calcularFalhasEnvio() {
     .map(e => calcularFalhaEnvio(e.nome, diasUteis, diasPorUsuarioBO[e.nome] || new Set()))
     .filter(x => x.totalDias > 0 && x.diasSemEnvio > 0);
 
-  return { dataIni, dataFim, periodoFmt, totalDias: todosDias.length, delegaciasComFalha, polosComFalha, usuariosBOComFalha, delegaciasTodas, polosTodos };
+  return { dataIni, dataFim, periodoFmt, totalDias: todosDias.length, diasUteisCount: diasUteis.length, delegaciasComFalha, polosComFalha, usuariosBOComFalha, delegaciasTodas, polosTodos };
 }
 
 function gerarRelatorioNaoEnvio() {
@@ -2206,7 +2296,7 @@ function _montarBarrasNaoEnvio(itens) {
 function gerarRelatorioNaoEnvioIlustrado() {
   const dados = calcularFalhasEnvio();
   if (!dados) { alert('Aguarde os dados carregarem e tente novamente.'); return; }
-  const { periodoFmt, totalDias, delegaciasTodas, polosTodos } = dados;
+  const { periodoFmt, totalDias, diasUteisCount, delegaciasTodas, polosTodos } = dados;
 
   document.getElementById('naoenvio-resultado').style.display = 'none';
 
@@ -2218,7 +2308,7 @@ function gerarRelatorioNaoEnvioIlustrado() {
   }
   document.getElementById('naoenvio-vazio').style.display = 'none';
 
-  document.getElementById('naoenvio-ilustrado-periodo').textContent = `Período: ${periodoFmt} (${totalDias} dia${totalDias !== 1 ? 's' : ''})`;
+  document.getElementById('naoenvio-ilustrado-periodo').textContent = `Período: ${periodoFmt} (${totalDias} dia${totalDias !== 1 ? 's' : ''} corrido${totalDias !== 1 ? 's' : ''}) e (${diasUteisCount} dia${diasUteisCount !== 1 ? 's' : ''} útil${diasUteisCount !== 1 ? 'eis' : ''})`;
 
   const cardExp = document.getElementById('card-chart-expediente');
   if (delegaciasTodas.length) {
@@ -2302,6 +2392,10 @@ async function carregarPresenca() {
   document.getElementById('naoenvio-vazio').style.display = 'none';
   document.getElementById('presenca-loading').style.display = 'block';
   document.getElementById('presenca-corpo').style.display = 'none';
+
+  try {
+    todosFeriados = await supa.get('feriados', '?select=*&order=data');
+  } catch(e) { todosFeriados = []; }
 
   const fmtISO = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const agora = new Date();
@@ -5227,6 +5321,7 @@ let ultimoEnviosPresenca = {};
 let ultimoRegsPresenca = [];
 let ultimoPeriodoIniPresenca = '';
 let ultimoPeriodoFimPresenca = '';
+let todosFeriados = []; // [{ data: 'YYYY-MM-DD', descricao }]
 
 async function iniciarPresenca() {
   diaPresenca = 'hoje';
