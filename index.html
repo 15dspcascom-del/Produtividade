@@ -2341,39 +2341,46 @@ async function salvarNaoEnvioIlustradoPDF() {
   btn.textContent = '⏳ Gerando PDF...';
 
   try {
+    const elemento = document.getElementById('naoenvio-ilustrado-conteudo');
+    const canvas = await html2canvas(elemento, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const imgData = canvas.toDataURL('image/png');
+
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
     const larguraPagina = pdf.internal.pageSize.getWidth();
     const alturaPagina = pdf.internal.pageSize.getHeight();
     const margem = 6; // margens reduzidas para aproveitar mais a página
     const larguraUtil = larguraPagina - margem * 2;
+    const alturaImg = (canvas.height * larguraUtil) / canvas.width;
 
     pdf.setFontSize(13);
     pdf.setFont(undefined, 'bold');
     pdf.text('15ª DSPC/PATOS — Relatório Ilustrado de Não Envio', margem, margem + 4);
 
-    const estado = { y: margem + 11 };
+    let yAtual = margem + 12;
+    const alturaUtilPagina = alturaPagina - margem * 2 - 12;
 
-    // Bloco do período (texto simples, sempre cabe)
-    const elPeriodo = document.getElementById('naoenvio-ilustrado-periodo');
-    if (elPeriodo && elPeriodo.textContent.trim()) {
-      const canvasPeriodo = await html2canvas(elPeriodo, { scale: 2, backgroundColor: '#ffffff' });
-      const alturaMm = (canvasPeriodo.height * larguraUtil) / canvasPeriodo.width;
-      pdf.addImage(canvasPeriodo.toDataURL('image/png'), 'PNG', margem, estado.y, larguraUtil, alturaMm);
-      estado.y += alturaMm + 6;
-    }
-
-    // Cada card (título + linhas) é colocado sem nunca cortar uma linha ao meio entre páginas
-    const cards = [
-      { titulo: '#card-chart-expediente .dashboard-card-titulo', linhas: '#barras-naoenvio-expediente' },
-      { titulo: '#card-chart-plantao .dashboard-card-titulo', linhas: '#barras-naoenvio-plantao' }
-    ];
-
-    for (const card of cards) {
-      const elTitulo = document.querySelector(card.titulo);
-      const elLinhas = document.getElementById(card.linhas.replace('#',''));
-      if (!elTitulo || !elLinhas || !elLinhas.children.length) continue;
-      await adicionarCardComLinhasAoPDF(pdf, elTitulo, elLinhas, estado, margem, larguraUtil, alturaPagina);
+    if (alturaImg <= alturaUtilPagina) {
+      pdf.addImage(imgData, 'PNG', margem, yAtual, larguraUtil, alturaImg);
+    } else {
+      const escala = canvas.width / larguraUtil;
+      const fatiaAlturaPx = alturaUtilPagina * escala;
+      let offsetPx = 0;
+      let primeira = true;
+      while (offsetPx < canvas.height) {
+        const alturaFatia = Math.min(fatiaAlturaPx, canvas.height - offsetPx);
+        const canvasFatia = document.createElement('canvas');
+        canvasFatia.width = canvas.width;
+        canvasFatia.height = alturaFatia;
+        const ctx = canvasFatia.getContext('2d');
+        ctx.drawImage(canvas, 0, offsetPx, canvas.width, alturaFatia, 0, 0, canvas.width, alturaFatia);
+        const imgFatia = canvasFatia.toDataURL('image/png');
+        if (!primeira) pdf.addPage();
+        const alturaFatiaMm = (alturaFatia * larguraUtil) / canvas.width;
+        pdf.addImage(imgFatia, 'PNG', margem, primeira ? yAtual : margem, larguraUtil, alturaFatiaMm);
+        offsetPx += alturaFatia;
+        primeira = false;
+      }
     }
 
     const agora = new Date();
@@ -2385,74 +2392,6 @@ async function salvarNaoEnvioIlustradoPDF() {
     btn.disabled = false;
     btn.textContent = txtOriginal;
   }
-}
-
-// Adiciona um card (título + lista de linhas) ao PDF, cortando de página SEMPRE
-// entre uma linha e outra, nunca no meio de uma linha da tabela.
-async function adicionarCardComLinhasAoPDF(pdf, elTitulo, elLinhas, estado, margem, larguraUtil, alturaPagina) {
-  // Título do card
-  const canvasTitulo = await html2canvas(elTitulo, { scale: 2, backgroundColor: '#ffffff' });
-  const alturaTituloMm = (canvasTitulo.height * larguraUtil) / canvasTitulo.width;
-  if (estado.y + alturaTituloMm > alturaPagina - margem) { pdf.addPage(); estado.y = margem; }
-  pdf.addImage(canvasTitulo.toDataURL('image/png'), 'PNG', margem, estado.y, larguraUtil, alturaTituloMm);
-  estado.y += alturaTituloMm + 3;
-
-  // Todas as linhas do card, capturadas de uma vez
-  const canvasLinhas = await html2canvas(elLinhas, { scale: 2, backgroundColor: '#ffffff' });
-  const pxPerMm = canvasLinhas.width / larguraUtil;
-
-  // Posição (fim) de cada linha em px do canvas, na ordem — pra nunca cortar uma linha ao meio
-  const escalaReal = canvasLinhas.width / elLinhas.offsetWidth;
-  const fimLinhasPx = Array.from(elLinhas.children).map(el => (el.offsetTop + el.offsetHeight) * escalaReal);
-
-  let inicioPx = 0;
-  let i = 0;
-  let tentouPaginaNova = false;
-  let contadorSeguranca = 0;
-
-  while (i < fimLinhasPx.length) {
-    contadorSeguranca++;
-    if (contadorSeguranca > 500) break; // trava de segurança absoluta contra qualquer travamento
-    const espacoRestantePx = ((alturaPagina - margem) - estado.y) * pxPerMm;
-
-    // Acha até onde dá pra ir sem estourar o espaço restante da página atual
-    let ultimoIndiceQueCabe = -1;
-    for (let j = i; j < fimLinhasPx.length; j++) {
-      if (fimLinhasPx[j] - inicioPx <= espacoRestantePx) ultimoIndiceQueCabe = j;
-      else break;
-    }
-
-    if (ultimoIndiceQueCabe === -1) {
-      if (!tentouPaginaNova) {
-        // Nem uma linha cabe: tenta de novo numa página em branco (espaço máximo)
-        pdf.addPage();
-        estado.y = margem;
-        tentouPaginaNova = true;
-        await new Promise(r => setTimeout(r, 0)); // deixa o navegador "respirar"
-        continue;
-      }
-      // Segurança: mesmo numa página em branco não coube — força essa linha sozinha pra não travar
-      ultimoIndiceQueCabe = i;
-    }
-    tentouPaginaNova = false;
-
-    const fimFatiaPx = fimLinhasPx[ultimoIndiceQueCabe];
-    const alturaFatiaPx = fimFatiaPx - inicioPx;
-    const canvasFatia = document.createElement('canvas');
-    canvasFatia.width = canvasLinhas.width;
-    canvasFatia.height = alturaFatiaPx;
-    canvasFatia.getContext('2d').drawImage(canvasLinhas, 0, inicioPx, canvasLinhas.width, alturaFatiaPx, 0, 0, canvasLinhas.width, alturaFatiaPx);
-
-    const alturaFatiaMm = alturaFatiaPx / pxPerMm;
-    pdf.addImage(canvasFatia.toDataURL('image/png'), 'PNG', margem, estado.y, larguraUtil, alturaFatiaMm);
-    estado.y += alturaFatiaMm;
-    inicioPx = fimFatiaPx;
-    i = ultimoIndiceQueCabe + 1;
-
-    if (i < fimLinhasPx.length) { pdf.addPage(); estado.y = margem; }
-    await new Promise(r => setTimeout(r, 0)); // deixa o navegador "respirar" a cada página
-  }
-  estado.y += 6; // espaço antes do próximo card
 }
 
 async function carregarPresenca() {
