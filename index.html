@@ -2188,7 +2188,7 @@ function _montarBarrasNaoEnvio(itens) {
   });
   const cabecalho = `<div class="naoenvio-linha naoenvio-cabecalho">
     <div class="naoenvio-nome">Delegacia / Polo</div>
-    <div class="naoenvio-dias">Dias com Envio / Dias sem Envio</div>
+    <div class="naoenvio-dias">Dias com Envio / Total de Dias</div>
     <div class="naoenvio-valor">%</div>
   </div>`;
   const linhas = ordenados.map(x => {
@@ -2196,7 +2196,7 @@ function _montarBarrasNaoEnvio(itens) {
     const cor = pct === 0 ? 'var(--vermelho)' : (pct === 100 ? 'var(--verde)' : 'var(--dourado)');
     return `<div class="naoenvio-linha">
       <div class="naoenvio-nome">${x.nome}</div>
-      <div class="naoenvio-dias">${x.diasEnviados} / ${x.diasSemEnvio}</div>
+      <div class="naoenvio-dias">${x.diasEnviados} / ${x.totalDias}</div>
       <div class="naoenvio-valor" style="color:${cor};">${pct}%</div>
     </div>`;
   }).join('');
