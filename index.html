@@ -1205,7 +1205,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <button class="btn-exportar" onclick="salvarNaoEnvioIlustradoPDF()" id="btn-naoenvio-pdf" style="background:#6a0dad;">📄 Salvar em PDF</button>
         </div>
         <div id="naoenvio-ilustrado-conteudo">
-          <div style="font-size:13px;color:var(--texto);margin-bottom:16px;" id="naoenvio-ilustrado-periodo"></div>
+          <div style="font-size:13px;color:var(--texto);margin-bottom:16px;white-space:pre-line;" id="naoenvio-ilustrado-periodo"></div>
           <div class="dashboard-card" id="card-chart-expediente" style="margin-bottom:16px;display:none;">
             <div class="dashboard-card-titulo">📋 Expediente — Dias sem envio por Delegacia (seg a sex)</div>
             <div id="barras-naoenvio-expediente"></div>
@@ -2183,6 +2183,7 @@ function calcularFalhasEnvio() {
 
   const todosDias = listarDiasNoPeriodo(dataIni, dataFim);
   const feriadosSet = new Set(todosFeriados.map(f => f.data));
+  const feriadosNoPeriodo = todosFeriados.filter(f => f.data >= dataIni && f.data <= dataFim);
   const diasUteis = todosDias.filter(d => d.diaSemana >= 1 && d.diaSemana <= 5 && !feriadosSet.has(d.iso));
   const diasFimDeSemana = todosDias.filter(d => d.diaSemana === 0 || d.diaSemana === 6);
 
@@ -2222,7 +2223,7 @@ function calcularFalhasEnvio() {
     .map(e => calcularFalhaEnvio(e.nome, diasUteis, diasPorUsuarioBO[e.nome] || new Set()))
     .filter(x => x.totalDias > 0 && x.diasSemEnvio > 0);
 
-  return { dataIni, dataFim, periodoFmt, totalDias: todosDias.length, diasUteisCount: diasUteis.length, delegaciasComFalha, polosComFalha, usuariosBOComFalha, delegaciasTodas, polosTodos };
+  return { dataIni, dataFim, periodoFmt, totalDias: todosDias.length, diasUteisCount: diasUteis.length, feriadosNoPeriodo, delegaciasComFalha, polosComFalha, usuariosBOComFalha, delegaciasTodas, polosTodos };
 }
 
 function gerarRelatorioNaoEnvio() {
@@ -2296,7 +2297,7 @@ function _montarBarrasNaoEnvio(itens) {
 function gerarRelatorioNaoEnvioIlustrado() {
   const dados = calcularFalhasEnvio();
   if (!dados) { alert('Aguarde os dados carregarem e tente novamente.'); return; }
-  const { periodoFmt, totalDias, diasUteisCount, delegaciasTodas, polosTodos } = dados;
+  const { periodoFmt, totalDias, diasUteisCount, feriadosNoPeriodo, delegaciasTodas, polosTodos } = dados;
 
   document.getElementById('naoenvio-resultado').style.display = 'none';
 
@@ -2308,7 +2309,14 @@ function gerarRelatorioNaoEnvioIlustrado() {
   }
   document.getElementById('naoenvio-vazio').style.display = 'none';
 
-  document.getElementById('naoenvio-ilustrado-periodo').textContent = `Período: ${periodoFmt} (${totalDias} dia${totalDias !== 1 ? 's' : ''} corrido${totalDias !== 1 ? 's' : ''}) e (${diasUteisCount} dia${diasUteisCount !== 1 ? 's' : ''} útil${diasUteisCount !== 1 ? 'eis' : ''})`;
+  const textoDiasCorridos = totalDias === 1 ? '1 dia corrido' : `${totalDias} dias corridos`;
+  const textoDiasUteis = diasUteisCount === 1 ? '1 dia útil' : `${diasUteisCount} dias úteis`;
+  let textoPeriodo = `Período: ${periodoFmt} (${textoDiasCorridos}) e (${textoDiasUteis})`;
+  if (feriadosNoPeriodo.length) {
+    const listaFeriados = feriadosNoPeriodo.map(f => `${formatarDataBR(f.data)}${f.descricao ? ' - ' + f.descricao : ''}`).join(', ');
+    textoPeriodo += `\nFeriados no período: ${feriadosNoPeriodo.length} (${listaFeriados})`;
+  }
+  document.getElementById('naoenvio-ilustrado-periodo').textContent = textoPeriodo;
 
   const cardExp = document.getElementById('card-chart-expediente');
   if (delegaciasTodas.length) {
