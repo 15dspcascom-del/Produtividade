@@ -5965,8 +5965,12 @@ function fecharFeedback() {
 // Tabela Supabase: registros_eleicao
 // ============================================================
 const ELEICAO = {
-  inicio: '2026-10-03',              // botão aparece a partir desta data (inclusive)
-  fim: '2026-10-31',                 // ...até esta data (inclusive). Depois some sozinho; os dados continuam no banco.
+  // Botão "EXTRA" aparece para os escrivães SOMENTE nestas janelas (sábado 00:00 até segunda 08:00 de cada turno).
+  // Fora delas some sozinho; os dados continuam no banco e o painel do admin funciona sempre.
+  janelas: [
+    { inicio: '2026-10-03T00:00', fim: '2026-10-05T08:00' },   // 1º turno
+    { inicio: '2026-10-24T00:00', fim: '2026-10-26T08:00' }    // 2º turno
+  ],
   divisaTurnos: '2026-10-18',        // datas antes disso = 1º Turno; a partir disso = 2º Turno
   linkForms: 'https://forms.gle/zKF2cHfDwtKUMgfB9',
   email: '15dspc.estatistica@gmail.com',
@@ -6061,8 +6065,10 @@ function elDataBR(iso) { if (!iso) return ''; const [y,m,d] = String(iso).slice(
 function elTurnoDaData(iso) { return iso && iso >= ELEICAO.divisaTurnos ? '2º Turno' : '1º Turno'; }
 
 function eleicaoAtiva() {
-  const hoje = dataHojeLocal();
-  return hoje >= ELEICAO.inicio && hoje <= ELEICAO.fim;
+  // Teste: abrir o sistema com ?teste_eleicao=1 no fim do endereço força o botão a aparecer
+  if (/[?&]teste_eleicao=1/.test(location.search)) return true;
+  const agora = new Date();
+  return ELEICAO.janelas.some(j => agora >= new Date(j.inicio) && agora < new Date(j.fim));
 }
 function elUsuarioPodeRegistrar() {
   if (!usuarioLogado) return false;
@@ -6081,7 +6087,7 @@ function elRenderBanner() {
     banner.onclick = () => elAbrirForm();
     banner.innerHTML = `<div class="el-banner-icone">🗳</div>
       <div><h3><span class="el-tag">EXTRA</span>ELEIÇÕES 2026 — OCORRÊNCIAS ELEITORAIS</h3>
-      <p>Crimes contra candidatos, crimes nos locais de votação/apuração e crimes eleitorais (1º e 2º turno). Disponível até ${elDataBR(ELEICAO.fim)}.</p></div>`;
+      <p>Crimes contra candidatos, crimes nos locais de votação/apuração e crimes eleitorais (1º e 2º turno). Disponível de sábado até segunda às 08:00 em cada turno.</p></div>`;
     document.getElementById('modal-cards-container').insertAdjacentElement('afterend', banner);
   }
   banner.style.display = (eleicaoAtiva() && elUsuarioPodeRegistrar()) ? 'flex' : 'none';
