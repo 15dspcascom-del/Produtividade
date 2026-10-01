@@ -610,6 +610,82 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 .consulta-tabela tbody tr:hover { background: rgba(10,22,40,0.03); }
 .consulta-tabela td { padding: 9px 14px; color: var(--texto); vertical-align: top; }
 @media (max-width:768px) { .consulta-filtros { grid-template-columns: 1fr 1fr; } .kpi-grid { grid-template-columns: 1fr 1fr; } }
+
+/* ===== ELEIÇÕES 2026 (módulo temporário) ===== */
+.el-banner {
+  margin-top: 18px; display: flex; align-items: center; gap: 16px;
+  background: linear-gradient(90deg, #fff8e1 0%, #ffffff 100%);
+  border: 2px dashed #d4a017; border-radius: 12px; padding: 18px 20px;
+  cursor: pointer; transition: all 0.22s; text-align: left;
+}
+.el-banner:hover { border-style: solid; box-shadow: 0 8px 24px rgba(10,22,40,0.1); transform: translateY(-2px); }
+.el-banner-icone { width: 52px; height: 52px; border-radius: 12px; background: rgba(212,160,23,0.18); display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
+.el-banner h3 { font-family: 'Rajdhani', sans-serif; font-size: 17px; color: var(--azul); letter-spacing: 0.5px; }
+.el-banner p { font-size: 11.5px; color: var(--texto-leve); line-height: 1.5; margin-top: 2px; }
+.el-tag { display: inline-block; background: #d4a017; color: var(--azul); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; letter-spacing: 0.6px; margin-right: 6px; vertical-align: middle; }
+
+.el-aviso { background: rgba(212,160,23,0.12); border: 1.5px solid #d4a017; border-radius: 10px; padding: 12px 16px; font-size: 12.5px; color: var(--texto); line-height: 1.55; margin-bottom: 18px; }
+.el-bloco { background: var(--branco); border: 1.5px solid var(--cinza-borda); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+.el-bloco-titulo { background: var(--azul); color: white; padding: 11px 18px; font-family: 'Rajdhani', sans-serif; font-size: 15px; letter-spacing: 0.5px; }
+.el-bloco-titulo.dourado { background: #d4a017; color: var(--azul); }
+.el-bloco-corpo { padding: 16px 18px; }
+.el-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.el-grid.g2 { grid-template-columns: repeat(2, 1fr); }
+.el-campo { margin-bottom: 14px; }
+.el-campo:last-child { margin-bottom: 0; }
+.el-campo > .el-rotulo { display: block; font-size: 11px; font-weight: 600; color: var(--texto-leve); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 7px; }
+.el-campo > .el-rotulo b { color: var(--vermelho); }
+.el-dica { font-size: 11px; color: var(--texto-leve); margin: -3px 0 7px; }
+.el-opcoes { display: flex; flex-direction: column; gap: 6px; }
+.el-opcoes.inline { flex-direction: row; flex-wrap: wrap; gap: 8px 18px; }
+.el-opcoes label { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--texto); cursor: pointer; line-height: 1.4; }
+.el-opcoes input[type=checkbox], .el-opcoes input[type=radio] { margin-top: 2px; width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--azul-claro); }
+.el-outro { margin-top: 4px; width: 100%; padding: 8px 10px; border: 1.5px solid var(--cinza-borda); border-radius: 6px; font-size: 13px; font-family: 'Inter', sans-serif; display: none; }
+.el-input, .el-textarea { width: 100%; padding: 9px 11px; border: 1.5px solid var(--cinza-borda); border-radius: 6px; font-size: 13px; font-family: 'Inter', sans-serif; color: var(--texto); background: white; }
+.el-textarea { resize: vertical; min-height: 70px; }
+.el-input:focus, .el-textarea:focus { outline: none; border-color: var(--azul-claro); }
+.el-input[readonly] { background: var(--cinza); }
+.el-crimes-lista { }
+
+/* Lista de registros */
+.el-reg { background: var(--branco); border: 1.5px solid var(--cinza-borda); border-left: 5px solid #d4a017; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+.el-reg.lancado { border-left-color: var(--verde); }
+.el-reg-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.el-reg-titulo { font-weight: 700; font-size: 13.5px; color: var(--azul); }
+.el-reg-sub { font-size: 12px; color: var(--texto-leve); margin-top: 3px; line-height: 1.5; }
+.el-status { font-size: 10.5px; font-weight: 700; padding: 3px 10px; border-radius: 10px; white-space: nowrap; }
+.el-status.pend { background: rgba(212,160,23,0.18); color: #8a6500; }
+.el-status.ok { background: rgba(26,122,74,0.12); color: var(--verde); }
+.el-reg-acoes { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.el-btn { padding: 6px 12px; border-radius: 6px; font-size: 11.5px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; border: 1.5px solid var(--cinza-borda); background: white; color: var(--azul); }
+.el-btn:hover { border-color: var(--azul-claro); }
+.el-btn.verde { background: var(--verde); border-color: var(--verde); color: white; }
+.el-btn.vermelho { color: var(--vermelho); border-color: rgba(176,32,32,0.35); }
+.el-btn.dourado { background: #d4a017; border-color: #d4a017; color: var(--azul); }
+
+.el-lancar { display: none; margin-top: 12px; border-top: 1px dashed var(--cinza-borda); padding-top: 10px; }
+.el-lancar.aberto { display: block; }
+.el-linha { display: grid; grid-template-columns: 210px 1fr; gap: 10px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
+.el-linha:nth-child(odd) { background: var(--cinza); }
+.el-linha:hover { background: rgba(26,58,107,0.10); }
+.el-linha .k { color: var(--texto-leve); font-weight: 600; }
+.el-linha .v { color: var(--texto); white-space: pre-line; }
+.el-linha.copiado { background: rgba(26,122,74,0.18) !important; }
+.el-linha.ref .k { color: #8a6500; }
+
+.el-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+.el-kpi { background: var(--branco); border: 1.5px solid var(--cinza-borda); border-radius: 10px; padding: 14px; text-align: center; }
+.el-kpi .n { font-family: 'Rajdhani', sans-serif; font-size: 30px; font-weight: 700; color: var(--azul); line-height: 1; }
+.el-kpi .t { font-size: 11px; color: var(--texto-leve); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 6px; }
+.el-filtros { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; background: var(--branco); border: 1.5px solid var(--cinza-borda); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+.el-filtros .fm-item { min-width: 150px; }
+
+@media (max-width: 640px) {
+  .el-grid, .el-grid.g2 { grid-template-columns: 1fr; }
+  .el-kpis { grid-template-columns: repeat(2, 1fr); }
+  .el-linha { grid-template-columns: 1fr; gap: 2px; }
+  #tela-eleicao-form, #tela-eleicao-admin { padding: 16px !important; }
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -694,6 +770,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <button class="btn-novo" style="background:#2c3e50;color:white;" onclick="mostrarTela('backup')">💾 Backup Diário</button>
           <button class="btn-novo" style="background:#7b241c;color:white;" onclick="mostrarTela('custodia-cadastro')">🔐 Custódia</button>
           <button class="btn-novo" style="background:#27ae60;color:white;" onclick="mostrarTela('relatorio-semanal')">📊 Rel. Resumido Semanal (Janielson)</button>
+          <button class="btn-novo" style="background:#d4a017;color:#0a1628;" onclick="mostrarTela('eleicao-admin')">🗳 Eleições 2026</button>
           <button class="btn-novo" style="background:#2c3e50;color:white;" onclick="fazerBackupCSV()" id="btn-backup-csv">💾 Backup Completo (CSV)</button>
           <button class="btn-novo" onclick="abrirModalEscrivao()">+ Novo Escrivão</button>
         </div>
@@ -1030,6 +1107,182 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         </div>
         </div>
       </div>
+    </div>
+
+    <!-- ===== ELEIÇÕES 2026 — FORMULÁRIO (escrivães e admin) ===== -->
+    <div id="tela-eleicao-form" class="tela" style="flex-direction:column; padding:28px 32px; max-width:920px; margin:0 auto; width:100%;">
+      <div class="form-header">
+        <button class="btn-voltar" onclick="elVoltar()">← Voltar</button>
+        <div class="form-header-info">
+          <h2>🗳 ELEIÇÕES 2026 — OCORRÊNCIA ELEITORAL</h2>
+          <p id="el-form-sub">Crimes contra candidatos, crimes em locais de votação/apuração e crimes eleitorais</p>
+        </div>
+      </div>
+
+      <div class="el-aviso">
+        <strong>Atenção:</strong> todas as ocorrências continuam sendo registradas no <strong>SPP</strong>.
+        Registre aqui <strong>apenas</strong> as relacionadas a: <strong>(1)</strong> crimes comuns contra candidatos;
+        <strong>(2)</strong> crimes comuns nos locais de votação/apuração; <strong>(3)</strong> crimes eleitorais.
+        A Assessoria fará o lançamento no formulário da Superintendência.
+      </div>
+
+      <div id="el-edit-aviso" class="el-aviso" style="display:none;background:rgba(26,58,107,0.08);border-color:var(--azul-claro);"></div>
+
+      <!-- Identificação interna -->
+      <div class="el-bloco">
+        <div class="el-bloco-titulo">IDENTIFICAÇÃO (controle interno)</div>
+        <div class="el-bloco-corpo">
+          <div class="el-grid">
+            <div class="fm-item"><label>Delegacia / Unidade *</label><select id="el-delegacia" onchange="elAoMudarDelegacia()"></select></div>
+            <div class="fm-item"><label>Turno da Eleição *</label>
+              <select id="el-turno"><option value="1º Turno">1º Turno (04/10)</option><option value="2º Turno">2º Turno (25/10)</option></select>
+            </div>
+            <div class="fm-item"><label>Nº do BO no SPP</label><input type="text" id="el-num-bo" placeholder="ex: 00123/2026" /></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Local / data -->
+      <div class="el-bloco">
+        <div class="el-bloco-titulo">LOCAL E DATA DA OCORRÊNCIA</div>
+        <div class="el-bloco-corpo">
+          <div class="el-grid">
+            <div class="fm-item"><label>Município da Ocorrência *</label><select id="el-municipio"></select></div>
+            <div class="fm-item"><label>Bairro da Ocorrência *</label><input type="text" id="el-bairro" placeholder="ex: Centro" /></div>
+            <div class="fm-item"><label>Data da Ocorrência *</label><input type="date" id="el-data" onchange="elAutoTurno()" /></div>
+            <div class="fm-item"><label>Hora da Ocorrência *</label><input type="time" id="el-hora" /></div>
+          </div>
+          <div class="el-campo" style="margin-top:16px;">
+            <span class="el-rotulo">Tipo da Ocorrência <b>*</b></span>
+            <div class="el-opcoes inline" id="el-tipo-ocorrencia"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Crime -->
+      <div class="el-bloco">
+        <div class="el-bloco-titulo">TIPO DE CRIME</div>
+        <div class="el-bloco-corpo">
+          <div class="el-campo">
+            <span class="el-rotulo">Tipo de Crime <b>*</b></span>
+            <div class="el-opcoes" id="el-tipo-crime"></div>
+          </div>
+        </div>
+      </div>
+      <div class="el-bloco" id="el-bloco-crimes" style="display:none;">
+        <div class="el-bloco-titulo dourado" id="el-crimes-titulo">—</div>
+        <div class="el-bloco-corpo">
+          <div class="el-campo">
+            <span class="el-rotulo">Marque o(s) crime(s) <b>*</b></span>
+            <div class="el-opcoes el-crimes-lista" id="el-crimes"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Candidato -->
+      <div class="el-bloco">
+        <div class="el-bloco-titulo">CANDIDATO</div>
+        <div class="el-bloco-corpo">
+          <div class="el-grid g2">
+            <div class="el-campo">
+              <span class="el-rotulo">Nome do Candidato <b>*</b></span>
+              <div class="el-dica">Informar "Prejudicado" para ocorrência que NÃO envolver candidato</div>
+              <input type="text" class="el-input" id="el-candidato-nome" />
+            </div>
+            <div class="el-campo">
+              <span class="el-rotulo">Candidato Preso? <b>*</b></span>
+              <div class="el-opcoes inline" id="el-candidato-preso"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Procedimentos -->
+      <div class="el-bloco">
+        <div class="el-bloco-titulo">PROCEDIMENTOS DE POLÍCIA JUDICIÁRIA</div>
+        <div class="el-bloco-corpo">
+          <div class="el-grid g2">
+            <div class="el-campo">
+              <span class="el-rotulo">Procedimentos e Ações de Polícia Judiciária <b>*</b></span>
+              <div class="el-opcoes" id="el-procedimento"></div>
+            </div>
+            <div>
+              <div class="el-campo">
+                <span class="el-rotulo">Conclusão de Procedimentos de Polícia Judiciária <b>*</b></span>
+                <div class="el-opcoes" id="el-conclusao"></div>
+              </div>
+              <div class="el-campo">
+                <span class="el-rotulo">Condução/Prisão <b>*</b></span>
+                <div class="el-opcoes" id="el-conducao"></div>
+              </div>
+            </div>
+          </div>
+          <div class="el-campo" style="margin-top:6px;">
+            <span class="el-rotulo">Providência Complementar Adotada <b>*</b></span>
+            <div class="el-opcoes" id="el-providencias"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Apreensões -->
+      <div class="el-bloco">
+        <div class="el-bloco-titulo">APREENSÕES E OBSERVAÇÕES</div>
+        <div class="el-bloco-corpo">
+          <div class="el-campo">
+            <span class="el-rotulo">Apreensões nas eleições <b>*</b></span>
+            <div class="el-opcoes" id="el-apreensoes"></div>
+          </div>
+          <div class="el-campo">
+            <span class="el-rotulo">Detalhar material informado na questão anterior (tipo e quantidade) <b>*</b></span>
+            <input type="text" class="el-input" id="el-material" placeholder="ex: 01 revólver cal. 38; R$ 2.500,00 em espécie" />
+          </div>
+          <div class="el-campo">
+            <span class="el-rotulo">Observações Relevantes <b>*</b></span>
+            <textarea class="el-textarea" id="el-observacoes" placeholder="Breve histórico do fato"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-acoes">
+        <button class="btn-limpar" onclick="elLimparForm()">Limpar</button>
+        <button class="btn-enviar" id="el-btn-salvar" onclick="elSalvar()"><span id="el-btn-txt">🗳 Salvar Ocorrência Eleitoral</span><div class="spinner" id="el-spinner"></div></button>
+      </div>
+
+      <div id="el-meus-wrap" style="margin-top:30px;">
+        <div class="admin-header" style="margin-bottom:14px;"><h2 style="font-size:18px;">MEUS REGISTROS ELEITORAIS</h2></div>
+        <div id="el-meus-lista"><div class="admin-loading">Carregando...</div></div>
+      </div>
+    </div>
+
+    <!-- ===== ELEIÇÕES 2026 — PAINEL DA ASSESSORIA (admin) ===== -->
+    <div id="tela-eleicao-admin" class="tela" style="flex-direction:column; padding:28px 32px; max-width:1100px; margin:0 auto; width:100%;">
+      <div class="admin-header" style="flex-wrap:wrap;gap:10px;">
+        <h2>🗳 ELEIÇÕES 2026 — OCORRÊNCIAS ELEITORAIS</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn-novo" style="background:#d4a017;color:var(--azul);" onclick="elNovoAdmin()">+ Nova Ocorrência</button>
+          <a class="btn-novo" id="el-link-forms" target="_blank" rel="noopener" style="text-decoration:none;background:var(--verde);">↗ Abrir Formulário da Superintendência</a>
+          <button class="btn-voltar" onclick="mostrarTela('admin')">← Voltar</button>
+        </div>
+      </div>
+
+      <div class="el-filtros">
+        <div class="fm-item"><label>Turno</label>
+          <select id="elf-turno" onchange="elRenderAdmin()"><option value="">Todos</option><option>1º Turno</option><option>2º Turno</option></select>
+        </div>
+        <div class="fm-item"><label>Situação</label>
+          <select id="elf-status" onchange="elRenderAdmin()"><option value="">Todas</option><option value="pend">Pendentes de lançamento</option><option value="ok">Já lançadas</option></select>
+        </div>
+        <div class="fm-item"><label>Delegacia</label><select id="elf-delegacia" onchange="elRenderAdmin()"><option value="">Todas</option></select></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;">
+          <button class="el-btn" onclick="elCarregarAdmin()">⟳ Atualizar</button>
+          <button class="el-btn dourado" onclick="elCopiarResumo()">📋 Copiar Resumo (WhatsApp)</button>
+          <button class="el-btn" onclick="elExportarCSV()">⬇ CSV</button>
+        </div>
+      </div>
+
+      <div class="el-kpis" id="el-kpis"></div>
+      <div id="el-admin-lista"><div class="admin-loading">Carregando...</div></div>
+      <textarea id="el-resumo-txt" style="position:absolute;left:-9999px;top:0;"></textarea>
     </div>
 
     <!-- TELA DE RELATÓRIO CICC -->
@@ -2984,6 +3237,7 @@ function renderCardsModalidade() {
       <p>${c.desc}</p>
     </div>`;
   }).join('');
+  elRenderBanner();
 }
 
 function mostrarEscolhaDelegacia(delegacias) {
@@ -3022,10 +3276,11 @@ function mostrarTela(id) {
   if (id === 'relatorio-bo') iniciarRelatorioBO();
   if (id === 'backup') iniciarTelaBackup();
   if (id === 'custodia-cadastro') iniciarCustodiaCadastro();
+  if (id === 'eleicao-admin') iniciarEleicaoAdmin();
 }
 
 function esconderTodasTelas() {
-  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta','tela-presenca','tela-relatorio','tela-relatorio-area','tela-relatorio-semanal','tela-relatorio-bo','tela-backup','tela-custodia-cadastro'].forEach(id => {
+  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta','tela-presenca','tela-relatorio','tela-relatorio-area','tela-relatorio-semanal','tela-relatorio-bo','tela-backup','tela-custodia-cadastro','tela-eleicao-form','tela-eleicao-admin'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.classList.remove('ativa'); el.style.display = 'none'; }
   });
@@ -5700,7 +5955,636 @@ function mostrarFeedback(ok, titulo, msg, aviso) {
 }
 function fecharFeedback() {
   document.getElementById('overlay-fb').classList.remove('aberto');
+  if (elFeedbackPendente) { if (feedbackSucesso) elAposFeedback(); else elFeedbackPendente = false; return; }
   if (feedbackSucesso) voltarSelecao();
+}
+
+
+// ============================================================
+// ELEIÇÕES 2026 — MÓDULO TEMPORÁRIO (registro de ocorrências eleitorais)
+// Tabela Supabase: registros_eleicao
+// ============================================================
+const ELEICAO = {
+  inicio: '2026-10-03',              // botão aparece a partir desta data (inclusive)
+  fim: '2026-10-31',                 // ...até esta data (inclusive). Depois some sozinho; os dados continuam no banco.
+  divisaTurnos: '2026-10-18',        // datas antes disso = 1º Turno; a partir disso = 2º Turno
+  linkForms: 'https://forms.gle/zKF2cHfDwtKUMgfB9',
+  email: '15dspc.estatistica@gmail.com',
+  superintendencia: '3ª SRPC - Patos',
+  seccional: '15ª DSPC'
+};
+
+const EL_TIPO_OCORRENCIA = ['COM Candidato', 'SEM Candidato'];
+const EL_TIPOS_CRIME = ['Crimes comuns contra candidatos', 'Crimes comuns nos locais de votação/apuração', 'Crimes eleitorais'];
+const EL_CRIMES = {
+  'Crimes comuns contra candidatos': [
+    'Ameaça contra candidato',
+    'Calúnia contra candidato (Art. 324 - Lei nº 4.737/1965)',
+    'Extorsão mediante sequestro',
+    'Homicídio contra candidato',
+    'Injúria/Difamação contra candidato (Art. 325 e 326 - Lei nº 4.737/1965)',
+    'Lesão corporal contra candidato',
+    'Tentativa de homicídio contra candidato'
+  ],
+  'Crimes comuns nos locais de votação/apuração': [
+    'Dano/Depredação nos locais de votação/apuração',
+    'Estelionato/Fraude nos locais de votação/apuração',
+    'Extorsão nos locais de votação/apuração',
+    'Furto nos locais de votação/apuração',
+    'Homicídio nos locais de votação/apuração',
+    'Lesão corporal nos locais de votação/apuração',
+    'Porte ilegal de arma de fogo nos locais de votação/apuração',
+    'Tentativa de homicídio nos locais de votação/apuração',
+    'Tráfico de entorpecentes nos locais de votação/apuração',
+    'Vias de fato nos locais de votação/apuração'
+  ],
+  'Crimes eleitorais': [
+    'Abandono de serviço eleitoral (Art. 344 - Lei n° 4.737/1965)',
+    'Acessar ilegalmente dados eleitorais (Art. 72, inciso I da Lei 9.504/97',
+    'Alto Falantes, amplificadores, comícios e carreatas (Art. 39, § 5º, Inciso I, da Lei 9.504/97)',
+    'Associação Criminosa (Art. 288 do Código Penal)',
+    'Boca de Urna e Arregimentação de Eleitores (Art. 39, § 5º, Inciso II, da Lei 9.504/97)',
+    'Causar, propositalmente, dano físico ao equipamento de votação/contagem (Art. 72,III - Lei 9.504)',
+    'Coação Eleitoral (Art. 301 do Código Eleitoral)',
+    'Contratação/Concentração ilegal de Eleitores (Art. 302 do Código Eleitoral)',
+    'Corrupção Eleitoral (Art. 299 do Código Eleitoral)',
+    'Crime de peculato, concussão, advocacia administrativa, tráfico de influência, corrupção ativa e passiva contra o Sistema Financeiro Nacional (Lei nº 12.850/2013)',
+    'Crimes praticados por milícias privadas (Art. 288-A do Código Penal)',
+    'Desenvolver softawre e maliciosos de acesso a bancos de dados eleitorais (Art. 72, inciso II, da Lei 9.504/97)',
+    'Desobediência às ordens da Justiça Eleitoral (Art. 347 - Lei n° 4.737/1965)',
+    'Desordem que prejudique os trabalhos eleitorais (Art. 296 - Lei n° 4.737/1965)',
+    'Destruir, suprimir ou ocultar urna contendo votos, ou documentos (Art. 339 - Lei nº 4.737/1965)',
+    'Divulgar fatos sabidamente inverídicos na propaganda ou campanha eleitoral (Art. 323 do CE)',
+    'Divulgar pesquisa eleitoral fraudulenta (Art. 33 § 4º da Lei 9.507/94)',
+    'Divulgação de Propaganda irregular (Art. 39, § 5º, Inciso I, III e IV da Lei 9.504/97)',
+    'Falsidade ideológica na esfera eleitoral (Art. 309 - Lei n° 4.737/1965)',
+    'Fazer uso de qualquer dos documentos falsificados ou alterados (Art. 353 - Lei n° 4.737/1965)',
+    'Fornecimento Ilegal de Alimentação (Art. 11, III. c/c art. 5º, da Lei 6.091/74)',
+    'Impedimento ou embaraço ao exercício do voto (Art. 297 - Lei n° 4.737/1965)',
+    'Interrupção ou perturbação da eleição ou apuração do resultado mediante violação de mecanismo de segurança (Art. 359-N do Código Penal)',
+    'Lavagem ou ocultação de bens, direitos e valores (Lei nº 9.613/1998)',
+    'Organização Criminosa (Lei nº 12.850/2013)',
+    'Portar aparelho de telefonia celular, máquinas fotográficas, filmadoras, equipamento de rádio comunicação ou qualquer instrumento que possa comprometer o sigilo do voto',
+    'Publicação de novos conteúdos ou o impulsionamento de conteúdos nas aplicações de internet de que trata o Art. 57-B da Lei 9.504/97',
+    'Reter título eleitoral contra a vontade do eleitor (Art. 295 - Lei n° 4.737/1965)',
+    'Stalking Político Eleitoral (Art. 326-B do Código Eleitoral)',
+    'Transporte Ilegal de Eleitores (Art. 11, III. c/c art. 5º, da Lei 6.091/74)',
+    'Uso de violência ou grave ameaça para obter voto ou abstenção (Art. 301 - Lei n° 4.737/1965)',
+    'Utilizar irregularmente organização empresarial para propaganda ou aliciamento de eleitores ( Art. 334 do Código Eleitoral)',
+    'Violar ou tentar violar o sigilo da urna ou dos invólucros (Art. 317 - Lei n° 4.737/1965)',
+    'Violar ou tentar violar o sigilo do voto (Art. 312 - Lei n° 4.737/1965)',
+    'Violência política (Art. 359-M do Código Penal)'
+  ]
+};
+const EL_PROCEDIMENTOS = [
+  'Auto de Prisão em Flagrante (APF)',
+  'Auto de Apreensão em Flagrante por Ato Infracional (AAFAI)',
+  'Boletim de Ocorrência (Apenas Registro)',
+  'Inquérito Policial Instaurado (Portaria)',
+  'Termo circunstanciado de ocorrência lavrado (TCO)',
+  'Boletim de Ocorrência Circunstanciado (BOC)'
+];
+const EL_CONCLUSAO = ['IPs concluídos/remetidos com autoria e materialidade', 'IPs concluídos/remetidos sem autoria e materialidade', 'Não se aplica'];
+const EL_PROVIDENCIAS = ['Nenhuma', 'Menor apreendido', 'Prisão de candidatos', 'Prisão de colaborador da Justiça Eleitoral', 'Prisão de eleitores', 'Prisão de servidor eleitoral', 'Prisão de servidor público da Justiça Eleitoral'];
+const EL_CONDUCAO = ['Não houve condução', 'Polícia Civil', 'Polícia Militar', 'Conjunta (PC/PM)', 'Polícia Rodoviária Federal', 'Guarda Civil Municipal', 'Popular'];
+const EL_APREENSOES = ['Não houve apreensão', 'Armas apreendidas', 'Dinheiro apreendido', 'Material de campanha apreendido', 'Veículo apreendido'];
+
+let elEditId = null;
+let elRegistrosAdmin = [];
+let elVoltarPara = 'selecao';
+let elFeedbackPendente = false;
+
+function elEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+function elDataBR(iso) { if (!iso) return ''; const [y,m,d] = String(iso).slice(0,10).split('-'); return `${d}/${m}/${y}`; }
+function elTurnoDaData(iso) { return iso && iso >= ELEICAO.divisaTurnos ? '2º Turno' : '1º Turno'; }
+
+function eleicaoAtiva() {
+  const hoje = dataHojeLocal();
+  return hoje >= ELEICAO.inicio && hoje <= ELEICAO.fim;
+}
+function elUsuarioPodeRegistrar() {
+  if (!usuarioLogado) return false;
+  if (usuarioLogado.isAdmin) return true;
+  const mods = usuarioLogado.modalidades || [];
+  return mods.includes('expediente') || mods.includes('plantao');
+}
+
+// Banner "EXTRA" na tela inicial (chamado ao final de renderCardsModalidade)
+function elRenderBanner() {
+  let banner = document.getElementById('el-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'el-banner';
+    banner.className = 'el-banner';
+    banner.onclick = () => elAbrirForm();
+    banner.innerHTML = `<div class="el-banner-icone">🗳</div>
+      <div><h3><span class="el-tag">EXTRA</span>ELEIÇÕES 2026 — OCORRÊNCIAS ELEITORAIS</h3>
+      <p>Crimes contra candidatos, crimes nos locais de votação/apuração e crimes eleitorais (1º e 2º turno). Disponível até ${elDataBR(ELEICAO.fim)}.</p></div>`;
+    document.getElementById('modal-cards-container').insertAdjacentElement('afterend', banner);
+  }
+  banner.style.display = (eleicaoAtiva() && elUsuarioPodeRegistrar()) ? 'flex' : 'none';
+}
+
+// ---------- Montagem das opções ----------
+function elRenderOpcoes(contId, nome, opcoes, tipo, comOutro, onchange) {
+  const cont = document.getElementById(contId);
+  const oc = onchange ? ` onchange="${onchange}"` : '';
+  let html = opcoes.map((o, i) => `<label><input type="${tipo}" name="${nome}" value="${elEsc(o)}"${oc}/> <span>${elEsc(o)}</span></label>`).join('');
+  if (comOutro) {
+    html += `<label><input type="${tipo}" name="${nome}" value="__outro__" onchange="elToggleOutro('${nome}')${onchange ? ';' + onchange : ''}"/> <span>Outro:</span></label>
+      <input type="text" class="el-outro" id="${nome}-outro" placeholder="Especifique" />`;
+  }
+  cont.innerHTML = html;
+  if (comOutro && tipo === 'radio') {
+    cont.querySelectorAll(`input[name="${nome}"]`).forEach(inp => inp.addEventListener('change', () => elToggleOutro(nome)));
+  }
+}
+function elToggleOutro(nome) {
+  const marcado = document.querySelector(`input[name="${nome}"][value="__outro__"]`);
+  const campo = document.getElementById(nome + '-outro');
+  if (!campo || !marcado) return;
+  campo.style.display = marcado.checked ? 'block' : 'none';
+  if (!marcado.checked) campo.value = '';
+}
+function elGetRadio(nome) {
+  const m = document.querySelector(`input[name="${nome}"]:checked`);
+  if (!m) return '';
+  if (m.value === '__outro__') { const t = document.getElementById(nome + '-outro').value.trim(); return t ? `Outro: ${t}` : '__outro_vazio__'; }
+  return m.value;
+}
+function elGetChecks(nome) {
+  return Array.from(document.querySelectorAll(`input[name="${nome}"]:checked`)).map(m => {
+    if (m.value === '__outro__') { const t = document.getElementById(nome + '-outro').value.trim(); return t ? `Outro: ${t}` : '__outro_vazio__'; }
+    return m.value;
+  });
+}
+function elSetRadio(nome, valor) {
+  document.querySelectorAll(`input[name="${nome}"]`).forEach(i => i.checked = false);
+  if (!valor) return;
+  const alvo = Array.from(document.querySelectorAll(`input[name="${nome}"]`)).find(i => i.value === valor);
+  if (alvo) { alvo.checked = true; }
+  else if (String(valor).startsWith('Outro: ')) {
+    const o = document.querySelector(`input[name="${nome}"][value="__outro__"]`);
+    if (o) { o.checked = true; document.getElementById(nome + '-outro').value = valor.slice(7); }
+  }
+  elToggleOutro(nome);
+}
+function elSetChecks(nome, valores) {
+  document.querySelectorAll(`input[name="${nome}"]`).forEach(i => i.checked = false);
+  (valores || []).forEach(v => {
+    const alvo = Array.from(document.querySelectorAll(`input[name="${nome}"]`)).find(i => i.value === v);
+    if (alvo) alvo.checked = true;
+    else if (String(v).startsWith('Outro: ')) {
+      const o = document.querySelector(`input[name="${nome}"][value="__outro__"]`);
+      if (o) { o.checked = true; document.getElementById(nome + '-outro').value = v.slice(7); }
+    }
+  });
+  elToggleOutro(nome);
+}
+// Opções exclusivas ("Nenhuma", "Não se aplica", "Não houve apreensão") desmarcam as demais e vice-versa
+function elExclusiva(nome, exclusiva, ev) {
+  const alvo = ev && ev.target;
+  if (!alvo) return;
+  const todas = document.querySelectorAll(`input[name="${nome}"]`);
+  if (alvo.value === exclusiva && alvo.checked) {
+    todas.forEach(i => { if (i !== alvo) i.checked = false; });
+  } else if (alvo.checked) {
+    todas.forEach(i => { if (i.value === exclusiva) i.checked = false; });
+  }
+  elToggleOutro(nome);
+}
+
+function elMontarForm() {
+  // Delegacias disponíveis
+  let dels;
+  if (usuarioLogado.isAdmin) dels = [...TODAS_DELEGACIAS, 'Central - Patos'];
+  else {
+    dels = [...(usuarioLogado.delegacias || [])];
+    if ((usuarioLogado.modalidades || []).includes('plantao')) POLOS_PLANTAO.forEach(p => { if (!dels.includes(p)) dels.push(p); });
+  }
+  const selDel = document.getElementById('el-delegacia');
+  selDel.innerHTML = dels.map(d => `<option value="${elEsc(d)}">${elEsc(d)}</option>`).join('');
+  if (!usuarioLogado.isAdmin && usuarioLogado.delegacia && dels.includes(usuarioLogado.delegacia)) selDel.value = usuarioLogado.delegacia;
+
+  document.getElementById('el-municipio').innerHTML = '<option value="">Selecione...</option>' + CIDADES.map(c => `<option value="${elEsc(c)}">${elEsc(c)}</option>`).join('');
+
+  elRenderOpcoes('el-tipo-ocorrencia', 'el_tipo_oc', EL_TIPO_OCORRENCIA, 'radio', false, 'elAoMudarTipoOcorrencia()');
+  elRenderOpcoes('el-tipo-crime', 'el_tipo_crime', EL_TIPOS_CRIME, 'radio', false, 'elAoMudarTipoCrime()');
+  elRenderOpcoes('el-candidato-preso', 'el_preso', ['Sim', 'Não'], 'radio', false);
+  elRenderOpcoes('el-procedimento', 'el_proc', EL_PROCEDIMENTOS, 'radio', true);
+  elRenderOpcoes('el-conclusao', 'el_concl', EL_CONCLUSAO, 'checkbox', false, "elExclusiva('el_concl','Não se aplica',event)");
+  elRenderOpcoes('el-providencias', 'el_prov', EL_PROVIDENCIAS, 'checkbox', true, "elExclusiva('el_prov','Nenhuma',event)");
+  elRenderOpcoes('el-conducao', 'el_cond', EL_CONDUCAO, 'radio', true);
+  elRenderOpcoes('el-apreensoes', 'el_apr', EL_APREENSOES, 'checkbox', true, "elExclusiva('el_apr','Não houve apreensão',event);elAoMudarApreensao()");
+  document.getElementById('el-bloco-crimes').style.display = 'none';
+  document.getElementById('el-crimes').innerHTML = '';
+}
+
+function elAoMudarDelegacia() {
+  const d = document.getElementById('el-delegacia').value;
+  const cid = CIDADE_PADRAO[d];
+  if (cid) {
+    const sel = document.getElementById('el-municipio');
+    const opt = Array.from(sel.options).find(o => o.value.toLowerCase() === cid.toLowerCase());
+    if (opt) sel.value = opt.value;
+  }
+}
+function elAoMudarTipoOcorrencia() {
+  const t = elGetRadio('el_tipo_oc');
+  const nome = document.getElementById('el-candidato-nome');
+  if (t === 'SEM Candidato') {
+    nome.value = 'Prejudicado'; nome.readOnly = true;
+    elSetRadio('el_preso', 'Não');
+  } else {
+    if (nome.value === 'Prejudicado') nome.value = '';
+    nome.readOnly = false;
+  }
+}
+function elAoMudarTipoCrime(manterMarcados) {
+  const t = elGetRadio('el_tipo_crime');
+  const bloco = document.getElementById('el-bloco-crimes');
+  if (!t) { bloco.style.display = 'none'; return; }
+  const anteriores = manterMarcados || [];
+  document.getElementById('el-crimes-titulo').textContent = t.toUpperCase();
+  elRenderOpcoes('el-crimes', 'el_crime', EL_CRIMES[t] || [], 'checkbox', t === 'Crimes eleitorais');
+  if (anteriores.length) elSetChecks('el_crime', anteriores);
+  bloco.style.display = 'block';
+}
+function elAoMudarApreensao() {
+  const marcados = elGetChecks('el_apr');
+  const mat = document.getElementById('el-material');
+  if (marcados.length === 1 && marcados[0] === 'Não houve apreensão') { if (!mat.value.trim()) mat.value = 'Não houve apreensão'; }
+  else if (mat.value === 'Não houve apreensão') mat.value = '';
+}
+function elAutoTurno() {
+  const d = document.getElementById('el-data').value;
+  if (d) document.getElementById('el-turno').value = elTurnoDaData(d);
+}
+
+// ---------- Abrir / voltar ----------
+function elAbrirForm(registro) {
+  elVoltarPara = usuarioLogado.isAdmin ? 'eleicao-admin' : 'selecao';
+  mostrarTela('eleicao-form');
+  elMontarForm();
+  elLimparForm(true);
+  if (registro) elPreencherForm(registro);
+  document.getElementById('el-meus-wrap').style.display = usuarioLogado.isAdmin ? 'none' : 'block';
+  if (!usuarioLogado.isAdmin) elCarregarMeus();
+  window.scrollTo(0, 0);
+}
+function elNovoAdmin() { elAbrirForm(); }
+function elVoltar() {
+  elEditId = null;
+  if (elVoltarPara === 'eleicao-admin') mostrarTela('eleicao-admin');
+  else voltarSelecao();
+}
+
+function elLimparForm(silencioso) {
+  if (!silencioso && !confirm('Limpar todos os campos?')) return;
+  elEditId = null;
+  document.getElementById('el-edit-aviso').style.display = 'none';
+  document.getElementById('el-btn-txt').textContent = '🗳 Salvar Ocorrência Eleitoral';
+  const hoje = dataHojeLocal();
+  document.getElementById('el-data').value = hoje;
+  document.getElementById('el-hora').value = '';
+  document.getElementById('el-turno').value = elTurnoDaData(hoje);
+  document.getElementById('el-num-bo').value = '';
+  document.getElementById('el-bairro').value = '';
+  document.getElementById('el-candidato-nome').value = '';
+  document.getElementById('el-candidato-nome').readOnly = false;
+  document.getElementById('el-material').value = '';
+  document.getElementById('el-observacoes').value = '';
+  ['el_tipo_oc','el_tipo_crime','el_preso','el_proc','el_cond'].forEach(n => elSetRadio(n, ''));
+  ['el_concl','el_prov','el_apr'].forEach(n => elSetChecks(n, []));
+  document.getElementById('el-bloco-crimes').style.display = 'none';
+  elAoMudarDelegacia();
+}
+
+function elPreencherForm(r) {
+  elEditId = r.id;
+  const aviso = document.getElementById('el-edit-aviso');
+  aviso.style.display = 'block';
+  aviso.innerHTML = `✏️ <strong>Editando registro #${r.id}</strong> — ${elEsc(r.delegacia)} — ${elDataBR(r.data)}. Salve para gravar as alterações.`;
+  document.getElementById('el-btn-txt').textContent = '💾 Salvar Alterações';
+  const selDel = document.getElementById('el-delegacia');
+  if (!Array.from(selDel.options).some(o => o.value === r.delegacia)) selDel.insertAdjacentHTML('beforeend', `<option value="${elEsc(r.delegacia)}">${elEsc(r.delegacia)}</option>`);
+  selDel.value = r.delegacia;
+  document.getElementById('el-turno').value = r.turno || elTurnoDaData(r.data);
+  document.getElementById('el-num-bo').value = r.num_bo || '';
+  document.getElementById('el-municipio').value = r.municipio || '';
+  document.getElementById('el-bairro').value = r.bairro || '';
+  document.getElementById('el-data').value = r.data || '';
+  document.getElementById('el-hora').value = (r.hora || '').slice(0,5);
+  elSetRadio('el_tipo_oc', r.tipo_ocorrencia);
+  elSetRadio('el_tipo_crime', r.tipo_crime);
+  elAoMudarTipoCrime(r.crimes || []);
+  document.getElementById('el-candidato-nome').value = r.candidato_nome || '';
+  document.getElementById('el-candidato-nome').readOnly = r.tipo_ocorrencia === 'SEM Candidato';
+  elSetRadio('el_preso', r.candidato_preso);
+  elSetRadio('el_proc', r.procedimento);
+  elSetChecks('el_concl', r.conclusao);
+  elSetChecks('el_prov', r.providencias);
+  elSetRadio('el_cond', r.conducao);
+  elSetChecks('el_apr', r.apreensoes);
+  document.getElementById('el-material').value = r.material_detalhe || '';
+  document.getElementById('el-observacoes').value = r.observacoes || '';
+}
+
+// ---------- Salvar ----------
+function elColetar() {
+  return {
+    turno: document.getElementById('el-turno').value,
+    delegacia: document.getElementById('el-delegacia').value,
+    num_bo: document.getElementById('el-num-bo').value.trim() || null,
+    municipio: document.getElementById('el-municipio').value,
+    bairro: document.getElementById('el-bairro').value.trim(),
+    tipo_ocorrencia: elGetRadio('el_tipo_oc'),
+    data: document.getElementById('el-data').value,
+    hora: document.getElementById('el-hora').value,
+    tipo_crime: elGetRadio('el_tipo_crime'),
+    crimes: elGetChecks('el_crime'),
+    candidato_nome: document.getElementById('el-candidato-nome').value.trim(),
+    candidato_preso: elGetRadio('el_preso'),
+    procedimento: elGetRadio('el_proc'),
+    conclusao: elGetChecks('el_concl'),
+    providencias: elGetChecks('el_prov'),
+    conducao: elGetRadio('el_cond'),
+    apreensoes: elGetChecks('el_apr'),
+    material_detalhe: document.getElementById('el-material').value.trim(),
+    observacoes: document.getElementById('el-observacoes').value.trim()
+  };
+}
+function elValidar(d) {
+  const e = [];
+  const vazioOutro = v => v === '__outro_vazio__' || (Array.isArray(v) && v.includes('__outro_vazio__'));
+  if (!d.delegacia) e.push('• Delegacia / Unidade');
+  if (!d.municipio) e.push('• Município da Ocorrência');
+  if (!d.bairro) e.push('• Bairro da Ocorrência');
+  if (!d.tipo_ocorrencia) e.push('• Tipo da Ocorrência (COM/SEM candidato)');
+  if (!d.data) e.push('• Data da Ocorrência');
+  if (!d.hora) e.push('• Hora da Ocorrência');
+  if (!d.tipo_crime) e.push('• Tipo de Crime');
+  else if (!d.crimes.length) e.push('• Marque ao menos um crime');
+  if (vazioOutro(d.crimes)) e.push('• Especifique o crime "Outro"');
+  if (!d.candidato_nome) e.push('• Nome do Candidato (ou "Prejudicado")');
+  if (!d.candidato_preso) e.push('• Candidato Preso?');
+  if (!d.procedimento) e.push('• Procedimento de Polícia Judiciária');
+  if (vazioOutro(d.procedimento)) e.push('• Especifique o procedimento "Outro"');
+  if (!d.conclusao.length) e.push('• Conclusão de Procedimentos');
+  if (!d.providencias.length) e.push('• Providência Complementar');
+  if (vazioOutro(d.providencias)) e.push('• Especifique a providência "Outro"');
+  if (!d.conducao) e.push('• Condução/Prisão');
+  if (vazioOutro(d.conducao)) e.push('• Especifique a condução "Outro"');
+  if (!d.apreensoes.length) e.push('• Apreensões nas eleições');
+  if (vazioOutro(d.apreensoes)) e.push('• Especifique a apreensão "Outro"');
+  if (!d.material_detalhe) e.push('• Detalhar material apreendido');
+  if (!d.observacoes) e.push('• Observações Relevantes');
+  return e;
+}
+
+async function elSalvar() {
+  const d = elColetar();
+  const erros = elValidar(d);
+  if (erros.length) { alert('Preencha os campos obrigatórios:\n\n' + erros.join('\n')); return; }
+  const btn = document.getElementById('el-btn-salvar');
+  const txt = document.getElementById('el-btn-txt');
+  const sp = document.getElementById('el-spinner');
+  const txtOriginal = txt.textContent;
+  btn.disabled = true; txt.textContent = 'Salvando...'; sp.style.display = 'block';
+  try {
+    if (elEditId) {
+      await supa.patch('registros_eleicao', `id=eq.${elEditId}`, { ...d, atualizado_em: new Date().toISOString() });
+    } else {
+      await supa.post('registros_eleicao', { ...d, escrivao: usuarioLogado.nome, hora_registro: new Date().toISOString() });
+    }
+    const editou = !!elEditId;
+    elEditId = null;
+    elFeedbackPendente = true;
+    mostrarFeedback(true, editou ? 'Registro atualizado!' : 'Ocorrência eleitoral registrada!',
+      editou ? 'As alterações foram salvas.' : 'Registro salvo. A Assessoria fará o lançamento no formulário da Superintendência.\n\nLembre-se: a ocorrência também deve estar registrada no SPP.');
+  } catch (e) {
+    mostrarFeedback(false, 'Erro ao salvar', e.message);
+  } finally {
+    btn.disabled = false; txt.textContent = txtOriginal; sp.style.display = 'none';
+  }
+}
+
+// Chamado por fecharFeedback(): volta ao lugar certo depois de salvar
+function elAposFeedback() {
+  elFeedbackPendente = false;
+  if (usuarioLogado && usuarioLogado.isAdmin) { mostrarTela('eleicao-admin'); }
+  else { elLimparForm(true); elCarregarMeus(); window.scrollTo(0, 0); }
+}
+
+// ---------- Meus registros (escrivão) ----------
+async function elCarregarMeus() {
+  const cont = document.getElementById('el-meus-lista');
+  cont.innerHTML = '<div class="admin-loading">Carregando...</div>';
+  try {
+    const rows = await supa.get('registros_eleicao', `?escrivao=eq.${encodeURIComponent(usuarioLogado.nome)}&select=*&order=data.desc,id.desc`);
+    window._elMeus = rows;
+    if (!rows.length) { cont.innerHTML = '<div class="registros-vazio" style="padding:20px;text-align:center;color:var(--texto-leve);font-size:13px;">Nenhuma ocorrência eleitoral registrada por você.</div>'; return; }
+    cont.innerHTML = rows.map((r, i) => elCardResumo(r, `
+      ${r.lancado ? '' : `<button class="el-btn" onclick="elAbrirForm(window._elMeus[${i}])">✏️ Editar</button>
+      <button class="el-btn vermelho" onclick="elExcluir(${r.id}, false)">🗑 Excluir</button>`}`)).join('');
+  } catch (e) {
+    cont.innerHTML = `<div class="admin-loading">Erro ao carregar: ${elEsc(e.message)}</div>`;
+  }
+}
+
+function elCardResumo(r, acoesHtml, extraHtml) {
+  const status = r.lancado
+    ? `<span class="el-status ok">✓ Lançado${r.lancado_em ? ' em ' + elDataBR(r.lancado_em) : ''}</span>`
+    : `<span class="el-status pend">⏳ Pendente de lançamento</span>`;
+  return `<div class="el-reg ${r.lancado ? 'lancado' : ''}">
+    <div class="el-reg-topo">
+      <div>
+        <div class="el-reg-titulo">#${r.id} · ${elEsc(r.delegacia)} · ${elEsc(r.turno)} · ${elDataBR(r.data)} ${elEsc((r.hora || '').slice(0,5))}</div>
+        <div class="el-reg-sub"><strong>${elEsc(r.tipo_crime)}</strong>: ${elEsc((r.crimes || []).join('; '))}</div>
+        <div class="el-reg-sub">${elEsc(r.municipio)} / ${elEsc(r.bairro)} · ${elEsc(r.tipo_ocorrencia)}${r.candidato_nome && r.candidato_nome !== 'Prejudicado' ? ' (' + elEsc(r.candidato_nome) + ')' : ''} · ${elEsc(r.procedimento)}${r.num_bo ? ' · BO ' + elEsc(r.num_bo) : ''}</div>
+        <div class="el-reg-sub">Registrado por: ${elEsc(MAPA_SERVIDOR_CUSTODIA[r.escrivao] || r.escrivao)}</div>
+      </div>
+      ${status}
+    </div>
+    <div class="el-reg-acoes">${acoesHtml || ''}</div>
+    ${extraHtml || ''}
+  </div>`;
+}
+
+async function elExcluir(id, ehAdmin) {
+  if (!confirm(`Excluir o registro eleitoral #${id}? Esta ação não pode ser desfeita.`)) return;
+  try {
+    await supa.del('registros_eleicao', `id=eq.${id}`);
+    if (ehAdmin) elCarregarAdmin(); else elCarregarMeus();
+  } catch (e) { alert('Erro ao excluir: ' + e.message); }
+}
+
+// ---------- Painel da Assessoria (admin) ----------
+function iniciarEleicaoAdmin() {
+  document.getElementById('el-link-forms').href = ELEICAO.linkForms;
+  const sel = document.getElementById('elf-delegacia');
+  if (sel.options.length <= 1) sel.insertAdjacentHTML('beforeend', [...TODAS_DELEGACIAS, 'Central - Patos'].map(d => `<option value="${elEsc(d)}">${elEsc(d)}</option>`).join(''));
+  elCarregarAdmin();
+}
+
+async function elCarregarAdmin() {
+  const cont = document.getElementById('el-admin-lista');
+  cont.innerHTML = '<div class="admin-loading">Carregando...</div>';
+  try {
+    elRegistrosAdmin = await supa.getAll('registros_eleicao', '?select=*&order=data.desc,id.desc');
+    elRenderAdmin();
+  } catch (e) {
+    const semTabela = /registros_eleicao/.test(e.message) && /(does not exist|not find|PGRST205|42P01)/i.test(e.message);
+    cont.innerHTML = `<div class="admin-loading">${semTabela ? '⚠️ A tabela <strong>registros_eleicao</strong> ainda não existe no Supabase. Rode o SQL de criação no SQL Editor.' : 'Erro ao carregar: ' + elEsc(e.message)}</div>`;
+    document.getElementById('el-kpis').innerHTML = '';
+  }
+}
+
+function elFiltrados() {
+  const t = document.getElementById('elf-turno').value;
+  const s = document.getElementById('elf-status').value;
+  const d = document.getElementById('elf-delegacia').value;
+  return elRegistrosAdmin.filter(r =>
+    (!t || r.turno === t) &&
+    (!s || (s === 'ok' ? r.lancado : !r.lancado)) &&
+    (!d || r.delegacia === d));
+}
+
+function elRenderAdmin() {
+  const lista = elFiltrados();
+  const pend = lista.filter(r => !r.lancado).length;
+  const comCand = lista.filter(r => r.tipo_ocorrencia === 'COM Candidato').length;
+  document.getElementById('el-kpis').innerHTML = `
+    <div class="el-kpi"><div class="n">${lista.length}</div><div class="t">Ocorrências</div></div>
+    <div class="el-kpi"><div class="n" style="color:#b07d00;">${pend}</div><div class="t">Pendentes de lançamento</div></div>
+    <div class="el-kpi"><div class="n" style="color:var(--verde);">${lista.length - pend}</div><div class="t">Já lançadas</div></div>
+    <div class="el-kpi"><div class="n">${comCand}</div><div class="t">Com candidato</div></div>`;
+  const cont = document.getElementById('el-admin-lista');
+  if (!lista.length) { cont.innerHTML = '<div class="admin-loading">Nenhuma ocorrência eleitoral para os filtros selecionados.</div>'; return; }
+  cont.innerHTML = lista.map(r => {
+    const i = elRegistrosAdmin.indexOf(r);
+    const acoes = `
+      <button class="el-btn dourado" onclick="elToggleLancar(${r.id})">📋 Ver para lançar</button>
+      <a class="el-btn" href="${elEsc(ELEICAO.linkForms)}" target="_blank" rel="noopener" style="text-decoration:none;">↗ Formulário</a>
+      ${r.lancado
+        ? `<button class="el-btn" onclick="elMarcarLancado(${r.id}, false)">↺ Desmarcar lançado</button>`
+        : `<button class="el-btn verde" onclick="elMarcarLancado(${r.id}, true)">✓ Marcar como lançado</button>`}
+      <button class="el-btn" onclick="elAbrirForm(elRegistrosAdmin[${i}])">✏️ Editar</button>
+      <button class="el-btn vermelho" onclick="elExcluir(${r.id}, true)">🗑 Excluir</button>`;
+    return elCardResumo(r, acoes, `<div class="el-lancar" id="el-lancar-${r.id}">${elLinhasForms(r)}</div>`);
+  }).join('');
+}
+
+// Campos na MESMA ORDEM do Google Forms da Superintendência (clique na linha para copiar o valor)
+function elCamposForms(r) {
+  return [
+    ['E-mail', ELEICAO.email],
+    ['Superintendência da Ocorrência', ELEICAO.superintendencia],
+    ['Seccional da Ocorrência', ELEICAO.seccional],
+    ['Município da Ocorrência', r.municipio],
+    ['Bairro da Ocorrência', r.bairro],
+    ['Tipo da Ocorrência', r.tipo_ocorrencia],
+    ['Data da Ocorrência', elDataBR(r.data)],
+    ['Hora da Ocorrência', (r.hora || '').slice(0,5)],
+    ['Tipo de Crime', r.tipo_crime],
+    [r.tipo_crime || 'Crimes', (r.crimes || []).join('\n')],
+    ['Nome do Candidato', r.candidato_nome],
+    ['Candidato Preso?', r.candidato_preso],
+    ['Procedimentos e Ações de Polícia Judiciária', r.procedimento],
+    ['Conclusão de Procedimentos', (r.conclusao || []).join('\n')],
+    ['Providência Complementar Adotada', (r.providencias || []).join('\n')],
+    ['Condução/Prisão', r.conducao],
+    ['Apreensões nas eleições', (r.apreensoes || []).join('\n')],
+    ['Detalhar material (tipo e quantidade)', r.material_detalhe],
+    ['Observações Relevantes', r.observacoes]
+  ];
+}
+function elLinhasForms(r) {
+  const ref = [['Delegacia (ref.)', r.delegacia], ['Nº BO SPP (ref.)', r.num_bo || '—'], ['Registrado por (ref.)', MAPA_SERVIDOR_CUSTODIA[r.escrivao] || r.escrivao]];
+  return ref.map(([k, v]) => `<div class="el-linha ref" onclick="elCopiarLinha(this)"><span class="k">${elEsc(k)}</span><span class="v">${elEsc(v)}</span></div>`).join('')
+    + elCamposForms(r).map(([k, v]) => `<div class="el-linha" onclick="elCopiarLinha(this)" title="Clique para copiar"><span class="k">${elEsc(k)}</span><span class="v">${elEsc(v)}</span></div>`).join('');
+}
+function elToggleLancar(id) { document.getElementById('el-lancar-' + id).classList.toggle('aberto'); }
+async function elCopiarTexto(txt) {
+  try { await navigator.clipboard.writeText(txt); return true; }
+  catch (e) {
+    const ta = document.getElementById('el-resumo-txt');
+    ta.value = txt; ta.select();
+    try { document.execCommand('copy'); return true; } catch (e2) { return false; }
+  }
+}
+async function elCopiarLinha(el) {
+  const v = el.querySelector('.v').textContent;
+  if (await elCopiarTexto(v)) { el.classList.add('copiado'); setTimeout(() => el.classList.remove('copiado'), 900); }
+}
+
+async function elMarcarLancado(id, valor) {
+  try {
+    await supa.patch('registros_eleicao', `id=eq.${id}`, valor
+      ? { lancado: true, lancado_em: new Date().toISOString(), lancado_por: usuarioLogado.nome }
+      : { lancado: false, lancado_em: null, lancado_por: null });
+    const r = elRegistrosAdmin.find(x => x.id === id);
+    if (r) { r.lancado = valor; r.lancado_em = valor ? new Date().toISOString() : null; }
+    elRenderAdmin();
+  } catch (e) { alert('Erro ao atualizar: ' + e.message); }
+}
+
+// Resumo para WhatsApp (negrito com *asteriscos*)
+function elContar(lista, fn) {
+  const m = {};
+  lista.forEach(r => { const vs = fn(r); (Array.isArray(vs) ? vs : [vs]).forEach(v => { if (v) m[v] = (m[v] || 0) + 1; }); });
+  return Object.entries(m).sort((a, b) => b[1] - a[1]);
+}
+function elMontarResumo() {
+  const lista = elFiltrados();
+  const t = document.getElementById('elf-turno').value;
+  const linhas = [];
+  linhas.push(`*🗳 ELEIÇÕES 2026${t ? ' — ' + t.toUpperCase() : ''}*`);
+  linhas.push(`*${ELEICAO.seccional} — OCORRÊNCIAS ELEITORAIS*`);
+  linhas.push('');
+  if (!lista.length) { linhas.push('Sem ocorrências eleitorais registradas.'); return linhas.join('\n'); }
+  const comCand = lista.filter(r => r.tipo_ocorrencia === 'COM Candidato').length;
+  linhas.push(`*Total:* ${lista.length} ocorrência(s)`);
+  linhas.push(`• Com candidato: ${comCand}`);
+  linhas.push(`• Sem candidato: ${lista.length - comCand}`);
+  linhas.push('');
+  linhas.push('*POR TIPO DE CRIME*');
+  elContar(lista, r => r.tipo_crime).forEach(([k, n]) => linhas.push(`• ${k}: ${n}`));
+  linhas.push('');
+  linhas.push('*CRIMES*');
+  elContar(lista, r => r.crimes).forEach(([k, n]) => linhas.push(`• ${k.replace(/\s*\(.*$/, '')}: ${n}`));
+  linhas.push('');
+  linhas.push('*PROCEDIMENTOS*');
+  elContar(lista, r => r.procedimento).forEach(([k, n]) => linhas.push(`• ${k}: ${n}`));
+  const prov = elContar(lista, r => (r.providencias || []).filter(p => p !== 'Nenhuma'));
+  if (prov.length) { linhas.push(''); linhas.push('*PROVIDÊNCIAS*'); prov.forEach(([k, n]) => linhas.push(`• ${k}: ${n}`)); }
+  const apr = elContar(lista, r => (r.apreensoes || []).filter(p => p !== 'Não houve apreensão'));
+  if (apr.length) { linhas.push(''); linhas.push('*APREENSÕES*'); apr.forEach(([k, n]) => linhas.push(`• ${k}: ${n}`)); }
+  linhas.push('');
+  linhas.push('*POR DELEGACIA*');
+  elContar(lista, r => r.delegacia).forEach(([k, n]) => linhas.push(`• ${k}: ${n}`));
+  return linhas.join('\n');
+}
+async function elCopiarResumo() {
+  const txt = elMontarResumo();
+  if (await elCopiarTexto(txt)) alert('Resumo copiado! Cole no WhatsApp.');
+  else alert(txt);
+}
+
+function elExportarCSV() {
+  const lista = elFiltrados();
+  if (!lista.length) { alert('Nada para exportar.'); return; }
+  const rows = lista.map(r => ({
+    id: r.id, turno: r.turno, delegacia: r.delegacia, num_bo: r.num_bo, municipio: r.municipio, bairro: r.bairro,
+    tipo_ocorrencia: r.tipo_ocorrencia, data: elDataBR(r.data), hora: (r.hora || '').slice(0,5), tipo_crime: r.tipo_crime,
+    crimes: (r.crimes || []).join(' | '), candidato_nome: r.candidato_nome, candidato_preso: r.candidato_preso,
+    procedimento: r.procedimento, conclusao: (r.conclusao || []).join(' | '), providencias: (r.providencias || []).join(' | '),
+    conducao: r.conducao, apreensoes: (r.apreensoes || []).join(' | '), material_detalhe: r.material_detalhe,
+    observacoes: r.observacoes, escrivao: r.escrivao, lancado: r.lancado ? 'SIM' : 'NÃO', lancado_em: r.lancado_em ? elDataBR(r.lancado_em) : ''
+  }));
+  baixarArquivoCSV(`eleicoes2026_${dataHojeLocal()}.csv`, paraCSV(rows));
 }
 
 </script>
