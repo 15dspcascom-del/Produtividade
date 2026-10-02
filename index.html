@@ -771,6 +771,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
           <button class="btn-novo" style="background:#7b241c;color:white;" onclick="mostrarTela('custodia-cadastro')">🔐 Custódia</button>
           <button class="btn-novo" style="background:#27ae60;color:white;" onclick="mostrarTela('relatorio-semanal')">📊 Rel. Resumido Semanal (Janielson)</button>
           <button class="btn-novo" style="background:#d4a017;color:#0a1628;" onclick="mostrarTela('eleicao-admin')">🗳 Eleições 2026</button>
+          <button class="btn-novo" style="background:#0e5a8a;color:white;" onclick="mostrarTela('relatorio-eleicao')">📲 Relatório Eleições (WhatsApp)</button>
           <button class="btn-novo" style="background:#2c3e50;color:white;" onclick="fazerBackupCSV()" id="btn-backup-csv">💾 Backup Completo (CSV)</button>
           <button class="btn-novo" onclick="abrirModalEscrivao()">+ Novo Escrivão</button>
         </div>
@@ -1265,24 +1266,48 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         </div>
       </div>
 
+      <div class="presenca-tabs">
+        <button class="presenca-tab ativa" id="el-tab-eleitorais" onclick="elMudarAba('eleitorais')">🗳 Crimes Eleitorais</button>
+        <button class="presenca-tab" id="el-tab-comuns" onclick="elMudarAba('comuns')">📋 Crimes Comuns no Período</button>
+      </div>
+
       <div class="el-filtros">
         <div class="fm-item"><label>Turno</label>
-          <select id="elf-turno" onchange="elRenderAdmin()"><option value="">Todos</option><option>1º Turno</option><option>2º Turno</option></select>
+          <select id="elf-turno" onchange="elRenderAtual()"><option value="">Todos</option><option>1º Turno</option><option>2º Turno</option></select>
         </div>
-        <div class="fm-item"><label>Situação</label>
+        <div class="fm-item" id="elf-status-wrap"><label>Situação</label>
           <select id="elf-status" onchange="elRenderAdmin()"><option value="">Todas</option><option value="pend">Pendentes de lançamento</option><option value="ok">Já lançadas</option></select>
         </div>
-        <div class="fm-item"><label>Delegacia</label><select id="elf-delegacia" onchange="elRenderAdmin()"><option value="">Todas</option></select></div>
+        <div class="fm-item"><label>Delegacia</label><select id="elf-delegacia" onchange="elRenderAtual()"><option value="">Todas</option></select></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;">
-          <button class="el-btn" onclick="elCarregarAdmin()">⟳ Atualizar</button>
-          <button class="el-btn dourado" onclick="elCopiarResumo()">📋 Copiar Resumo (WhatsApp)</button>
-          <button class="el-btn" onclick="elExportarCSV()">⬇ CSV</button>
+          <button class="el-btn" onclick="elAba === 'comuns' ? elCarregarComuns() : elCarregarAdmin()">⟳ Atualizar</button>
+          <button class="el-btn dourado" onclick="elAba === 'comuns' ? elCopiarResumoComuns() : elCopiarResumo()">📋 Copiar Resumo (WhatsApp)</button>
+          <button class="el-btn" onclick="elAba === 'comuns' ? elExportarCSVComuns() : elExportarCSV()">⬇ CSV</button>
         </div>
       </div>
 
       <div class="el-kpis" id="el-kpis"></div>
       <div id="el-admin-lista"><div class="admin-loading">Carregando...</div></div>
+      <div id="el-comuns-lista" style="display:none;"><div class="admin-loading">Carregando...</div></div>
       <textarea id="el-resumo-txt" style="position:absolute;left:-9999px;top:0;"></textarea>
+    </div>
+
+    <!-- ===== ELEIÇÕES 2026 — RELATÓRIO ESTILO WHATSAPP ===== -->
+    <div id="tela-relatorio-eleicao" class="tela" style="flex-direction:column; padding:28px 32px; max-width:800px; margin:0 auto; width:100%;">
+      <div class="admin-header">
+        <h2>📲 RELATÓRIO ELEIÇÕES 2026 (WHATSAPP)</h2>
+        <button class="btn-voltar" onclick="mostrarTela('admin')">← Voltar</button>
+      </div>
+      <div class="el-filtros">
+        <div class="fm-item"><label>Turno</label>
+          <select id="rel-el-turno"><option value="1º Turno">1º Turno</option><option value="2º Turno">2º Turno</option><option value="">1º e 2º Turno</option></select>
+        </div>
+        <div style="display:flex;gap:8px;margin-left:auto;">
+          <button class="el-btn dourado" id="rel-el-btn" onclick="gerarRelatorioEleicao()">📲 Gerar Relatório</button>
+          <button class="el-btn verde" onclick="copiarRelatorioEleicao()">📋 Copiar</button>
+        </div>
+      </div>
+      <textarea id="rel-el-texto" class="el-textarea" style="min-height:520px;font-family:monospace;font-size:12.5px;" placeholder="Escolha o turno e clique em Gerar Relatório."></textarea>
     </div>
 
     <!-- TELA DE RELATÓRIO CICC -->
@@ -2148,7 +2173,7 @@ async function enviar() {
         });
       });
 
-      if (rows.length > 0) await supa.post('registros', rows);
+      if (rows.length > 0) await supa.post(modoEleicaoComum ? 'registros_eleicao_comuns' : 'registros', rows);
     }
 
     const statusExp = modalidadeAtual === 'expediente' ? expedienteStatusEnvio(dados.data) : 'ok';
@@ -2199,7 +2224,7 @@ async function enviarSemOcorrencias() {
       turno = null; delegacia = usuarioLogado.delegacia;
     }
 
-    const tabela = modalidadeAtual === 'bo' ? 'registros_bo' : 'registros';
+    const tabela = modalidadeAtual === 'bo' ? 'registros_bo' : (modoEleicaoComum ? 'registros_eleicao_comuns' : 'registros');
     const row = modalidadeAtual === 'bo'
       ? { data, turno, delegacia, escrivao: usuarioLogado.nome, quantidade: 0, crime: 'SEM OCORRÊNCIAS' }
       : { data, horario, delegacia, escrivao: usuarioLogado.nome, modalidade: modalidadeAtual, procedimento: 'SEM OCORRÊNCIAS', quantidade: 0 };
@@ -3141,6 +3166,7 @@ function escolherDelegacia(delegacia) {
 }
 
 function _abrirFormularioReal(modalidade) {
+  elPrepararFormulario();
   modalidadeAtual = modalidade;
   linhaCounters = {};
   esconderTodasTelas();
@@ -3195,7 +3221,7 @@ function _abrirFormularioReal(modalidade) {
 }
 
 function renderCardsModalidade() {
-  const modalidades = usuarioLogado.modalidades || ['expediente','plantao','bo'];
+  const modalidades = elFiltrarModalidades(usuarioLogado.modalidades || ['expediente','plantao','bo']);
   const delegacias = usuarioLogado.delegacias || [usuarioLogado.delegacia];
 
   // Mostrar delegacia vinculada só se tiver uma única delegacia
@@ -3226,6 +3252,7 @@ function renderCardsModalidade() {
   };
 
   const cont = document.getElementById('modal-cards-container');
+  cont.style.display = modalidades.length ? 'grid' : 'none';
   cont.style.gridTemplateColumns = modalidades.length === 1 ? '1fr' : modalidades.length === 2 ? 'repeat(2,1fr)' : modalidades.length === 3 ? 'repeat(3,1fr)' : 'repeat(2,1fr)';
   cont.innerHTML = modalidades.map(m => {
     const c = configs[m];
@@ -3277,10 +3304,11 @@ function mostrarTela(id) {
   if (id === 'backup') iniciarTelaBackup();
   if (id === 'custodia-cadastro') iniciarCustodiaCadastro();
   if (id === 'eleicao-admin') iniciarEleicaoAdmin();
+  if (id === 'relatorio-eleicao') iniciarRelatorioEleicao();
 }
 
 function esconderTodasTelas() {
-  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta','tela-presenca','tela-relatorio','tela-relatorio-area','tela-relatorio-semanal','tela-relatorio-bo','tela-backup','tela-custodia-cadastro','tela-eleicao-form','tela-eleicao-admin'].forEach(id => {
+  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta','tela-presenca','tela-relatorio','tela-relatorio-area','tela-relatorio-semanal','tela-relatorio-bo','tela-backup','tela-custodia-cadastro','tela-eleicao-form','tela-eleicao-admin','tela-relatorio-eleicao'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.classList.remove('ativa'); el.style.display = 'none'; }
   });
@@ -3288,6 +3316,7 @@ function esconderTodasTelas() {
 }
 
 function voltarSelecao() {
+  modoEleicaoComum = false;
   document.getElementById('tela-formulario').style.display = 'none';
   mostrarTela('selecao');
 }
@@ -6074,23 +6103,79 @@ function elUsuarioPodeRegistrar() {
   if (!usuarioLogado) return false;
   if (usuarioLogado.isAdmin) return true;
   const mods = usuarioLogado.modalidades || [];
-  return mods.includes('expediente') || mods.includes('plantao');
+  return mods.includes('expediente') || mods.includes('plantao') || mods.includes('bo');
 }
 
-// Banner "EXTRA" na tela inicial (chamado ao final de renderCardsModalidade)
+// Banners "EXTRA" na tela inicial (chamado ao final de renderCardsModalidade)
 function elRenderBanner() {
-  let banner = document.getElementById('el-banner');
-  if (!banner) {
-    banner = document.createElement('div');
-    banner.id = 'el-banner';
-    banner.className = 'el-banner';
-    banner.onclick = () => elAbrirForm();
-    banner.innerHTML = `<div class="el-banner-icone">🗳</div>
-      <div><h3><span class="el-tag">EXTRA</span>ELEIÇÕES 2026 — OCORRÊNCIAS ELEITORAIS</h3>
-      <p>Crimes contra candidatos, crimes nos locais de votação/apuração e crimes eleitorais (1º e 2º turno). Disponível de sábado até segunda às 08:00 em cada turno.</p></div>`;
-    document.getElementById('modal-cards-container').insertAdjacentElement('afterend', banner);
+  let wrap = document.getElementById('el-banners');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'el-banners';
+    wrap.innerHTML = `
+      <div class="el-banner" onclick="elAbrirForm()">
+        <div class="el-banner-icone">🗳</div>
+        <div><h3><span class="el-tag">EXTRA</span>ELEIÇÕES 2026 — CRIMES ELEITORAIS</h3>
+        <p>Crimes contra candidatos, crimes nos locais de votação/apuração e crimes eleitorais. Uma ficha por ocorrência.</p></div>
+      </div>
+      <div class="el-banner" style="border-color:var(--azul-claro);background:linear-gradient(90deg,#eef3fb 0%,#ffffff 100%);" onclick="elAbrirComuns()">
+        <div class="el-banner-icone" style="background:rgba(26,58,107,0.12);">📋</div>
+        <div><h3><span class="el-tag" style="background:var(--azul-claro);color:white;">EXTRA</span>CRIMES COMUNS — PERÍODO ELEITORAL</h3>
+        <p>Produção do fim de semana da eleição (BOs, APFs, TCOs, BOCs, medidas protetivas, oitivas etc.), no mesmo formato do Plantão.</p></div>
+      </div>
+      <p style="font-size:11px;color:var(--texto-leve);text-align:center;margin-top:12px;">Período eleitoral: Expediente, Plantão e Setor de B.O. voltam na segunda-feira às 08:00.</p>`;
+    document.getElementById('modal-cards-container').insertAdjacentElement('afterend', wrap);
   }
-  banner.style.display = (eleicaoAtiva() && elUsuarioPodeRegistrar()) ? 'flex' : 'none';
+  const ativo = eleicaoAtiva() && elUsuarioPodeRegistrar();
+  wrap.style.display = ativo ? 'block' : 'none';
+  const tit = document.querySelector('#tela-selecao .selecao-titulo h2');
+  if (tit) tit.textContent = ativo ? 'PERÍODO ELEITORAL — SELECIONE O REGISTRO' : 'SELECIONE A MODALIDADE';
+}
+
+// No período eleitoral, esconde Expediente, Plantão e B.O. (Custódia continua)
+function elFiltrarModalidades(mods) {
+  if (!usuarioLogado || usuarioLogado.isAdmin) return mods;
+  if (!(eleicaoAtiva() && elUsuarioPodeRegistrar())) return mods;
+  return mods.filter(m => !['expediente', 'plantao', 'bo'].includes(m));
+}
+
+// Delegacias que o usuário pode escolher nos formulários extras
+function elDelegaciasDoUsuario() {
+  if (usuarioLogado.isAdmin) return [...TODAS_DELEGACIAS, 'Central - Patos'];
+  const dels = [...(usuarioLogado.delegacias || [])];
+  if ((usuarioLogado.modalidades || []).includes('plantao')) POLOS_PLANTAO.forEach(p => { if (!dels.includes(p)) dels.push(p); });
+  return dels.length ? dels : [...TODAS_DELEGACIAS, 'Central - Patos'];
+}
+
+// ---------- CRIMES COMUNS no período eleitoral (formulário do Plantão → tabela registros_eleicao_comuns) ----------
+let modoEleicaoComum = false;
+let _plantaoLocalHTMLOriginal = null;
+
+function elPrepararFormulario() {
+  const sel = document.getElementById('plantao-local');
+  const lbl = document.querySelector('#meta-plantao .fm-item label');
+  if (_plantaoLocalHTMLOriginal === null) _plantaoLocalHTMLOriginal = sel.innerHTML;
+  if (!modoEleicaoComum) {
+    if (sel.innerHTML !== _plantaoLocalHTMLOriginal) sel.innerHTML = _plantaoLocalHTMLOriginal;
+    if (lbl) lbl.textContent = 'Local do Plantão';
+    const b = document.querySelector('#tela-formulario .btn-ver-registros'); if (b) b.style.display = '';
+  }
+}
+
+function elAbrirComuns() {
+  modoEleicaoComum = true;
+  _abrirFormularioReal('plantao');
+  document.getElementById('form-titulo').textContent = 'CRIMES COMUNS — PERÍODO ELEITORAL';
+  document.getElementById('form-sub').textContent = 'Registro extraordinário do fim de semana da eleição (salvo separado do sistema normal)';
+  const lbl = document.querySelector('#meta-plantao .fm-item label');
+  if (lbl) lbl.textContent = 'Delegacia / Unidade';
+  const sel = document.getElementById('plantao-local');
+  const dels = elDelegaciasDoUsuario();
+  sel.innerHTML = dels.map(d => `<option value="${elEsc(d)}">${elEsc(d)}</option>`).join('') + '<option value="Outro">Outro</option>';
+  const preferida = (usuarioLogado.delegacias || [])[0];
+  if (preferida && dels.includes(preferida)) sel.value = preferida;
+  togglePoloOutro();
+  const b = document.querySelector('#tela-formulario .btn-ver-registros'); if (b) b.style.display = 'none';
 }
 
 // ---------- Montagem das opções ----------
@@ -6164,12 +6249,7 @@ function elExclusiva(nome, exclusiva, ev) {
 
 function elMontarForm() {
   // Delegacias disponíveis
-  let dels;
-  if (usuarioLogado.isAdmin) dels = [...TODAS_DELEGACIAS, 'Central - Patos'];
-  else {
-    dels = [...(usuarioLogado.delegacias || [])];
-    if ((usuarioLogado.modalidades || []).includes('plantao')) POLOS_PLANTAO.forEach(p => { if (!dels.includes(p)) dels.push(p); });
-  }
+  const dels = elDelegaciasDoUsuario();
   const selDel = document.getElementById('el-delegacia');
   selDel.innerHTML = dels.map(d => `<option value="${elEsc(d)}">${elEsc(d)}</option>`).join('');
   if (!usuarioLogado.isAdmin && usuarioLogado.delegacia && dels.includes(usuarioLogado.delegacia)) selDel.value = usuarioLogado.delegacia;
@@ -6429,10 +6509,10 @@ async function elExcluir(id, ehAdmin) {
 
 // ---------- Painel da Assessoria (admin) ----------
 function iniciarEleicaoAdmin() {
+  elMudarAba(elAba, true);
   document.getElementById('el-link-forms').href = ELEICAO.linkForms;
   const sel = document.getElementById('elf-delegacia');
   if (sel.options.length <= 1) sel.insertAdjacentHTML('beforeend', [...TODAS_DELEGACIAS, 'Central - Patos'].map(d => `<option value="${elEsc(d)}">${elEsc(d)}</option>`).join(''));
-  elCarregarAdmin();
 }
 
 async function elCarregarAdmin() {
@@ -6591,6 +6671,251 @@ function elExportarCSV() {
     observacoes: r.observacoes, escrivao: r.escrivao, lancado: r.lancado ? 'SIM' : 'NÃO', lancado_em: r.lancado_em ? elDataBR(r.lancado_em) : ''
   }));
   baixarArquivoCSV(`eleicoes2026_${dataHojeLocal()}.csv`, paraCSV(rows));
+}
+
+
+// ---------- Painel admin: aba "Crimes Comuns no Período" ----------
+let elAba = 'eleitorais';
+let elComuns = [];
+
+function elMudarAba(aba, forcar) {
+  elAba = aba;
+  document.getElementById('el-tab-eleitorais').classList.toggle('ativa', aba === 'eleitorais');
+  document.getElementById('el-tab-comuns').classList.toggle('ativa', aba === 'comuns');
+  document.getElementById('el-admin-lista').style.display = aba === 'eleitorais' ? 'block' : 'none';
+  document.getElementById('el-comuns-lista').style.display = aba === 'comuns' ? 'block' : 'none';
+  document.getElementById('elf-status-wrap').style.display = aba === 'eleitorais' ? '' : 'none';
+  if (aba === 'comuns') elCarregarComuns(); else elCarregarAdmin();
+}
+function elRenderAtual() { if (elAba === 'comuns') elRenderComuns(); else elRenderAdmin(); }
+
+async function elCarregarComuns() {
+  const cont = document.getElementById('el-comuns-lista');
+  cont.innerHTML = '<div class="admin-loading">Carregando...</div>';
+  try {
+    elComuns = await supa.getAll('registros_eleicao_comuns', '?select=*&order=data.desc,id.desc');
+    elRenderComuns();
+  } catch (e) {
+    const semTabela = /registros_eleicao_comuns/.test(e.message) && /(does not exist|not find|PGRST205|42P01)/i.test(e.message);
+    cont.innerHTML = `<div class="admin-loading">${semTabela ? '⚠️ A tabela <strong>registros_eleicao_comuns</strong> ainda não existe no Supabase. Rode o SQL de criação no SQL Editor.' : 'Erro ao carregar: ' + elEsc(e.message)}</div>`;
+    document.getElementById('el-kpis').innerHTML = '';
+  }
+}
+function elComunsFiltrados() {
+  const t = document.getElementById('elf-turno').value;
+  const d = document.getElementById('elf-delegacia').value;
+  return elComuns.filter(r => (!t || elTurnoDaData(r.data) === t) && (!d || r.delegacia === d));
+}
+function elNomeProc(id) {
+  if (id === 'SEM OCORRÊNCIAS') return 'SEM OCORRÊNCIAS';
+  const c = CAMPOS_PLA.find(x => x.id === id);
+  return c ? c.titulo.split(' — ')[0] : id;
+}
+function elRenderComuns() {
+  const lista = elComunsFiltrados();
+  const comProd = lista.filter(r => r.procedimento !== 'SEM OCORRÊNCIAS');
+  const total = comProd.reduce((a, r) => a + (r.quantidade || 0), 0);
+  const unidades = new Set(lista.map(r => r.delegacia));
+  const semOc = new Set(lista.filter(r => r.procedimento === 'SEM OCORRÊNCIAS').map(r => r.delegacia));
+  document.getElementById('el-kpis').innerHTML = `
+    <div class="el-kpi"><div class="n">${unidades.size}</div><div class="t">Unidades que enviaram</div></div>
+    <div class="el-kpi"><div class="n">${total}</div><div class="t">Procedimentos (soma)</div></div>
+    <div class="el-kpi"><div class="n">${comProd.filter(r => r.procedimento === 'apfs').reduce((a, r) => a + r.quantidade, 0)}</div><div class="t">APFs</div></div>
+    <div class="el-kpi"><div class="n">${semOc.size}</div><div class="t">Unid. "Sem ocorrências"</div></div>`;
+  const cont = document.getElementById('el-comuns-lista');
+  if (!lista.length) { cont.innerHTML = '<div class="admin-loading">Nenhum registro de crimes comuns para os filtros selecionados.</div>'; return; }
+  // agrupa por unidade
+  const grupos = {};
+  lista.forEach(r => { (grupos[r.delegacia] = grupos[r.delegacia] || []).push(r); });
+  cont.innerHTML = Object.keys(grupos).sort().map(del => {
+    const rows = grupos[del];
+    const corpo = rows.map(r => `<tr>
+        <td>${elDataBR(r.data)}</td>
+        <td><strong>${elEsc(elNomeProc(r.procedimento))}</strong></td>
+        <td style="text-align:center;">${r.quantidade || 0}</td>
+        <td>${elEsc(r.crime || '')}</td>
+        <td>${elEsc(r.cidade || '')}</td>
+        <td>${elEsc(MAPA_SERVIDOR_CUSTODIA[r.escrivao] || r.escrivao || '')}</td>
+        <td><button class="btn-excluir" onclick="elExcluirComum(${r.id})">Excluir</button></td>
+      </tr>`).join('');
+    const tot = rows.filter(r => r.procedimento !== 'SEM OCORRÊNCIAS').reduce((a, r) => a + (r.quantidade || 0), 0);
+    return `<div class="el-reg" style="border-left-color:var(--azul-claro);padding:0;overflow:hidden;">
+      <div style="padding:12px 16px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <div class="el-reg-titulo">${elEsc(del)}</div>
+        <div class="el-reg-sub" style="margin:0;">${rows[0].horario ? elEsc(rows[0].horario) + ' · ' : ''}${tot} procedimento(s)</div>
+      </div>
+      <div style="overflow-x:auto;"><table>
+        <thead><tr><th>Data</th><th>Procedimento</th><th>Qtd</th><th>Crime / Descrição</th><th>Cidade</th><th>Registrado por</th><th></th></tr></thead>
+        <tbody>${corpo}</tbody>
+      </table></div>
+    </div>`;
+  }).join('');
+}
+async function elExcluirComum(id) {
+  if (!confirm('Excluir este lançamento?')) return;
+  try { await supa.del('registros_eleicao_comuns', `id=eq.${id}`); elCarregarComuns(); }
+  catch (e) { alert('Erro ao excluir: ' + e.message); }
+}
+function elMontarResumoComuns() {
+  const lista = elComunsFiltrados();
+  const t = document.getElementById('elf-turno').value;
+  const L = [];
+  L.push(`*🗳 ELEIÇÕES 2026${t ? ' — ' + t.toUpperCase() : ''}*`);
+  L.push(`*${ELEICAO.seccional} — CRIMES COMUNS NO PERÍODO ELEITORAL*`);
+  L.push('');
+  if (!lista.length) { L.push('Nenhum registro.'); return L.join('\n'); }
+  const grupos = {};
+  lista.forEach(r => { (grupos[r.delegacia] = grupos[r.delegacia] || []).push(r); });
+  const geral = {};
+  Object.keys(grupos).sort().forEach(del => {
+    const rows = grupos[del];
+    L.push(`*${del.toUpperCase()}*`);
+    const prod = rows.filter(r => r.procedimento !== 'SEM OCORRÊNCIAS');
+    if (!prod.length) { L.push('• Sem ocorrências'); L.push(''); return; }
+    const porProc = {};
+    prod.forEach(r => {
+      const k = elNomeProc(r.procedimento);
+      porProc[k] = porProc[k] || { q: 0, det: [] };
+      porProc[k].q += r.quantidade || 0;
+      const det = [r.crime, r.cidade].filter(Boolean).join(' - ');
+      if (det) porProc[k].det.push(det);
+      geral[k] = (geral[k] || 0) + (r.quantidade || 0);
+    });
+    Object.entries(porProc).forEach(([k, v]) => {
+      L.push(`• ${k}: ${String(v.q).padStart(2, '0')}${v.det.length ? ' (' + v.det.join('; ') + ')' : ''}`);
+    });
+    L.push('');
+  });
+  L.push('*TOTAL GERAL*');
+  Object.entries(geral).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => L.push(`• ${k}: ${String(n).padStart(2, '0')}`));
+  return L.join('\n');
+}
+async function elCopiarResumoComuns() {
+  const txt = elMontarResumoComuns();
+  if (await elCopiarTexto(txt)) alert('Resumo copiado! Cole no WhatsApp.');
+  else alert(txt);
+}
+function elExportarCSVComuns() {
+  const lista = elComunsFiltrados();
+  if (!lista.length) { alert('Nada para exportar.'); return; }
+  const rows = lista.map(r => ({
+    id: r.id, turno: elTurnoDaData(r.data), data: elDataBR(r.data), horario: r.horario, delegacia: r.delegacia,
+    procedimento: elNomeProc(r.procedimento), quantidade: r.quantidade, crime: r.crime, cidade: r.cidade,
+    duracao: r.duracao, escrivao: r.escrivao
+  }));
+  baixarArquivoCSV(`eleicoes2026_crimes_comuns_${dataHojeLocal()}.csv`, paraCSV(rows));
+}
+
+
+// ---------- Relatório Eleições 2026 estilo WhatsApp (admin) ----------
+function iniciarRelatorioEleicao() {
+  const hoje = dataHojeLocal();
+  document.getElementById('rel-el-turno').value = elTurnoDaData(hoje);
+}
+function elPeriodoTurnoTxt(turno) {
+  const j = turno === '2º Turno' ? ELEICAO.janelas[1] : ELEICAO.janelas[0];
+  const ini = j.inicio.slice(0, 10), fim = j.fim.slice(0, 10);
+  return `${elDataBR(ini).slice(0, 5)} a ${elDataBR(fim)}`;
+}
+async function gerarRelatorioEleicao() {
+  const btn = document.getElementById('rel-el-btn');
+  const turno = document.getElementById('rel-el-turno').value;
+  btn.disabled = true; btn.textContent = 'Buscando...';
+  try {
+    const [eleit, comuns] = await Promise.all([
+      supa.getAll('registros_eleicao', '?select=*&order=data.asc,hora.asc'),
+      supa.getAll('registros_eleicao_comuns', '?select=*&order=data.asc,id.asc')
+    ]);
+    const E = eleit.filter(r => !turno || r.turno === turno);
+    const C = comuns.filter(r => !turno || elTurnoDaData(r.data) === turno);
+    document.getElementById('rel-el-texto').value = montarTextoEleicao(E, C, turno);
+  } catch (e) {
+    alert('Erro ao gerar: ' + e.message + '\n\nVerifique se as tabelas registros_eleicao e registros_eleicao_comuns foram criadas no Supabase.');
+  } finally { btn.disabled = false; btn.textContent = '📲 Gerar Relatório'; }
+}
+function montarTextoEleicao(E, C, turno) {
+  const pad = n => String(parseInt(n) || 0).padStart(2, '0');
+  const L = [];
+  L.push('*POLÍCIA CIVIL*');
+  L.push('');
+  L.push('*15ªDSPC/PATOS*');
+  L.push('');
+  L.push(`*🗳 ELEIÇÕES 2026 — ${turno ? turno.toUpperCase() + ' (' + elPeriodoTurnoTxt(turno) + ')' : '1º E 2º TURNO'}*`);
+  L.push('');
+  L.push('*PRODUTIVIDADE DAS UNIDADES DA POLÍCIA CIVIL NA ÁREA DA 15ªDSPC/PATOS DURANTE O PERÍODO ELEITORAL*');
+  L.push('');
+  L.push('Seções:');
+  L.push('');
+  L.push('A) Crimes eleitorais e relacionados ao pleito;');
+  L.push('B) Crimes comuns no período eleitoral.');
+  L.push('');
+
+  // ===== A) CRIMES ELEITORAIS =====
+  L.push('*A) CRIMES ELEITORAIS E RELACIONADOS AO PLEITO:*');
+  L.push('');
+  if (!E.length) {
+    L.push('Sem registros de crimes eleitorais no período.');
+    L.push('');
+  } else {
+    const comCand = E.filter(r => r.tipo_ocorrencia === 'COM Candidato').length;
+    L.push(`*Total:* ${pad(E.length)} ocorrência(s) — com candidato: ${pad(comCand)} | sem candidato: ${pad(E.length - comCand)}`);
+    L.push('');
+    E.forEach((r, i) => {
+      L.push(`*${i + 1}) ${String(r.tipo_crime || '').toUpperCase()}*`);
+      L.push(`• Local: ${r.municipio}${r.bairro ? ' / ' + r.bairro : ''}`);
+      L.push(`• Data/Hora: ${elDataBR(r.data)} às ${(r.hora || '').slice(0, 5)}`);
+      L.push(`• Crime(s): ${(r.crimes || []).join('; ')}`);
+      if (r.tipo_ocorrencia === 'COM Candidato') L.push(`• Candidato: ${r.candidato_nome}${r.candidato_preso === 'Sim' ? ' (PRESO)' : ''}`);
+      L.push(`• Procedimento: ${r.procedimento}`);
+      L.push(`• Condução/Prisão: ${r.conducao}`);
+      const prov = (r.providencias || []).filter(x => x !== 'Nenhuma');
+      if (prov.length) L.push(`• Providências: ${prov.join('; ')}`);
+      const apr = (r.apreensoes || []).filter(x => x !== 'Não houve apreensão');
+      if (apr.length) L.push(`• Apreensões: ${apr.join('; ')}${r.material_detalhe ? ' — ' + r.material_detalhe : ''}`);
+      L.push(`• Unidade: ${r.delegacia}`);
+      L.push('');
+    });
+  }
+
+  // ===== B) CRIMES COMUNS =====
+  L.push('*B) CRIMES COMUNS NO PERÍODO ELEITORAL:*');
+  L.push('');
+  if (!C.length) {
+    L.push('Sem registros de crimes comuns no período.');
+  } else {
+    const grupos = {};
+    C.forEach(r => { (grupos[r.delegacia] = grupos[r.delegacia] || []).push(r); });
+    const geral = {};
+    Object.keys(grupos).sort().forEach((del, gi) => {
+      const rows = grupos[del];
+      L.push(`*${String.fromCharCode(97 + gi)}) ${del.toUpperCase()}*`);
+      const prod = rows.filter(r => r.procedimento !== 'SEM OCORRÊNCIAS');
+      if (!prod.length) { L.push('Sem ocorrências.'); L.push(''); return; }
+      const porProc = {};
+      prod.forEach(r => {
+        const k = elNomeProc(r.procedimento);
+        porProc[k] = porProc[k] || { q: 0, det: [] };
+        porProc[k].q += r.quantidade || 0;
+        const det = [r.crime, r.cidade].filter(Boolean).join(' - ');
+        if (det) porProc[k].det.push(det);
+        geral[k] = (geral[k] || 0) + (r.quantidade || 0);
+      });
+      Object.entries(porProc).forEach(([k, v]) => {
+        L.push(`• ${k}: ${pad(v.q)}${v.det.length ? ' (' + v.det.join('; ') + ')' : ''}`);
+      });
+      L.push('');
+    });
+    if (Object.keys(geral).length) {
+      L.push('*TOTAL GERAL — CRIMES COMUNS:*');
+      Object.entries(geral).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => L.push(`• ${k}: ${pad(n)}`));
+    }
+  }
+  return L.join('\n').trim();
+}
+async function copiarRelatorioEleicao() {
+  const txt = document.getElementById('rel-el-texto').value;
+  if (!txt) { alert('Gere o relatório primeiro.'); return; }
+  if (await elCopiarTexto(txt)) alert('Relatório copiado! Cole no WhatsApp.');
 }
 
 </script>
