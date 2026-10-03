@@ -686,6 +686,31 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
   .el-linha { grid-template-columns: 1fr; gap: 2px; }
   #tela-eleicao-form, #tela-eleicao-admin { padding: 16px !important; }
 }
+
+/* ===== ADMIN — painel de botões agrupados ===== */
+#tela-admin { max-width: 1100px !important; }
+.adm-painel { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
+.adm-grupo { background: var(--branco); border: 1.5px solid var(--cinza-borda); border-radius: 12px; padding: 14px 16px; }
+.adm-grupo-tit { font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px; color: var(--texto-leve); margin-bottom: 10px; }
+.adm-botoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.adm-btn { border: none; border-radius: 8px; padding: 12px 10px; min-height: 52px; color: white; font-size: 13px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; text-align: center; line-height: 1.3; transition: filter .15s, transform .15s; }
+.adm-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.el-menu-opcoes { display: flex; flex-direction: column; gap: 10px; }
+.el-menu-op { display: flex; gap: 14px; align-items: center; text-align: left; background: var(--cinza); border: 1.5px solid var(--cinza-borda); border-radius: 10px; padding: 14px 16px; cursor: pointer; font-family: 'Inter', sans-serif; transition: all .15s; }
+.el-menu-op:hover { border-color: #d4a017; background: #fff8e1; }
+.el-menu-op span { font-size: 26px; }
+.el-menu-op strong { display: block; font-size: 14px; color: var(--azul); }
+.el-menu-op small { display: block; font-size: 11.5px; color: var(--texto-leve); margin-top: 2px; line-height: 1.4; }
+.elenv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.elenv-card { background: var(--branco); border: 1.5px solid var(--cinza-borda); border-left: 5px solid var(--vermelho); border-radius: 10px; padding: 12px 14px; }
+.elenv-card.ok { border-left-color: var(--verde); }
+.elenv-card h4 { font-size: 13.5px; color: var(--azul); margin-bottom: 2px; }
+.elenv-card .cid { font-size: 11px; color: var(--texto-leve); margin-bottom: 8px; }
+.elenv-linha { font-size: 12px; color: var(--texto); margin-top: 3px; line-height: 1.45; }
+.elenv-st { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 9px; border-radius: 10px; }
+.elenv-st.ok { background: rgba(26,122,74,0.12); color: var(--verde); }
+.elenv-st.nao { background: rgba(176,32,32,0.1); color: var(--vermelho); }
+@media (max-width: 760px) { .adm-painel { grid-template-columns: 1fr; } }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -759,22 +784,42 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 
     <!-- ADMIN -->
     <div id="tela-admin" class="tela" style="flex-direction:column;">
-      <div class="admin-header">
-        <h2>GERENCIAR USUÁRIOS</h2>
-        <div style="display:flex;gap:10px;">
-          <button class="btn-novo" style="background:var(--verde);color:white;" onclick="mostrarTela('presenca')">✅ Envios do Dia</button>
-          <button class="btn-novo" style="background:var(--dourado);color:var(--azul);" onclick="mostrarTela('consulta')">📊 Consultas e Dashboard</button>
-          <button class="btn-novo" style="background:#6a0dad;color:white;" onclick="mostrarTela('relatorio')">📄 Relatório CICC</button>
-          <button class="btn-novo" style="background:#c0392b;color:white;" onclick="mostrarTela('relatorio-area')">🗂 Relatório de Área</button>
-          <button class="btn-novo" style="background:#16a085;color:white;" onclick="mostrarTela('relatorio-bo')">📄 Relatório B.O.</button>
-          <button class="btn-novo" style="background:#2c3e50;color:white;" onclick="mostrarTela('backup')">💾 Backup Diário</button>
-          <button class="btn-novo" style="background:#7b241c;color:white;" onclick="mostrarTela('custodia-cadastro')">🔐 Custódia</button>
-          <button class="btn-novo" style="background:#27ae60;color:white;" onclick="mostrarTela('relatorio-semanal')">📊 Rel. Resumido Semanal (Janielson)</button>
-          <button class="btn-novo" style="background:#d4a017;color:#0a1628;" onclick="mostrarTela('eleicao-admin')">🗳 Eleições 2026</button>
-          <button class="btn-novo" style="background:#0e5a8a;color:white;" onclick="mostrarTela('relatorio-eleicao')">📲 Relatório Eleições (WhatsApp)</button>
-          <button class="btn-novo" style="background:#2c3e50;color:white;" onclick="fazerBackupCSV()" id="btn-backup-csv">💾 Backup Completo (CSV)</button>
-          <button class="btn-novo" onclick="abrirModalEscrivao()">+ Novo Escrivão</button>
+      <div class="adm-painel">
+        <div class="adm-grupo">
+          <div class="adm-grupo-tit">ACOMPANHAMENTO</div>
+          <div class="adm-botoes">
+            <button class="adm-btn" style="background:var(--verde);" onclick="mostrarTela('presenca')">✅ Envios do Dia</button>
+            <button class="adm-btn" style="background:var(--dourado);color:var(--azul);" onclick="mostrarTela('consulta')">📊 Consultas e Dashboard</button>
+          </div>
         </div>
+        <div class="adm-grupo">
+          <div class="adm-grupo-tit">RELATÓRIOS</div>
+          <div class="adm-botoes">
+            <button class="adm-btn" style="background:#6a0dad;" onclick="mostrarTela('relatorio')">📄 Relatório CICC</button>
+            <button class="adm-btn" style="background:#c0392b;" onclick="mostrarTela('relatorio-area')">🗂 Relatório de Área</button>
+            <button class="adm-btn" style="background:#16a085;" onclick="mostrarTela('relatorio-bo')">📄 Relatório B.O.</button>
+            <button class="adm-btn" style="background:#27ae60;" onclick="mostrarTela('relatorio-semanal')">📊 Rel. Resumido Semanal (Janielson)</button>
+          </div>
+        </div>
+        <div class="adm-grupo">
+          <div class="adm-grupo-tit">CUSTÓDIA E BACKUP</div>
+          <div class="adm-botoes">
+            <button class="adm-btn" style="background:#7b241c;" onclick="mostrarTela('custodia-cadastro')">🔐 Custódia</button>
+            <button class="adm-btn" style="background:#2c3e50;" onclick="mostrarTela('backup')">💾 Backup Diário</button>
+            <button class="adm-btn" style="background:#2c3e50;" onclick="fazerBackupCSV()" id="btn-backup-csv">💾 Backup Completo (CSV)</button>
+          </div>
+        </div>
+        <div class="adm-grupo">
+          <div class="adm-grupo-tit">PERÍODO ELEITORAL</div>
+          <div class="adm-botoes">
+            <button class="adm-btn" style="background:#d4a017;color:var(--azul);" onclick="elAbrirMenuAdmin()">🗳 Eleições 2026</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-header" style="margin-bottom:16px;">
+        <h2>GERENCIAR USUÁRIOS</h2>
+        <button class="btn-novo" onclick="abrirModalEscrivao()">+ Novo Escrivão</button>
       </div>
       <div class="tabela-wrap">
         <div class="admin-loading" id="admin-loading">Carregando...</div>
@@ -1305,6 +1350,23 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         </div>
       </div>
       <textarea id="rel-el-texto" class="el-textarea" style="min-height:520px;font-family:monospace;font-size:12.5px;" placeholder="Escolha o turno e clique em Gerar Relatório."></textarea>
+    </div>
+
+    <!-- ===== ELEIÇÕES 2026 — ENVIOS POR UNIDADE (sábado/domingo) ===== -->
+    <div id="tela-eleicao-envios" class="tela" style="flex-direction:column; padding:28px 32px; max-width:1100px; margin:0 auto; width:100%;">
+      <div class="admin-header" style="flex-wrap:wrap;gap:10px;">
+        <h2>✅ ELEIÇÕES 2026 — ENVIOS DAS UNIDADES</h2>
+        <button class="btn-voltar" onclick="mostrarTela('admin')">← Voltar</button>
+      </div>
+      <div class="el-filtros">
+        <div class="fm-item" style="min-width:240px;"><label>Dia</label><select id="elenv-dia" onchange="elCarregarEnvios()"></select></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;">
+          <button class="el-btn" onclick="elCarregarEnvios()">⟳ Atualizar</button>
+          <button class="el-btn dourado" onclick="elCopiarPendencias()">📋 Copiar quem não enviou (WhatsApp)</button>
+        </div>
+      </div>
+      <div class="el-kpis" id="elenv-kpis"></div>
+      <div id="elenv-lista"><div class="admin-loading">Carregando...</div></div>
     </div>
 
     <!-- TELA DE RELATÓRIO CICC -->
@@ -1849,6 +1911,17 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 </div>
 
 <!-- Modal Feedback -->
+<div class="overlay" id="overlay-el-menu" onclick="if(event.target===this)elFecharMenuAdmin()">
+  <div class="modal-esc" style="max-width:520px;">
+    <h3>🗳 ELEIÇÕES 2026</h3>
+    <div class="el-menu-opcoes">
+      <button class="el-menu-op" onclick="elFecharMenuAdmin();mostrarTela('eleicao-admin')"><span>📂</span><div><strong>Painel de Ocorrências</strong><small>Crimes eleitorais (lançar no formulário da Superintendência) e crimes comuns do período</small></div></button>
+      <button class="el-menu-op" onclick="elFecharMenuAdmin();mostrarTela('relatorio-eleicao')"><span>📲</span><div><strong>Relatório WhatsApp</strong><small>Texto do 1º/2º turno com crimes eleitorais e crimes comuns por unidade</small></div></button>
+      <button class="el-menu-op" onclick="elFecharMenuAdmin();mostrarTela('eleicao-envios')"><span>✅</span><div><strong>Quem enviou / quem não enviou</strong><small>Situação de cada unidade no sábado ou no domingo</small></div></button>
+    </div>
+    <div class="modal-esc-acoes"><button class="btn-cancelar" onclick="elFecharMenuAdmin()">Fechar</button></div>
+  </div>
+</div>
 <div class="overlay-feedback" id="overlay-fb">
   <div class="modal-fb">
     <div class="fb-icon" id="fb-icon">✓</div>
@@ -3304,10 +3377,11 @@ function mostrarTela(id) {
   if (id === 'custodia-cadastro') iniciarCustodiaCadastro();
   if (id === 'eleicao-admin') iniciarEleicaoAdmin();
   if (id === 'relatorio-eleicao') iniciarRelatorioEleicao();
+  if (id === 'eleicao-envios') iniciarEnviosEleicao();
 }
 
 function esconderTodasTelas() {
-  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta','tela-presenca','tela-relatorio','tela-relatorio-area','tela-relatorio-semanal','tela-relatorio-bo','tela-backup','tela-custodia-cadastro','tela-eleicao-form','tela-eleicao-admin','tela-relatorio-eleicao'].forEach(id => {
+  ['tela-selecao','tela-admin','tela-escolha-delegacia','tela-consulta','tela-presenca','tela-relatorio','tela-relatorio-area','tela-relatorio-semanal','tela-relatorio-bo','tela-backup','tela-custodia-cadastro','tela-eleicao-form','tela-eleicao-admin','tela-relatorio-eleicao','tela-eleicao-envios'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.classList.remove('ativa'); el.style.display = 'none'; }
   });
@@ -6480,7 +6554,7 @@ async function elSalvar() {
     elEditId = null;
     elFeedbackPendente = true;
     mostrarFeedback(true, editou ? 'Registro atualizado!' : 'Ocorrência eleitoral registrada!',
-      editou ? 'As alterações foram salvas.' : 'Registro salvo. A Assessoria fará o lançamento no formulário da Superintendência.\n\nLembre-se: a ocorrência também deve estar registrada no SPP.');
+      editou ? 'As alterações foram salvas.' : 'Registro salvo. A Assessoria fará o lançamento no formulário da Superintendência.');
   } catch (e) {
     mostrarFeedback(false, 'Erro ao salvar', e.message);
   } finally {
@@ -6947,6 +7021,94 @@ async function copiarRelatorioEleicao() {
   const txt = document.getElementById('rel-el-texto').value;
   if (!txt) { alert('Gere o relatório primeiro.'); return; }
   if (await elCopiarTexto(txt)) alert('Relatório copiado! Cole no WhatsApp.');
+}
+
+
+// ---------- Admin: menu único de Eleições + tela de envios por unidade ----------
+function elAbrirMenuAdmin() { document.getElementById('overlay-el-menu').classList.add('aberto'); }
+function elFecharMenuAdmin() { document.getElementById('overlay-el-menu').classList.remove('aberto'); }
+
+function elDiasEleicao() {
+  const dias = [];
+  ELEICAO.janelas.forEach((j, i) => {
+    const sab = j.inicio.slice(0, 10);
+    const [y, m, d] = sab.split('-').map(Number);
+    const dom = new Date(y, m - 1, d + 1);
+    const domISO = `${dom.getFullYear()}-${String(dom.getMonth() + 1).padStart(2, '0')}-${String(dom.getDate()).padStart(2, '0')}`;
+    const t = i === 0 ? '1º Turno' : '2º Turno';
+    dias.push({ iso: sab, rotulo: `Sábado ${elDataBR(sab).slice(0, 5)} (${t})` });
+    dias.push({ iso: domISO, rotulo: `Domingo ${elDataBR(domISO).slice(0, 5)} (${t})` });
+  });
+  return dias;
+}
+function iniciarEnviosEleicao() {
+  const sel = document.getElementById('elenv-dia');
+  const dias = elDiasEleicao();
+  if (!sel.options.length) sel.innerHTML = dias.map(d => `<option value="${d.iso}">${d.rotulo}</option>`).join('');
+  const hoje = dataHojeLocal();
+  if (dias.some(d => d.iso === hoje)) sel.value = hoje;
+  elCarregarEnvios();
+}
+let elEnviosCache = null;
+async function elCarregarEnvios() {
+  const dia = document.getElementById('elenv-dia').value;
+  const cont = document.getElementById('elenv-lista');
+  cont.innerHTML = '<div class="admin-loading">Carregando...</div>';
+  try {
+    const [comuns, eleit] = await Promise.all([
+      supa.getAll('registros_eleicao_comuns', `?data=eq.${dia}&select=*&order=id.asc`),
+      supa.getAll('registros_eleicao', `?data=eq.${dia}&select=id,delegacia,escrivao,tipo_crime,hora_registro`)
+    ]);
+    elEnviosCache = { dia, comuns, eleit };
+    elRenderEnvios();
+  } catch (e) {
+    cont.innerHTML = `<div class="admin-loading">Erro ao carregar: ${elEsc(e.message)}</div>`;
+  }
+}
+function elHoraDe(iso) { if (!iso) return ''; const d = new Date(iso); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function elRenderEnvios() {
+  const { comuns, eleit } = elEnviosCache;
+  const nomes = EL_UNIDADES.map(u => u.nome);
+  let enviaram = 0;
+  const cards = EL_UNIDADES.map(u => {
+    const rc = comuns.filter(r => r.delegacia === u.nome);
+    const re = eleit.filter(r => r.delegacia === u.nome);
+    const ok = rc.length > 0;
+    if (ok) enviaram++;
+    const sem = rc.length && rc.every(r => r.procedimento === 'SEM OCORRÊNCIAS');
+    const total = rc.filter(r => r.procedimento !== 'SEM OCORRÊNCIAS').reduce((a, r) => a + (r.quantidade || 0), 0);
+    const quem = [...new Set(rc.map(r => MAPA_SERVIDOR_CUSTODIA[r.escrivao] || r.escrivao).filter(Boolean))].join(', ');
+    const hora = rc.length ? elHoraDe(rc[rc.length - 1].hora_registro || rc[rc.length - 1].criado_em) : '';
+    return `<div class="elenv-card ${ok ? 'ok' : ''}">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+        <h4>${elEsc(u.nome)}</h4>
+        <span class="elenv-st ${ok ? 'ok' : 'nao'}">${ok ? '✓ ENVIOU' : '✕ NÃO ENVIOU'}</span>
+      </div>
+      <div class="cid">${elEsc(u.cidades.join(', '))}</div>
+      <div class="elenv-linha">📋 Crimes comuns: ${ok ? (sem ? 'Sem ocorrências' : `<strong>${total}</strong> procedimento(s)`) : '<span style="color:var(--vermelho);">pendente</span>'}</div>
+      ${ok ? `<div class="elenv-linha">👤 ${elEsc(quem)}${hora ? ' · ' + hora : ''}</div>` : ''}
+      <div class="elenv-linha">🗳 Crimes eleitorais: <strong>${re.length}</strong></div>
+    </div>`;
+  }).join('');
+  const outras = [...new Set([...comuns, ...eleit].map(r => r.delegacia).filter(d => d && !nomes.includes(d)))];
+  document.getElementById('elenv-kpis').innerHTML = `
+    <div class="el-kpi"><div class="n" style="color:var(--verde);">${enviaram}</div><div class="t">Unidades que enviaram</div></div>
+    <div class="el-kpi"><div class="n" style="color:var(--vermelho);">${EL_UNIDADES.length - enviaram}</div><div class="t">Não enviaram</div></div>
+    <div class="el-kpi"><div class="n">${comuns.filter(r => r.procedimento !== 'SEM OCORRÊNCIAS').reduce((a, r) => a + (r.quantidade || 0), 0)}</div><div class="t">Procedimentos (crimes comuns)</div></div>
+    <div class="el-kpi"><div class="n">${eleit.length}</div><div class="t">Crimes eleitorais</div></div>`;
+  document.getElementById('elenv-lista').innerHTML = `<div class="elenv-grid">${cards}</div>` +
+    (outras.length ? `<div class="el-aviso" style="margin-top:16px;">Registros com unidade fora da lista: ${elEsc(outras.join(', '))}</div>` : '');
+}
+async function elCopiarPendencias() {
+  if (!elEnviosCache) return;
+  const { dia, comuns } = elEnviosCache;
+  const pend = EL_UNIDADES.filter(u => !comuns.some(r => r.delegacia === u.nome));
+  const rot = (elDiasEleicao().find(d => d.iso === dia) || { rotulo: elDataBR(dia) }).rotulo;
+  const L = [`*🗳 ELEIÇÕES 2026 — ${elTurnoDaData(dia).toUpperCase()}*`, `*UNIDADES SEM ENVIO — ${rot.replace(/\s*\(.*\)/, '').toUpperCase()}*`, ''];
+  if (!pend.length) L.push('✅ Todas as unidades enviaram.');
+  else { pend.forEach(u => L.push(`• ${u.nome}`)); L.push(''); L.push('Favor registrar os crimes comuns do período (ou "Sem ocorrências") no sistema.'); }
+  const txt = L.join('\n');
+  if (await elCopiarTexto(txt)) alert('Lista copiada! Cole no WhatsApp.'); else alert(txt);
 }
 
 </script>
