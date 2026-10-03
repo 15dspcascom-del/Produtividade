@@ -1121,8 +1121,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
       </div>
 
       <div class="el-aviso">
-        <strong>Atenção:</strong> todas as ocorrências continuam sendo registradas no <strong>SPP</strong>.
-        Registre aqui <strong>apenas</strong> as relacionadas a:<br>
+        <strong>Atenção:</strong> Registre aqui <strong>apenas</strong> as relacionadas a:<br>
         <strong>(1)</strong> crimes comuns contra candidatos;<br>
         <strong>(2)</strong> crimes comuns nos locais de votação/apuração;<br>
         <strong>(3)</strong> crimes eleitorais.<br><br>
@@ -6151,14 +6150,14 @@ function elRenderBanner() {
       <div class="el-banner" onclick="elAbrirForm()">
         <div class="el-banner-icone">🗳</div>
         <div><h3>ELEIÇÕES 2026 — <span class="el-turno-txt">1º TURNO</span> — CRIMES ELEITORAIS</h3>
-        <p>Crimes contra candidatos, crimes nos locais de votação/apuração e crimes eleitorais. Uma ficha por ocorrência.</p></div>
+        <p>Crimes contra candidatos, crimes nos locais de votação/apuração e crimes eleitorais.</p></div>
       </div>
       <div class="el-banner" style="border-color:var(--azul-claro);background:linear-gradient(90deg,#eef3fb 0%,#ffffff 100%);" onclick="elAbrirComuns()">
         <div class="el-banner-icone" style="background:rgba(26,58,107,0.12);">📋</div>
         <div><h3>CRIMES COMUNS — PERÍODO ELEITORAL — <span class="el-turno-txt">1º TURNO</span></h3>
-        <p>Produção do fim de semana da eleição (BOs, APFs, TCOs, BOCs, medidas protetivas, oitivas etc.), no mesmo formato do Plantão.</p></div>
+        <p>Produção do fim de semana da eleição (BOs, APFs, TCOs, BOCs, medidas protetivas, oitivas etc.).</p></div>
       </div>
-      <p style="font-size:11px;color:var(--texto-leve);text-align:center;margin-top:12px;">Período eleitoral: Expediente, Plantão e Setor de B.O. voltam na segunda-feira às 08:00.</p>`;
+      <p style="font-size:11px;color:var(--texto-leve);text-align:center;margin-top:12px;">Expediente, Plantão e Setor de B.O. voltam na segunda-feira às 08:00.</p>`;
     document.getElementById('modal-cards-container').insertAdjacentElement('afterend', wrap);
   }
   const ativo = eleicaoAtiva() && elUsuarioPodeRegistrar();
@@ -6203,7 +6202,7 @@ function elAbrirComuns() {
   modoEleicaoComum = true;
   _abrirFormularioReal('plantao');
   document.getElementById('form-titulo').textContent = `CRIMES COMUNS — PERÍODO ELEITORAL — ${elTurnoDaData(dataHojeLocal()).toUpperCase()}`;
-  document.getElementById('form-sub').textContent = 'Registro extraordinário do fim de semana da eleição (salvo separado do sistema normal)';
+  document.getElementById('form-sub').textContent = 'Registro extraordinário do fim de semana da eleição';
   const lbl = document.querySelector('#meta-plantao .fm-item label');
   if (lbl) lbl.textContent = 'Delegacia / Unidade';
   const sel = document.getElementById('plantao-local');
