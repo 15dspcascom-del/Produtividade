@@ -6092,6 +6092,7 @@ const EL_UNIDADES = [
   { nome: 'DP Malta',               cidades: ['Malta', 'Condado', 'Vista Serrana'] },
   { nome: 'DP Teixeira',            cidades: ['Teixeira', 'Desterro', 'Cacimbas', 'Matureia', "Mãe d'Água"] },
   { nome: 'São Mamede',             cidades: ['São Mamede'] },
+  { nome: 'Passagem',               cidades: ['Passagem'] },
   { nome: 'Santa Terezinha',        cidades: ['Santa Terezinha'] },
   { nome: 'São José do Bonfim',     cidades: ['São José do Bonfim'] },
   { nome: 'Quixaba',                cidades: ['Quixaba'] },
@@ -6211,7 +6212,7 @@ function elUsuarioPodeRegistrar() {
   if (!usuarioLogado) return false;
   if (usuarioLogado.isAdmin) return true;
   const mods = usuarioLogado.modalidades || [];
-  return mods.includes('expediente') || mods.includes('plantao') || mods.includes('bo');
+  return mods.includes('expediente') || mods.includes('plantao');
 }
 
 // Banners "EXTRA" na tela inicial (chamado ao final de renderCardsModalidade)
@@ -6231,7 +6232,7 @@ function elRenderBanner() {
         <div><h3>CRIMES COMUNS — PERÍODO ELEITORAL — <span class="el-turno-txt">1º TURNO</span></h3>
         <p>Produção do fim de semana da eleição (BOs, APFs, TCOs, BOCs, medidas protetivas, oitivas etc.).</p></div>
       </div>
-      <p style="font-size:11px;color:var(--texto-leve);text-align:center;margin-top:12px;">Expediente, Plantão e Setor de B.O. voltam na segunda-feira às 08:00.</p>`;
+      <p style="font-size:11px;color:var(--texto-leve);text-align:center;margin-top:12px;">Expediente e Plantão voltam na segunda-feira às 08:00.</p>`;
     document.getElementById('modal-cards-container').insertAdjacentElement('afterend', wrap);
   }
   const ativo = eleicaoAtiva() && elUsuarioPodeRegistrar();
@@ -6246,7 +6247,7 @@ function elRenderBanner() {
 function elFiltrarModalidades(mods) {
   if (!usuarioLogado || usuarioLogado.isAdmin) return mods;
   if (!(eleicaoAtiva() && elUsuarioPodeRegistrar())) return mods;
-  return mods.filter(m => !['expediente', 'plantao', 'bo'].includes(m));
+  return mods.filter(m => !['expediente', 'plantao'].includes(m));  // Setor de B.O. e Custódia continuam normais
 }
 
 // Delegacias que o usuário pode escolher nos formulários extras
