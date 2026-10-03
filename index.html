@@ -1115,31 +1115,29 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
       <div class="form-header">
         <button class="btn-voltar" onclick="elVoltar()">← Voltar</button>
         <div class="form-header-info">
-          <h2>🗳 ELEIÇÕES 2026 — OCORRÊNCIA ELEITORAL</h2>
+          <h2 id="el-form-titulo">🗳 ELEIÇÕES 2026 — 1º TURNO — OCORRÊNCIA ELEITORAL</h2>
           <p id="el-form-sub">Crimes contra candidatos, crimes em locais de votação/apuração e crimes eleitorais</p>
         </div>
       </div>
 
       <div class="el-aviso">
         <strong>Atenção:</strong> todas as ocorrências continuam sendo registradas no <strong>SPP</strong>.
-        Registre aqui <strong>apenas</strong> as relacionadas a: <strong>(1)</strong> crimes comuns contra candidatos;
-        <strong>(2)</strong> crimes comuns nos locais de votação/apuração; <strong>(3)</strong> crimes eleitorais.
+        Registre aqui <strong>apenas</strong> as relacionadas a:<br>
+        <strong>(1)</strong> crimes comuns contra candidatos;<br>
+        <strong>(2)</strong> crimes comuns nos locais de votação/apuração;<br>
+        <strong>(3)</strong> crimes eleitorais.<br><br>
         A Assessoria fará o lançamento no formulário da Superintendência.
       </div>
 
       <div id="el-edit-aviso" class="el-aviso" style="display:none;background:rgba(26,58,107,0.08);border-color:var(--azul-claro);"></div>
 
+      <input type="hidden" id="el-turno" value="1º Turno" />
+
       <!-- Identificação interna -->
       <div class="el-bloco">
         <div class="el-bloco-titulo">IDENTIFICAÇÃO (controle interno)</div>
         <div class="el-bloco-corpo">
-          <div class="el-grid">
-            <div class="fm-item"><label>Delegacia / Unidade *</label><select id="el-delegacia" onchange="elAoMudarDelegacia()"></select></div>
-            <div class="fm-item"><label>Turno da Eleição *</label>
-              <select id="el-turno"><option value="1º Turno">1º Turno (04/10)</option><option value="2º Turno">2º Turno (25/10)</option></select>
-            </div>
-            <div class="fm-item"><label>Nº do BO no SPP</label><input type="text" id="el-num-bo" placeholder="ex: 00123/2026" /></div>
-          </div>
+          <div class="fm-item"><label>Delegacia / Unidade *</label><select id="el-delegacia" onchange="elAoMudarDelegacia()"></select></div>
         </div>
       </div>
 
@@ -2113,6 +2111,7 @@ function expedienteStatusEnvio(dataSelecionada) {
 }
 
 async function enviar() {
+  if (modoEleicaoComum && !document.getElementById('plantao-local').value) { alert('Selecione a Delegacia / Unidade.'); return; }
   if (modalidadeAtual === 'plantao' && !plantaoConfirmadoNestaSessao) {
     alert('Confirme a data e hora de início do plantão antes de enviar o registro.');
     return;
@@ -2196,6 +2195,7 @@ async function enviar() {
 }
 
 async function enviarSemOcorrencias() {
+  if (modoEleicaoComum && !document.getElementById('plantao-local').value) { alert('Selecione a Delegacia / Unidade.'); return; }
   if (modalidadeAtual === 'plantao' && !plantaoConfirmadoNestaSessao) {
     alert('Confirme a data e hora de início do plantão antes de enviar o registro.');
     return;
@@ -6007,6 +6007,41 @@ const ELEICAO = {
   seccional: '15ª DSPC'
 };
 
+// Unidades responsáveis no período eleitoral (planilha da Seccional) e cidades que cada uma atende
+const EL_UNIDADES = [
+  { nome: 'Central - Patos',        cidades: ['Patos'] },
+  { nome: 'DHE',                    cidades: ['Patos'] },
+  { nome: 'DRF',                    cidades: ['Patos'] },
+  { nome: 'DEAM',                   cidades: ['Patos'] },
+  { nome: 'São José de Espinharas', cidades: ['São José de Espinharas'] },
+  { nome: 'Cacimba de Areia',       cidades: ['Cacimba de Areia'] },
+  { nome: 'DP Santa Luzia',         cidades: ['Santa Luzia', 'Várzea', 'Junco do Seridó', 'São José do Sabugi'] },
+  { nome: 'DP Malta',               cidades: ['Malta', 'Condado', 'Vista Serrana'] },
+  { nome: 'DP Teixeira',            cidades: ['Teixeira', 'Desterro', 'Cacimbas', 'Matureia', "Mãe d'Água"] },
+  { nome: 'São Mamede',             cidades: ['São Mamede'] },
+  { nome: 'Santa Terezinha',        cidades: ['Santa Terezinha'] },
+  { nome: 'São José do Bonfim',     cidades: ['São José do Bonfim'] },
+  { nome: 'Quixaba',                cidades: ['Quixaba'] },
+  { nome: 'Areia de Baraúnas',      cidades: ['Areia de Baraúnas'] }
+];
+function elRotuloUnidade(u) {
+  return u.cidades.length > 1 || !u.nome.includes(u.cidades[0]) ? `${u.nome} — ${u.cidades.join(', ')}` : u.nome;
+}
+// Sugere a unidade a partir da delegacia cadastrada do usuário
+function elUnidadeSugerida() {
+  const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[´'`]/g, "'");
+  for (const d of (usuarioLogado.delegacias || [])) {
+    const direta = EL_UNIDADES.find(u => norm(u.nome) === norm(d) || norm(u.nome) === norm('DP ' + d));
+    if (direta) return direta.nome;
+    const cid = CIDADE_PADRAO[d];
+    if (cid && cid !== 'Patos') {
+      const porCidade = EL_UNIDADES.find(u => u.cidades.some(c => norm(c) === norm(cid)));
+      if (porCidade) return porCidade.nome;
+    }
+  }
+  return '';
+}
+
 const EL_TIPO_OCORRENCIA = ['COM Candidato', 'SEM Candidato'];
 const EL_TIPOS_CRIME = ['Crimes comuns contra candidatos', 'Crimes comuns nos locais de votação/apuração', 'Crimes eleitorais'];
 const EL_CRIMES = {
@@ -6115,12 +6150,12 @@ function elRenderBanner() {
     wrap.innerHTML = `
       <div class="el-banner" onclick="elAbrirForm()">
         <div class="el-banner-icone">🗳</div>
-        <div><h3><span class="el-tag">EXTRA</span>ELEIÇÕES 2026 — CRIMES ELEITORAIS</h3>
+        <div><h3>ELEIÇÕES 2026 — <span class="el-turno-txt">1º TURNO</span> — CRIMES ELEITORAIS</h3>
         <p>Crimes contra candidatos, crimes nos locais de votação/apuração e crimes eleitorais. Uma ficha por ocorrência.</p></div>
       </div>
       <div class="el-banner" style="border-color:var(--azul-claro);background:linear-gradient(90deg,#eef3fb 0%,#ffffff 100%);" onclick="elAbrirComuns()">
         <div class="el-banner-icone" style="background:rgba(26,58,107,0.12);">📋</div>
-        <div><h3><span class="el-tag" style="background:var(--azul-claro);color:white;">EXTRA</span>CRIMES COMUNS — PERÍODO ELEITORAL</h3>
+        <div><h3>CRIMES COMUNS — PERÍODO ELEITORAL — <span class="el-turno-txt">1º TURNO</span></h3>
         <p>Produção do fim de semana da eleição (BOs, APFs, TCOs, BOCs, medidas protetivas, oitivas etc.), no mesmo formato do Plantão.</p></div>
       </div>
       <p style="font-size:11px;color:var(--texto-leve);text-align:center;margin-top:12px;">Período eleitoral: Expediente, Plantão e Setor de B.O. voltam na segunda-feira às 08:00.</p>`;
@@ -6128,6 +6163,8 @@ function elRenderBanner() {
   }
   const ativo = eleicaoAtiva() && elUsuarioPodeRegistrar();
   wrap.style.display = ativo ? 'block' : 'none';
+  const turnoAtual = elTurnoDaData(dataHojeLocal()).toUpperCase();
+  wrap.querySelectorAll('.el-turno-txt').forEach(e => e.textContent = turnoAtual);
   const tit = document.querySelector('#tela-selecao .selecao-titulo h2');
   if (tit) tit.textContent = ativo ? 'PERÍODO ELEITORAL — SELECIONE O REGISTRO' : 'SELECIONE A MODALIDADE';
 }
@@ -6141,10 +6178,10 @@ function elFiltrarModalidades(mods) {
 
 // Delegacias que o usuário pode escolher nos formulários extras
 function elDelegaciasDoUsuario() {
-  if (usuarioLogado.isAdmin) return [...TODAS_DELEGACIAS, 'Central - Patos'];
-  const dels = [...(usuarioLogado.delegacias || [])];
-  if ((usuarioLogado.modalidades || []).includes('plantao')) POLOS_PLANTAO.forEach(p => { if (!dels.includes(p)) dels.push(p); });
-  return dels.length ? dels : [...TODAS_DELEGACIAS, 'Central - Patos'];
+  return EL_UNIDADES.map(u => u.nome);
+}
+function elOptionsUnidades() {
+  return '<option value="">Selecione a unidade...</option>' + EL_UNIDADES.map(u => `<option value="${elEsc(u.nome)}">${elEsc(elRotuloUnidade(u))}</option>`).join('');
 }
 
 // ---------- CRIMES COMUNS no período eleitoral (formulário do Plantão → tabela registros_eleicao_comuns) ----------
@@ -6165,15 +6202,13 @@ function elPrepararFormulario() {
 function elAbrirComuns() {
   modoEleicaoComum = true;
   _abrirFormularioReal('plantao');
-  document.getElementById('form-titulo').textContent = 'CRIMES COMUNS — PERÍODO ELEITORAL';
+  document.getElementById('form-titulo').textContent = `CRIMES COMUNS — PERÍODO ELEITORAL — ${elTurnoDaData(dataHojeLocal()).toUpperCase()}`;
   document.getElementById('form-sub').textContent = 'Registro extraordinário do fim de semana da eleição (salvo separado do sistema normal)';
   const lbl = document.querySelector('#meta-plantao .fm-item label');
   if (lbl) lbl.textContent = 'Delegacia / Unidade';
   const sel = document.getElementById('plantao-local');
-  const dels = elDelegaciasDoUsuario();
-  sel.innerHTML = dels.map(d => `<option value="${elEsc(d)}">${elEsc(d)}</option>`).join('') + '<option value="Outro">Outro</option>';
-  const preferida = (usuarioLogado.delegacias || [])[0];
-  if (preferida && dels.includes(preferida)) sel.value = preferida;
+  sel.innerHTML = elOptionsUnidades();
+  sel.value = usuarioLogado.isAdmin ? '' : elUnidadeSugerida();
   togglePoloOutro();
   const b = document.querySelector('#tela-formulario .btn-ver-registros'); if (b) b.style.display = 'none';
 }
@@ -6249,12 +6284,9 @@ function elExclusiva(nome, exclusiva, ev) {
 
 function elMontarForm() {
   // Delegacias disponíveis
-  const dels = elDelegaciasDoUsuario();
   const selDel = document.getElementById('el-delegacia');
-  selDel.innerHTML = dels.map(d => `<option value="${elEsc(d)}">${elEsc(d)}</option>`).join('');
-  if (!usuarioLogado.isAdmin && usuarioLogado.delegacia && dels.includes(usuarioLogado.delegacia)) selDel.value = usuarioLogado.delegacia;
-
-  document.getElementById('el-municipio').innerHTML = '<option value="">Selecione...</option>' + CIDADES.map(c => `<option value="${elEsc(c)}">${elEsc(c)}</option>`).join('');
+  selDel.innerHTML = elOptionsUnidades();
+  if (!usuarioLogado.isAdmin) selDel.value = elUnidadeSugerida();
 
   elRenderOpcoes('el-tipo-ocorrencia', 'el_tipo_oc', EL_TIPO_OCORRENCIA, 'radio', false, 'elAoMudarTipoOcorrencia()');
   elRenderOpcoes('el-tipo-crime', 'el_tipo_crime', EL_TIPOS_CRIME, 'radio', false, 'elAoMudarTipoCrime()');
@@ -6268,14 +6300,15 @@ function elMontarForm() {
   document.getElementById('el-crimes').innerHTML = '';
 }
 
+// Município: só as cidades atendidas pela unidade escolhida
 function elAoMudarDelegacia() {
   const d = document.getElementById('el-delegacia').value;
-  const cid = CIDADE_PADRAO[d];
-  if (cid) {
-    const sel = document.getElementById('el-municipio');
-    const opt = Array.from(sel.options).find(o => o.value.toLowerCase() === cid.toLowerCase());
-    if (opt) sel.value = opt.value;
-  }
+  const u = EL_UNIDADES.find(x => x.nome === d);
+  const sel = document.getElementById('el-municipio');
+  const atual = sel.value;
+  const cidades = u ? u.cidades : CIDADES;
+  sel.innerHTML = (cidades.length > 1 ? '<option value="">Selecione...</option>' : '') + cidades.map(c => `<option value="${elEsc(c)}">${elEsc(c)}</option>`).join('');
+  if (cidades.includes(atual)) sel.value = atual;
 }
 function elAoMudarTipoOcorrencia() {
   const t = elGetRadio('el_tipo_oc');
@@ -6313,6 +6346,7 @@ function elAutoTurno() {
 function elAbrirForm(registro) {
   elVoltarPara = usuarioLogado.isAdmin ? 'eleicao-admin' : 'selecao';
   mostrarTela('eleicao-form');
+  document.getElementById('el-form-titulo').textContent = `🗳 ELEIÇÕES 2026 — ${elTurnoDaData(dataHojeLocal()).toUpperCase()} — OCORRÊNCIA ELEITORAL`;
   elMontarForm();
   elLimparForm(true);
   if (registro) elPreencherForm(registro);
@@ -6336,7 +6370,6 @@ function elLimparForm(silencioso) {
   document.getElementById('el-data').value = hoje;
   document.getElementById('el-hora').value = '';
   document.getElementById('el-turno').value = elTurnoDaData(hoje);
-  document.getElementById('el-num-bo').value = '';
   document.getElementById('el-bairro').value = '';
   document.getElementById('el-candidato-nome').value = '';
   document.getElementById('el-candidato-nome').readOnly = false;
@@ -6357,8 +6390,8 @@ function elPreencherForm(r) {
   const selDel = document.getElementById('el-delegacia');
   if (!Array.from(selDel.options).some(o => o.value === r.delegacia)) selDel.insertAdjacentHTML('beforeend', `<option value="${elEsc(r.delegacia)}">${elEsc(r.delegacia)}</option>`);
   selDel.value = r.delegacia;
+  elAoMudarDelegacia();
   document.getElementById('el-turno').value = r.turno || elTurnoDaData(r.data);
-  document.getElementById('el-num-bo').value = r.num_bo || '';
   document.getElementById('el-municipio').value = r.municipio || '';
   document.getElementById('el-bairro').value = r.bairro || '';
   document.getElementById('el-data').value = r.data || '';
@@ -6381,9 +6414,8 @@ function elPreencherForm(r) {
 // ---------- Salvar ----------
 function elColetar() {
   return {
-    turno: document.getElementById('el-turno').value,
+    turno: elTurnoDaData(document.getElementById('el-data').value),
     delegacia: document.getElementById('el-delegacia').value,
-    num_bo: document.getElementById('el-num-bo').value.trim() || null,
     municipio: document.getElementById('el-municipio').value,
     bairro: document.getElementById('el-bairro').value.trim(),
     tipo_ocorrencia: elGetRadio('el_tipo_oc'),
@@ -6588,7 +6620,7 @@ function elCamposForms(r) {
   ];
 }
 function elLinhasForms(r) {
-  const ref = [['Delegacia (ref.)', r.delegacia], ['Nº BO SPP (ref.)', r.num_bo || '—'], ['Registrado por (ref.)', MAPA_SERVIDOR_CUSTODIA[r.escrivao] || r.escrivao]];
+  const ref = [['Delegacia (ref.)', r.delegacia], ['Registrado por (ref.)', MAPA_SERVIDOR_CUSTODIA[r.escrivao] || r.escrivao]];
   return ref.map(([k, v]) => `<div class="el-linha ref" onclick="elCopiarLinha(this)"><span class="k">${elEsc(k)}</span><span class="v">${elEsc(v)}</span></div>`).join('')
     + elCamposForms(r).map(([k, v]) => `<div class="el-linha" onclick="elCopiarLinha(this)" title="Clique para copiar"><span class="k">${elEsc(k)}</span><span class="v">${elEsc(v)}</span></div>`).join('');
 }
