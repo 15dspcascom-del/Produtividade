@@ -1307,6 +1307,8 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         <h2>🗳 ELEIÇÕES 2026 — OCORRÊNCIAS ELEITORAIS</h2>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn-novo" style="background:#d4a017;color:var(--azul);" onclick="elNovoAdmin()">+ Nova Ocorrência</button>
+ <button class="btn-novo" style="background:#2c3e50;" onclick="elTestarEmail()">✉️ Testar aviso por e-mail</button>
+          <button class="btn-novo" id="el-btn-som" style="background:var(--verde);" onclick="elAlternarSom()">🔊 Alerta sonoro: LIGADO</button>
           <a class="btn-novo" id="el-link-forms" target="_blank" rel="noopener" style="text-decoration:none;background:var(--verde);">↗ Abrir Formulário da Superintendência</a>
           <button class="btn-voltar" onclick="mostrarTela('admin')">← Voltar</button>
         </div>
@@ -6120,6 +6122,56 @@ function elUnidadeSugerida() {
   return '';
 }
 
+// ============================================================
+// AVISO POR E-MAIL a cada NOVA ocorrência eleitoral (serviço gratuito FormSubmit.co)
+// Na 1ª vez o FormSubmit manda um e-mail de ATIVAÇÃO para o endereço abaixo: é preciso clicar em "Activate Form".
+// Deixe destino vazio ('') para desligar o aviso.
+// ============================================================
+const EMAIL_AVISO = {
+  destino: '15dspc.ascom@gmail.com'
+};
+function elAvisarEmail(d, registradoPor) {
+  if (!EMAIL_AVISO.destino) return Promise.resolve(false);
+  const payload = {
+    _subject: `🗳 Nova ocorrência eleitoral — ${d.delegacia} — ${elDataBR(d.data)} ${d.hora || ''}`.trim(),
+    _template: 'table',
+    _captcha: 'false',
+    'Turno': d.turno,
+    'Unidade': d.delegacia,
+    'Município / Bairro': `${d.municipio} / ${d.bairro}`,
+    'Data / Hora da ocorrência': `${elDataBR(d.data)} às ${d.hora || ''}`,
+    'Tipo da ocorrência': d.tipo_ocorrencia,
+    'Tipo de crime': d.tipo_crime,
+    'Crime(s)': (d.crimes || []).join('; '),
+    'Candidato': d.tipo_ocorrencia === 'COM Candidato' ? `${d.candidato_nome}${d.candidato_preso === 'Sim' ? ' (PRESO)' : ''}` : 'Prejudicado',
+    'Procedimento': d.procedimento,
+    'Conclusão': (d.conclusao || []).join('; '),
+    'Providência complementar': (d.providencias || []).join('; '),
+    'Condução/Prisão': d.conducao,
+    'Apreensões': (d.apreensoes || []).join('; '),
+    'Material apreendido': d.material_detalhe,
+    'Observações': d.observacoes,
+    'Registrado por': registradoPor,
+    'Situação': 'Pendente de lançamento no formulário da Superintendência'
+  };
+  return fetch(`https://formsubmit.co/ajax/${encodeURIComponent(EMAIL_AVISO.destino)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(r => r.ok).catch(() => false);   // o aviso nunca impede o registro
+}
+async function elTestarEmail() {
+  if (!EMAIL_AVISO.destino) { alert('Aviso por e-mail desligado (EMAIL_AVISO.destino vazio).'); return; }
+  const ok = await elAvisarEmail({
+    turno: elTurnoDaData(dataHojeLocal()), delegacia: 'TESTE', municipio: 'Patos', bairro: 'Centro',
+    data: dataHojeLocal(), hora: '00:00', tipo_ocorrencia: 'SEM Candidato', tipo_crime: 'TESTE DE AVISO',
+    crimes: ['Mensagem de teste do sistema'], procedimento: '-', conclusao: [], providencias: [], conducao: '-',
+    apreensoes: [], material_detalhe: '-', observacoes: 'Se você recebeu este e-mail, o aviso está funcionando.'
+  }, 'Administrador');
+  alert(ok ? `E-mail de teste enviado para ${EMAIL_AVISO.destino}.\n\nSe for a primeira vez, chegará antes um e-mail do FormSubmit pedindo ATIVAÇÃO — clique em "Activate Form" e depois envie o teste de novo.`
+           : 'Não foi possível enviar o e-mail de teste. Verifique a internet e tente novamente.');
+}
+
 const EL_TIPO_OCORRENCIA = ['COM Candidato', 'SEM Candidato'];
 const EL_TIPOS_CRIME = ['Crimes comuns contra candidatos', 'Crimes comuns nos locais de votação/apuração', 'Crimes eleitorais'];
 const EL_CRIMES = {
@@ -6554,6 +6606,7 @@ async function elSalvar() {
       await supa.patch('registros_eleicao', `id=eq.${elEditId}`, { ...d, atualizado_em: new Date().toISOString() });
     } else {
       await supa.post('registros_eleicao', { ...d, escrivao: usuarioLogado.nome, hora_registro: new Date().toISOString() });
+      elAvisarEmail(d, MAPA_SERVIDOR_CUSTODIA[usuarioLogado.nome] || usuarioLogado.nome);
     }
     try { await supa.del('registros_eleicao', elQsSemOc(d.delegacia, d.data)); } catch (e) { console.warn('Não removeu sem ocorrência:', e); }
     const editou = !!elEditId;
@@ -6653,6 +6706,7 @@ async function elExcluir(id, ehAdmin) {
 
 // ---------- Painel da Assessoria (admin) ----------
 function iniciarEleicaoAdmin() {
+  elIniciarMonitor();
   elMudarAba(elAba, true);
   document.getElementById('el-link-forms').href = ELEICAO.linkForms;
   const sel = document.getElementById('elf-delegacia');
@@ -7177,6 +7231,102 @@ async function elCopiarPendencias() {
   }
   const txt = L.join('\n');
   if (await elCopiarTexto(txt)) alert('Lista copiada! Cole no WhatsApp.'); else alert(txt);
+}
+
+
+// ---------- ALERTA SONORO + NARRAÇÃO no painel do admin (verifica novos registros a cada 15 s) ----------
+let elSomLigado = true;
+let elMonitorTimer = null;
+let elUltimoIdEleit = null, elUltimoIdComum = null;
+
+function elAlternarSom() {
+  elSomLigado = !elSomLigado;
+  const b = document.getElementById('el-btn-som');
+  b.textContent = elSomLigado ? '🔊 Alerta sonoro: LIGADO' : '🔇 Alerta sonoro: DESLIGADO';
+  b.style.background = elSomLigado ? 'var(--verde)' : '#7f8c8d';
+  if (elSomLigado) elFalar('Alerta sonoro ligado.');
+  else if (window.speechSynthesis) speechSynthesis.cancel();
+}
+function elBip() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [[880, 0], [1175, 0.18], [880, 0.36]].forEach(([f, t]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.16);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.17);
+    });
+    setTimeout(() => ctx.close(), 900);
+  } catch (e) {}
+}
+function elNomeFalado(unidade) {
+  return String(unidade || '')
+    .replace(/^Central - Patos$/, 'Central de Polícia de Patos')
+    .replace(/^DP /, 'Delegacia de ')
+    .replace(/\bDHE\b/, 'D H E').replace(/\bDRF\b/, 'D R F').replace(/\bDEAM\b/, 'Deam');
+}
+function elFalar(texto) {
+  if (!window.speechSynthesis) return;
+  const u = new SpeechSynthesisUtterance(texto);
+  u.lang = 'pt-BR'; u.rate = 0.95; u.pitch = 1;
+  const voz = speechSynthesis.getVoices().find(v => /pt[-_]BR/i.test(v.lang)) || speechSynthesis.getVoices().find(v => /^pt/i.test(v.lang));
+  if (voz) u.voice = voz;
+  speechSynthesis.speak(u);
+}
+function elAnunciar(texto) {
+  if (!elSomLigado) return;
+  elBip();
+  setTimeout(() => elFalar(texto), 650);
+}
+function elTelaMonitorAberta() {
+  const t = document.getElementById('tela-eleicao-admin');
+  return t && t.style.display !== 'none' && t.classList.contains('ativa');
+}
+async function elIniciarMonitor() {
+  if (elMonitorTimer) clearInterval(elMonitorTimer);
+  if (window.speechSynthesis) speechSynthesis.getVoices(); // pré-carrega as vozes
+  await elVerificarNovos(true);
+  elMonitorTimer = setInterval(() => {
+    if (!elTelaMonitorAberta() || !usuarioLogado || !usuarioLogado.isAdmin) { clearInterval(elMonitorTimer); elMonitorTimer = null; return; }
+    elVerificarNovos(false);
+  }, 15000);
+}
+async function elVerificarNovos(primeiraVez) {
+  try {
+    if (primeiraVez || elUltimoIdEleit === null) {
+      const [e, c] = await Promise.all([
+        supa.get('registros_eleicao', '?select=id&order=id.desc&limit=1'),
+        supa.get('registros_eleicao_comuns', '?select=id&order=id.desc&limit=1')
+      ]);
+      elUltimoIdEleit = e.length ? e[0].id : 0;
+      elUltimoIdComum = c.length ? c[0].id : 0;
+      return;
+    }
+    const [novosE, novosC] = await Promise.all([
+      supa.get('registros_eleicao', `?id=gt.${elUltimoIdEleit}&select=id,delegacia,tipo_crime&order=id.asc`),
+      supa.get('registros_eleicao_comuns', `?id=gt.${elUltimoIdComum}&select=id,delegacia,procedimento&order=id.asc`)
+    ]);
+    if (!novosE.length && !novosC.length) return;
+    novosE.forEach(r => {
+      elUltimoIdEleit = Math.max(elUltimoIdEleit, r.id);
+      elAnunciar(elEhSemOc(r)
+        ? `Unidade ${elNomeFalado(r.delegacia)} informou sem ocorrência eleitoral.`
+        : `Nova ocorrência eleitoral registrada, na unidade ${elNomeFalado(r.delegacia)}.`);
+    });
+    // crimes comuns: um aviso por unidade (um envio gera várias linhas)
+    const porUnid = {};
+    novosC.forEach(r => { elUltimoIdComum = Math.max(elUltimoIdComum, r.id); (porUnid[r.delegacia] = porUnid[r.delegacia] || []).push(r); });
+    Object.entries(porUnid).forEach(([u, rows]) => {
+      elAnunciar(rows.every(r => r.procedimento === 'SEM OCORRÊNCIAS')
+        ? `Unidade ${elNomeFalado(u)} informou sem ocorrências de crimes comuns.`
+        : `Nova ocorrência comum registrada, na unidade ${elNomeFalado(u)}.`);
+    });
+    // atualiza a lista da aba aberta
+    if (elAba === 'comuns') elCarregarComuns(); else elCarregarAdmin();
+  } catch (e) { console.warn('Monitor eleições:', e); }
 }
 
 </script>
