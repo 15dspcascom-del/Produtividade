@@ -1182,6 +1182,10 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         <div class="el-bloco-titulo">IDENTIFICAÇÃO (controle interno)</div>
         <div class="el-bloco-corpo">
           <div class="fm-item"><label>Delegacia / Unidade *</label><select id="el-delegacia" onchange="elAoMudarDelegacia()"></select></div>
+          <div id="el-semoc-wrap" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px dashed var(--cinza-borda);">
+            <button type="button" class="btn-sem-ocorrencias" id="el-btn-semoc" onclick="elEnviarSemOcorrencia()">⚪ Sem Ocorrência Eleitoral</button>
+            <span style="font-size:11.5px;color:var(--texto-leve);flex:1;min-width:220px;">Use se a unidade <strong>não teve</strong> crime eleitoral no dia (data informada abaixo). Se depois houver uma ocorrência, basta registrá-la: o "sem ocorrência" é retirado automaticamente.</span>
+          </div>
         </div>
       </div>
 
@@ -6551,6 +6555,7 @@ async function elSalvar() {
     } else {
       await supa.post('registros_eleicao', { ...d, escrivao: usuarioLogado.nome, hora_registro: new Date().toISOString() });
     }
+    try { await supa.del('registros_eleicao', elQsSemOc(d.delegacia, d.data)); } catch (e) { console.warn('Não removeu sem ocorrência:', e); }
     const editou = !!elEditId;
     elEditId = null;
     elFeedbackPendente = true;
@@ -6561,6 +6566,36 @@ async function elSalvar() {
   } finally {
     btn.disabled = false; txt.textContent = txtOriginal; sp.style.display = 'none';
   }
+}
+
+// ---------- "SEM OCORRÊNCIA" eleitoral (marcador por unidade/dia na própria tabela registros_eleicao) ----------
+const EL_SEMOC = 'SEM OCORRÊNCIA';
+function elEhSemOc(r) { return r && r.tipo_crime === EL_SEMOC; }
+function elQsSemOc(unidade, data) {
+  return `delegacia=eq.${encodeURIComponent(unidade)}&data=eq.${data}&tipo_crime=eq.${encodeURIComponent(EL_SEMOC)}`;
+}
+async function elEnviarSemOcorrencia() {
+  const unidade = document.getElementById('el-delegacia').value;
+  const data = document.getElementById('el-data').value || dataHojeLocal();
+  if (!unidade) { alert('Selecione a Delegacia / Unidade.'); return; }
+  const btn = document.getElementById('el-btn-semoc');
+  btn.disabled = true;
+  try {
+    const existentes = await supa.get('registros_eleicao', `?delegacia=eq.${encodeURIComponent(unidade)}&data=eq.${data}&select=id,tipo_crime`);
+    if (existentes.some(r => !elEhSemOc(r))) { alert(`A unidade ${unidade} já tem ocorrência eleitoral registrada em ${elDataBR(data)}. Não é possível marcar "Sem Ocorrência".`); return; }
+    if (existentes.some(elEhSemOc)) { alert(`"Sem Ocorrência" já foi informado para ${unidade} em ${elDataBR(data)}.`); return; }
+    if (!confirm(`Confirmar SEM OCORRÊNCIA ELEITORAL para ${unidade} em ${elDataBR(data)}?`)) return;
+    const muni = (EL_UNIDADES.find(u => u.nome === unidade) || { cidades: ['—'] }).cidades[0];
+    await supa.post('registros_eleicao', {
+      turno: elTurnoDaData(data), delegacia: unidade, municipio: muni, bairro: '—',
+      tipo_ocorrencia: EL_SEMOC, data, hora: null, tipo_crime: EL_SEMOC, crimes: [],
+      escrivao: usuarioLogado.nome, hora_registro: new Date().toISOString(), lancado: true
+    });
+    elFeedbackPendente = true;
+    mostrarFeedback(true, 'Sem ocorrência registrado!', `${unidade} — ${elDataBR(data)}: sem ocorrência eleitoral.\n\nSe surgir alguma ocorrência depois, registre normalmente que este aviso é retirado automaticamente.`);
+  } catch (e) {
+    mostrarFeedback(false, 'Erro ao enviar', e.message);
+  } finally { btn.disabled = false; }
 }
 
 // Chamado por fecharFeedback(): volta ao lugar certo depois de salvar
@@ -6578,7 +6613,10 @@ async function elCarregarMeus() {
     const rows = await supa.get('registros_eleicao', `?escrivao=eq.${encodeURIComponent(usuarioLogado.nome)}&select=*&order=data.desc,id.desc`);
     window._elMeus = rows;
     if (!rows.length) { cont.innerHTML = '<div class="registros-vazio" style="padding:20px;text-align:center;color:var(--texto-leve);font-size:13px;">Nenhuma ocorrência eleitoral registrada por você.</div>'; return; }
-    cont.innerHTML = rows.map((r, i) => elCardResumo(r, `
+    cont.innerHTML = rows.map((r, i) => elEhSemOc(r) ? `<div class="el-reg lancado"><div class="el-reg-topo"><div>
+        <div class="el-reg-titulo">⚪ Sem ocorrência eleitoral · ${elEsc(r.delegacia)} · ${elDataBR(r.data)}</div>
+        <div class="el-reg-sub">Informado por: ${elEsc(MAPA_SERVIDOR_CUSTODIA[r.escrivao] || r.escrivao)}</div></div></div>
+        <div class="el-reg-acoes"><button class="el-btn vermelho" onclick="elExcluir(${r.id}, false)">🗑 Excluir</button></div></div>` : elCardResumo(r, `
       ${r.lancado ? '' : `<button class="el-btn" onclick="elAbrirForm(window._elMeus[${i}])">✏️ Editar</button>
       <button class="el-btn vermelho" onclick="elExcluir(${r.id}, false)">🗑 Excluir</button>`}`)).join('');
   } catch (e) {
@@ -6625,7 +6663,7 @@ async function elCarregarAdmin() {
   const cont = document.getElementById('el-admin-lista');
   cont.innerHTML = '<div class="admin-loading">Carregando...</div>';
   try {
-    elRegistrosAdmin = await supa.getAll('registros_eleicao', '?select=*&order=data.desc,id.desc');
+    elRegistrosAdmin = (await supa.getAll('registros_eleicao', '?select=*&order=data.desc,id.desc')).filter(r => !elEhSemOc(r));
     elRenderAdmin();
   } catch (e) {
     const semTabela = /registros_eleicao/.test(e.message) && /(does not exist|not find|PGRST205|42P01)/i.test(e.message);
@@ -6932,14 +6970,16 @@ async function gerarRelatorioEleicao() {
       supa.getAll('registros_eleicao', '?select=*&order=data.asc,hora.asc'),
       supa.getAll('registros_eleicao_comuns', '?select=*&order=data.asc,id.asc')
     ]);
-    const E = eleit.filter(r => !turno || r.turno === turno);
+    const E = eleit.filter(r => !elEhSemOc(r) && (!turno || r.turno === turno));
+    const S = eleit.filter(r => elEhSemOc(r) && (!turno || r.turno === turno));
     const C = comuns.filter(r => !turno || elTurnoDaData(r.data) === turno);
-    document.getElementById('rel-el-texto').value = montarTextoEleicao(E, C, turno);
+    document.getElementById('rel-el-texto').value = montarTextoEleicao(E, C, turno, S);
   } catch (e) {
     alert('Erro ao gerar: ' + e.message + '\n\nVerifique se as tabelas registros_eleicao e registros_eleicao_comuns foram criadas no Supabase.');
   } finally { btn.disabled = false; btn.textContent = '📲 Gerar Relatório'; }
 }
-function montarTextoEleicao(E, C, turno) {
+function montarTextoEleicao(E, C, turno, S) {
+  S = S || [];
   const pad = n => String(parseInt(n) || 0).padStart(2, '0');
   const L = [];
   L.push('*POLÍCIA CIVIL*');
@@ -6981,6 +7021,20 @@ function montarTextoEleicao(E, C, turno) {
       L.push(`• Unidade: ${r.delegacia}`);
       L.push('');
     });
+  }
+
+  // Unidades que informaram "Sem ocorrência" eleitoral (ordem da lista de unidades, com os dias)
+  if (S.length) {
+    const porUnid = {};
+    S.forEach(r => { (porUnid[r.delegacia] = porUnid[r.delegacia] || new Set()).add(r.data); });
+    const ordem = EL_UNIDADES.map(u => u.nome);
+    const unids = Object.keys(porUnid).sort((a, b) => (ordem.indexOf(a) + 1 || 99) - (ordem.indexOf(b) + 1 || 99));
+    L.push('*UNIDADES SEM OCORRÊNCIA ELEITORAL:*');
+    unids.forEach(u => {
+      const dias = [...porUnid[u]].sort().map(d => elDataBR(d).slice(0, 5));
+      L.push(`• ${u} (${dias.length > 1 ? dias.slice(0, -1).join(', ') + ' e ' + dias[dias.length - 1] : dias[0]})`);
+    });
+    L.push('');
   }
 
   // ===== B) CRIMES COMUNS =====
@@ -7070,44 +7124,57 @@ function elHoraDe(iso) { if (!iso) return ''; const d = new Date(iso); return `$
 function elRenderEnvios() {
   const { comuns, eleit } = elEnviosCache;
   const nomes = EL_UNIDADES.map(u => u.nome);
-  let enviaram = 0;
+  let okComuns = 0, okEleit = 0;
   const cards = EL_UNIDADES.map(u => {
     const rc = comuns.filter(r => r.delegacia === u.nome);
-    const re = eleit.filter(r => r.delegacia === u.nome);
-    const ok = rc.length > 0;
-    if (ok) enviaram++;
+    const reAll = eleit.filter(r => r.delegacia === u.nome);
+    const reOc = reAll.filter(r => !elEhSemOc(r));
+    const reSem = reAll.some(elEhSemOc) && !reOc.length;
+    const cOk = rc.length > 0, eOk = reOc.length > 0 || reSem;
+    if (cOk) okComuns++; if (eOk) okEleit++;
     const sem = rc.length && rc.every(r => r.procedimento === 'SEM OCORRÊNCIAS');
     const total = rc.filter(r => r.procedimento !== 'SEM OCORRÊNCIAS').reduce((a, r) => a + (r.quantidade || 0), 0);
-    const quem = [...new Set(rc.map(r => MAPA_SERVIDOR_CUSTODIA[r.escrivao] || r.escrivao).filter(Boolean))].join(', ');
-    const hora = rc.length ? elHoraDe(rc[rc.length - 1].hora_registro || rc[rc.length - 1].criado_em) : '';
-    return `<div class="elenv-card ${ok ? 'ok' : ''}">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
-        <h4>${elEsc(u.nome)}</h4>
-        <span class="elenv-st ${ok ? 'ok' : 'nao'}">${ok ? '✓ ENVIOU' : '✕ NÃO ENVIOU'}</span>
-      </div>
+    const quemC = [...new Set(rc.map(r => MAPA_SERVIDOR_CUSTODIA[r.escrivao] || r.escrivao).filter(Boolean))].join(', ');
+    const horaC = rc.length ? elHoraDe(rc[rc.length - 1].hora_registro || rc[rc.length - 1].criado_em) : '';
+    const quemE = [...new Set(reAll.map(r => MAPA_SERVIDOR_CUSTODIA[r.escrivao] || r.escrivao).filter(Boolean))].join(', ');
+    const horaE = reAll.length ? elHoraDe(reAll[reAll.length - 1].hora_registro) : '';
+    const badge = cOk && eOk ? '<span class="elenv-st ok">✓ COMPLETO</span>'
+      : (cOk || eOk ? '<span class="elenv-st" style="background:rgba(212,160,23,0.18);color:#8a6500;">⚠ PARCIAL</span>' : '<span class="elenv-st nao">✕ NÃO ENVIOU</span>');
+    const pend = '<span style="color:var(--vermelho);font-weight:600;">pendente</span>';
+    return `<div class="elenv-card ${cOk && eOk ? 'ok' : ''}" style="${cOk !== eOk ? 'border-left-color:#d4a017;' : ''}">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;"><h4>${elEsc(u.nome)}</h4>${badge}</div>
       <div class="cid">${elEsc(u.cidades.join(', '))}</div>
-      <div class="elenv-linha">📋 Crimes comuns: ${ok ? (sem ? 'Sem ocorrências' : `<strong>${total}</strong> procedimento(s)`) : '<span style="color:var(--vermelho);">pendente</span>'}</div>
-      ${ok ? `<div class="elenv-linha">👤 ${elEsc(quem)}${hora ? ' · ' + hora : ''}</div>` : ''}
-      <div class="elenv-linha">🗳 Crimes eleitorais: <strong>${re.length}</strong></div>
+      <div class="elenv-linha">🗳 Crimes eleitorais: ${reOc.length ? `<strong>${reOc.length}</strong> ocorrência(s)` : (reSem ? 'Sem ocorrência' : pend)}${eOk && quemE ? ` <span style="color:var(--texto-leve);">· ${elEsc(quemE)}${horaE ? ' ' + horaE : ''}</span>` : ''}</div>
+      <div class="elenv-linha">📋 Crimes comuns: ${cOk ? (sem ? 'Sem ocorrências' : `<strong>${total}</strong> procedimento(s)`) : pend}${cOk && quemC ? ` <span style="color:var(--texto-leve);">· ${elEsc(quemC)}${horaC ? ' ' + horaC : ''}</span>` : ''}</div>
     </div>`;
   }).join('');
   const outras = [...new Set([...comuns, ...eleit].map(r => r.delegacia).filter(d => d && !nomes.includes(d)))];
+  const n = EL_UNIDADES.length;
   document.getElementById('elenv-kpis').innerHTML = `
-    <div class="el-kpi"><div class="n" style="color:var(--verde);">${enviaram}</div><div class="t">Unidades que enviaram</div></div>
-    <div class="el-kpi"><div class="n" style="color:var(--vermelho);">${EL_UNIDADES.length - enviaram}</div><div class="t">Não enviaram</div></div>
-    <div class="el-kpi"><div class="n">${comuns.filter(r => r.procedimento !== 'SEM OCORRÊNCIAS').reduce((a, r) => a + (r.quantidade || 0), 0)}</div><div class="t">Procedimentos (crimes comuns)</div></div>
-    <div class="el-kpi"><div class="n">${eleit.length}</div><div class="t">Crimes eleitorais</div></div>`;
+    <div class="el-kpi"><div class="n" style="color:${okEleit === n ? 'var(--verde)' : 'var(--vermelho)'};">${okEleit}/${n}</div><div class="t">Informaram crimes eleitorais</div></div>
+    <div class="el-kpi"><div class="n" style="color:${okComuns === n ? 'var(--verde)' : 'var(--vermelho)'};">${okComuns}/${n}</div><div class="t">Enviaram crimes comuns</div></div>
+    <div class="el-kpi"><div class="n">${eleit.filter(r => !elEhSemOc(r)).length}</div><div class="t">Ocorrências eleitorais</div></div>
+    <div class="el-kpi"><div class="n">${comuns.filter(r => r.procedimento !== 'SEM OCORRÊNCIAS').reduce((a, r) => a + (r.quantidade || 0), 0)}</div><div class="t">Procedimentos (crimes comuns)</div></div>`;
   document.getElementById('elenv-lista').innerHTML = `<div class="elenv-grid">${cards}</div>` +
     (outras.length ? `<div class="el-aviso" style="margin-top:16px;">Registros com unidade fora da lista: ${elEsc(outras.join(', '))}</div>` : '');
 }
 async function elCopiarPendencias() {
   if (!elEnviosCache) return;
-  const { dia, comuns } = elEnviosCache;
-  const pend = EL_UNIDADES.filter(u => !comuns.some(r => r.delegacia === u.nome));
-  const rot = (elDiasEleicao().find(d => d.iso === dia) || { rotulo: elDataBR(dia) }).rotulo;
-  const L = [`*🗳 ELEIÇÕES 2026 — ${elTurnoDaData(dia).toUpperCase()}*`, `*UNIDADES SEM ENVIO — ${rot.replace(/\s*\(.*\)/, '').toUpperCase()}*`, ''];
-  if (!pend.length) L.push('✅ Todas as unidades enviaram.');
-  else { pend.forEach(u => L.push(`• ${u.nome}`)); L.push(''); L.push('Favor registrar os crimes comuns do período (ou "Sem ocorrências") no sistema.'); }
+  const { dia, comuns, eleit } = elEnviosCache;
+  const pendE = EL_UNIDADES.filter(u => !eleit.some(r => r.delegacia === u.nome));
+  const pendC = EL_UNIDADES.filter(u => !comuns.some(r => r.delegacia === u.nome));
+  const rot = (elDiasEleicao().find(d => d.iso === dia) || { rotulo: elDataBR(dia) }).rotulo.replace(/\s*\(.*\)/, '').toUpperCase();
+  const L = [`*🗳 ELEIÇÕES 2026 — ${elTurnoDaData(dia).toUpperCase()}*`, `*PENDÊNCIAS DE ENVIO — ${rot}*`, ''];
+  if (!pendE.length && !pendC.length) { L.push('✅ Todas as unidades enviaram.'); }
+  else {
+    L.push('*CRIMES ELEITORAIS:*');
+    if (pendE.length) pendE.forEach(u => L.push(`• ${u.nome}`)); else L.push('✅ Todas informaram.');
+    L.push('');
+    L.push('*CRIMES COMUNS:*');
+    if (pendC.length) pendC.forEach(u => L.push(`• ${u.nome}`)); else L.push('✅ Todas enviaram.');
+    L.push('');
+    L.push('Favor registrar no sistema (ou informar "Sem ocorrência").');
+  }
   const txt = L.join('\n');
   if (await elCopiarTexto(txt)) alert('Lista copiada! Cole no WhatsApp.'); else alert(txt);
 }
