@@ -6073,11 +6073,11 @@ function fecharFeedback() {
 // Tabela Supabase: registros_eleicao
 // ============================================================
 const ELEICAO = {
-  // Botão "EXTRA" aparece para os escrivães SOMENTE nestas janelas (sábado 00:00 até segunda 08:00 de cada turno).
+  // Botão "EXTRA" aparece para os escrivães SOMENTE nestas janelas (sábado 00:00 até segunda 09:00 de cada turno).
   // Fora delas some sozinho; os dados continuam no banco e o painel do admin funciona sempre.
   janelas: [
-    { inicio: '2026-10-03T00:00', fim: '2026-10-05T08:00' },   // 1º turno
-    { inicio: '2026-10-24T00:00', fim: '2026-10-26T08:00' }    // 2º turno
+    { inicio: '2026-10-03T00:00', fim: '2026-10-05T09:00' },   // 1º turno
+    { inicio: '2026-10-24T00:00', fim: '2026-10-26T09:00' }    // 2º turno
   ],
   divisaTurnos: '2026-10-18',        // datas antes disso = 1º Turno; a partir disso = 2º Turno
   linkForms: 'https://forms.gle/zKF2cHfDwtKUMgfB9',
@@ -6287,8 +6287,7 @@ function elRenderBanner() {
         <div class="el-banner-icone" style="background:rgba(26,58,107,0.12);">📋</div>
         <div><h3>CRIMES COMUNS — PERÍODO ELEITORAL — <span class="el-turno-txt">1º TURNO</span></h3>
         <p>Produção do fim de semana da eleição (BOs, APFs, TCOs, BOCs, medidas protetivas, oitivas etc.).</p></div>
-      </div>
-      <p style="font-size:11px;color:var(--texto-leve);text-align:center;margin-top:12px;">Expediente e Plantão voltam na segunda-feira às 08:00.</p>`;
+      </div>`;
     document.getElementById('modal-cards-container').insertAdjacentElement('afterend', wrap);
   }
   const ativo = eleicaoAtiva() && elUsuarioPodeRegistrar();
@@ -7012,8 +7011,11 @@ function iniciarRelatorioEleicao() {
 }
 function elPeriodoTurnoTxt(turno) {
   const j = turno === '2º Turno' ? ELEICAO.janelas[1] : ELEICAO.janelas[0];
-  const ini = j.inicio.slice(0, 10), fim = j.fim.slice(0, 10);
-  return `${elDataBR(ini).slice(0, 5)} a ${elDataBR(fim)}`;
+  const ini = j.inicio.slice(0, 10);
+  const [y, m, d] = ini.split('-').map(Number);
+  const dom = new Date(y, m - 1, d + 1);
+  const domISO = `${dom.getFullYear()}-${String(dom.getMonth() + 1).padStart(2, '0')}-${String(dom.getDate()).padStart(2, '0')}`;
+  return `${elDataBR(ini)} a ${elDataBR(domISO)}`;
 }
 async function gerarRelatorioEleicao() {
   const btn = document.getElementById('rel-el-btn');
@@ -7032,6 +7034,11 @@ async function gerarRelatorioEleicao() {
     alert('Erro ao gerar: ' + e.message + '\n\nVerifique se as tabelas registros_eleicao e registros_eleicao_comuns foram criadas no Supabase.');
   } finally { btn.disabled = false; btn.textContent = '📲 Gerar Relatório'; }
 }
+function elTituloUnidadeRel(nome) {
+  const u = EL_UNIDADES.find(x => x.nome === nome);
+  const t = (u && u.cidades.length === 1 && u.cidades[0] === 'Patos' && !nome.includes('Patos')) ? `Patos - ${nome}` : nome;
+  return t.toUpperCase();
+}
 function montarTextoEleicao(E, C, turno, S) {
   S = S || [];
   const pad = n => String(parseInt(n) || 0).padStart(2, '0');
@@ -7044,86 +7051,46 @@ function montarTextoEleicao(E, C, turno, S) {
   L.push('');
   L.push('*PRODUTIVIDADE DAS UNIDADES DA POLÍCIA CIVIL NA ÁREA DA 15ªDSPC/PATOS DURANTE O PERÍODO ELEITORAL*');
   L.push('');
-  L.push('Seções:');
-  L.push('');
   L.push('A) Crimes eleitorais e relacionados ao pleito;');
-  L.push('B) Crimes comuns no período eleitoral.');
   L.push('');
-
-  // ===== A) CRIMES ELEITORAIS =====
   L.push('*A) CRIMES ELEITORAIS E RELACIONADOS AO PLEITO:*');
   L.push('');
-  if (!E.length) {
+  const ord = [...E].sort((a, b) => `${a.data} ${(a.hora || '').slice(0, 5)} ${String(a.id).padStart(8, '0')}`.localeCompare(`${b.data} ${(b.hora || '').slice(0, 5)} ${String(b.id).padStart(8, '0')}`));
+  if (!ord.length) {
     L.push('Sem registros de crimes eleitorais no período.');
     L.push('');
   } else {
-    const comCand = E.filter(r => r.tipo_ocorrencia === 'COM Candidato').length;
-    L.push(`*Total:* ${pad(E.length)} ocorrência(s) — com candidato: ${pad(comCand)} | sem candidato: ${pad(E.length - comCand)}`);
+    const comCand = ord.filter(r => r.tipo_ocorrencia === 'COM Candidato').length;
+    L.push(`*Total:* ${pad(ord.length)} ocorrência(s) — com candidato: ${pad(comCand)} | sem candidato: ${pad(ord.length - comCand)}`);
     L.push('');
-    E.forEach((r, i) => {
-      L.push(`*${i + 1}) ${String(r.tipo_crime || '').toUpperCase()}*`);
+    ord.forEach((r, i) => {
+      L.push(`*${i + 1}) ${elTituloUnidadeRel(r.delegacia)}*`);
+      L.push('');
       L.push(`• Local: ${r.municipio}${r.bairro ? ' / ' + r.bairro : ''}`);
       L.push(`• Data/Hora: ${elDataBR(r.data)} às ${(r.hora || '').slice(0, 5)}`);
       L.push(`• Crime(s): ${(r.crimes || []).join('; ')}`);
       if (r.tipo_ocorrencia === 'COM Candidato') L.push(`• Candidato: ${r.candidato_nome}${r.candidato_preso === 'Sim' ? ' (PRESO)' : ''}`);
       L.push(`• Procedimento: ${r.procedimento}`);
       L.push(`• Condução/Prisão: ${r.conducao}`);
-      const prov = (r.providencias || []).filter(x => x !== 'Nenhuma');
-      if (prov.length) L.push(`• Providências: ${prov.join('; ')}`);
       const apr = (r.apreensoes || []).filter(x => x !== 'Não houve apreensão');
       if (apr.length) L.push(`• Apreensões: ${apr.join('; ')}${r.material_detalhe ? ' — ' + r.material_detalhe : ''}`);
-      L.push(`• Unidade: ${r.delegacia}`);
+      const prov = (r.providencias || []).filter(x => x !== 'Nenhuma');
+      if (prov.length) L.push(`• Providências: ${prov.join('; ')}`);
       L.push('');
     });
   }
 
-  // Unidades que informaram "Sem ocorrência" eleitoral (ordem da lista de unidades, com os dias)
-  if (S.length) {
-    const porUnid = {};
-    S.forEach(r => { (porUnid[r.delegacia] = porUnid[r.delegacia] || new Set()).add(r.data); });
-    const ordem = EL_UNIDADES.map(u => u.nome);
-    const unids = Object.keys(porUnid).sort((a, b) => (ordem.indexOf(a) + 1 || 99) - (ordem.indexOf(b) + 1 || 99));
+  // Unidades que informaram "Sem ocorrência" e não tiveram nenhuma ocorrência no período
+  const comOcorrencia = new Set(ord.map(r => r.delegacia));
+  const ordem = EL_UNIDADES.map(u => u.nome);
+  const semOc = [...new Set(S.map(r => r.delegacia))].filter(u => !comOcorrencia.has(u))
+    .sort((a, b) => (ordem.indexOf(a) + 1 || 99) - (ordem.indexOf(b) + 1 || 99));
+  if (semOc.length) {
     L.push('*UNIDADES SEM OCORRÊNCIA ELEITORAL:*');
-    unids.forEach(u => {
-      const dias = [...porUnid[u]].sort().map(d => elDataBR(d).slice(0, 5));
-      L.push(`• ${u} (${dias.length > 1 ? dias.slice(0, -1).join(', ') + ' e ' + dias[dias.length - 1] : dias[0]})`);
-    });
+    semOc.forEach(u => L.push(`• ${u}`));
     L.push('');
   }
-
-  // ===== B) CRIMES COMUNS =====
-  L.push('*B) CRIMES COMUNS NO PERÍODO ELEITORAL:*');
-  L.push('');
-  if (!C.length) {
-    L.push('Sem registros de crimes comuns no período.');
-  } else {
-    const grupos = {};
-    C.forEach(r => { (grupos[r.delegacia] = grupos[r.delegacia] || []).push(r); });
-    const geral = {};
-    Object.keys(grupos).sort().forEach((del, gi) => {
-      const rows = grupos[del];
-      L.push(`*${String.fromCharCode(97 + gi)}) ${del.toUpperCase()}*`);
-      const prod = rows.filter(r => r.procedimento !== 'SEM OCORRÊNCIAS');
-      if (!prod.length) { L.push('Sem ocorrências.'); L.push(''); return; }
-      const porProc = {};
-      prod.forEach(r => {
-        const k = elNomeProc(r.procedimento);
-        porProc[k] = porProc[k] || { q: 0, det: [] };
-        porProc[k].q += r.quantidade || 0;
-        const det = [r.crime, r.cidade].filter(Boolean).join(' - ');
-        if (det) porProc[k].det.push(det);
-        geral[k] = (geral[k] || 0) + (r.quantidade || 0);
-      });
-      Object.entries(porProc).forEach(([k, v]) => {
-        L.push(`• ${k}: ${pad(v.q)}${v.det.length ? ' (' + v.det.join('; ') + ')' : ''}`);
-      });
-      L.push('');
-    });
-    if (Object.keys(geral).length) {
-      L.push('*TOTAL GERAL — CRIMES COMUNS:*');
-      Object.entries(geral).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => L.push(`• ${k}: ${pad(n)}`));
-    }
-  }
+  L.push('_Assessoria de Estatística 15a DSPC Patos_');
   return L.join('\n').trim();
 }
 async function copiarRelatorioEleicao() {
