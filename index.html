@@ -6267,6 +6267,8 @@ function elTurnoDaData(iso) { return iso && iso >= ELEICAO.divisaTurnos ? '2º T
 
 function eleicaoAtiva() {
   // Teste: abrir o sistema com ?teste_eleicao=1 no fim do endereço força o botão a aparecer
+  // Modo normal forçado: ?modo_normal=1 mostra a tela comum (Expediente, Plantão, B.O.) mesmo durante a eleição
+  if (/[?&]modo_normal=1/.test(location.search)) return false;
   if (/[?&]teste_eleicao=1/.test(location.search)) return true;
   const agora = new Date();
   return ELEICAO.janelas.some(j => agora >= new Date(j.inicio) && agora < new Date(j.fim));
