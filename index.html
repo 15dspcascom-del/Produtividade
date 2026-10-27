@@ -1076,6 +1076,14 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         </p>
       </div>
 
+      <div id="backup-grafico-card" style="display:none;background:var(--branco);border:1.5px solid var(--cinza-borda);border-radius:10px;padding:24px;margin-top:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+          <div class="dashboard-card-titulo">📊 Linhas salvas no último backup</div>
+          <div id="backup-grafico-total" style="font-size:12px;color:var(--texto-leve);"></div>
+        </div>
+        <div id="backup-grafico"></div>
+      </div>
+
       <div style="background:var(--branco);border:1.5px solid var(--cinza-borda);border-radius:10px;padding:24px;margin-top:20px;">
         <div class="dashboard-card-titulo" style="margin-bottom:14px;">📜 Histórico Recente</div>
         <div id="backup-historico-corpo"><p style="color:var(--texto-leve);font-size:13px;">Carregando...</p></div>
@@ -2026,6 +2034,18 @@ const supa = {
 // ============================================================
 // LOGIN
 // ============================================================
+// ============================================================
+// AÇÕES PROTEGIDAS (permissões endurecidas): edições/exclusões passam por funções no Supabase
+// que conferem a senha do administrador. A senha fica só na memória desta sessão.
+// ============================================================
+async function adm(acao, tabela, chave, valor, dados) {
+  if (!usuarioLogado || !usuarioLogado.isAdmin) throw new Error('Ação permitida apenas ao administrador.');
+  return supa.rpc('admin_executar', {
+    p_senha: usuarioLogado._s, p_acao: acao, p_tabela: tabela, p_chave: chave,
+    p_valor: valor == null ? null : String(valor), p_dados: dados || {}
+  });
+}
+
 async function fazerLogin() {
   const nome = document.getElementById('login-nome').value.trim();
   const senha = document.getElementById('login-senha').value;
@@ -2039,7 +2059,7 @@ async function fazerLogin() {
     if (nome.toLowerCase() === 'admin') {
       const okAdmin = await supa.rpc('verificar_login_admin', { p_senha: senha });
       if (okAdmin) {
-        usuarioLogado = { nome: 'Administrador', delegacia: null, isAdmin: true };
+        usuarioLogado = { nome: 'Administrador', delegacia: null, isAdmin: true, _s: senha };
         entrarNoApp();
       } else {
         erroEl.textContent = 'Nome ou senha incorretos.';
@@ -2050,7 +2070,7 @@ async function fazerLogin() {
     const resultado = await supa.rpc('verificar_login_escrivao', { p_nome: nome, p_senha: senha });
     if (!resultado || !resultado.length) { erroEl.textContent = 'Nome ou senha incorretos.'; return; }
     const e = resultado[0];
-    usuarioLogado = { nome: e.nome, cargo: e.cargo || 'Escrivão', delegacias: e.delegacias || [], delegacia: (e.delegacias||[])[0] || '', modalidades: e.modalidades || ['expediente','plantao','bo'], isAdmin: false };
+    usuarioLogado = { nome: e.nome, cargo: e.cargo || 'Escrivão', delegacias: e.delegacias || [], delegacia: (e.delegacias||[])[0] || '', modalidades: e.modalidades || ['expediente','plantao','bo'], isAdmin: false, _s: senha };
     entrarNoApp();
   } catch(err) { erroEl.textContent = 'Erro de conexão.'; }
   finally { btn.textContent = 'ENTRAR'; btn.disabled = false; }
@@ -2096,11 +2116,11 @@ async function salvarEscrivao() {
   try {
     if (nomeAntigo) {
       const payload = { nome, cargo, delegacias, modalidades };
-      await supa.patch('escrivaes', `nome=eq.${encodeURIComponent(nomeAntigo)}`, payload);
-      if (senha) await supa.rpc('definir_senha_escrivao', { p_nome: nome, p_senha: senha }); // só atualiza a senha se algo foi digitado
+      await adm('update', 'escrivaes', 'nome', nomeAntigo, payload);
+      if (senha) await supa.rpc('admin_definir_senha', { p_senha_admin: usuarioLogado._s, p_nome: nome, p_senha: senha }); // só atualiza a senha se algo foi digitado
     } else {
-      await supa.post('escrivaes', { nome, cargo, delegacias, modalidades });
-      await supa.rpc('definir_senha_escrivao', { p_nome: nome, p_senha: senha });
+      await adm('insert', 'escrivaes', 'nome', nome, { nome, cargo, delegacias, modalidades });
+      await supa.rpc('admin_definir_senha', { p_senha_admin: usuarioLogado._s, p_nome: nome, p_senha: senha });
     }
     fecharModalEsc(); carregarEscrivaes();
   } catch(e) {
@@ -2113,7 +2133,7 @@ async function salvarEscrivao() {
 async function excluirEscrivao(nome) {
   if (!confirm(`Excluir o escrivão "${nome}"?`)) return;
   try {
-    await supa.del('escrivaes', `nome=eq.${encodeURIComponent(nome)}`);
+    await adm('delete', 'escrivaes', 'nome', nome);
     carregarEscrivaes();
   } catch(e) { alert('Erro ao excluir: ' + e.message); }
 }
@@ -2151,7 +2171,7 @@ async function fazerBackupCSV() {
 
   try {
     const [escrivaes, registros, registrosBO] = await Promise.all([
-      supa.get('escrivaes', '?select=*&order=nome'),
+      supa.get('escrivaes', '?select=nome,cargo,delegacias,modalidades&order=nome'),
       supa.getAll('registros', '?select=*&order=data.desc'),
       supa.getAll('registros_bo', '?select=*&order=data.desc')
     ]);
@@ -2516,7 +2536,7 @@ async function salvarFeriado() {
   const descricao = document.getElementById('feriado-descricao').value.trim();
   if (!data) { alert('Selecione a data do feriado.'); return; }
   try {
-    await supa.upsert('feriados', { data, descricao }, 'data');
+    await adm('upsert', 'feriados', 'data', data, { data, descricao });
     document.getElementById('feriado-data').value = '';
     document.getElementById('feriado-descricao').value = '';
     await carregarListaFeriados();
@@ -2528,7 +2548,7 @@ async function salvarFeriado() {
 async function excluirFeriado(dataISO) {
   if (!confirm(`Excluir o feriado de ${formatarDataBR(dataISO)}?`)) return;
   try {
-    await supa.del('feriados', `data=eq.${dataISO}`);
+    await adm('delete', 'feriados', 'data', dataISO);
     await carregarListaFeriados();
   } catch(e) {
     alert('Erro ao excluir feriado: ' + e.message);
@@ -3623,7 +3643,8 @@ async function excluirCustodiaFormUsuario() {
   btn.textContent = '⏳ Excluindo...';
 
   try {
-    await supa.del('custodia', `data=eq.${dataISO}`);
+    if (usuarioLogado.isAdmin) await adm('delete', 'custodia', 'data', dataISO);
+    else await supa.rpc('escrivao_excluir_custodia', { p_nome: usuarioLogado.nome, p_senha: usuarioLogado._s, p_data: dataISO });
     alert('✓ Registro excluído com sucesso!');
     // Limpa os campos e recarrega o estado padrão pra data selecionada
     document.getElementById('custform-recebidos-qtd').value = 0;
@@ -4785,6 +4806,11 @@ async function carregarStatusBackup() {
       ? (horasDesde > 30 ? 'Backup automático pode estar atrasado' : 'Backup automático em dia')
       : 'Último backup falhou';
     detalhe.textContent = ultimo.detalhes || '';
+    const dadosGrafico = renderGraficoBackup(ultimo);
+    if (dadosGrafico && ok) {
+      const tot = dadosGrafico.reduce((a, d) => a + d.n, 0);
+      detalhe.textContent = `${dadosGrafico.length} tabela(s) · ${tot.toLocaleString('pt-BR')} linha(s) salvas`;
+    }
 
     document.getElementById('backup-ultimo-tipo').textContent = ultimo.tipo === 'manual' ? 'Manual' : 'Automático';
     document.getElementById('backup-ultimo-data').textContent = dataUltimo.toLocaleString('pt-BR');
@@ -4803,6 +4829,39 @@ async function carregarStatusBackup() {
     detalhe.textContent = 'A tabela "backup_log" existe no Supabase? (' + e.message + ')';
     historico.innerHTML = '';
   }
+}
+
+// Gráfico de barras horizontais: linhas por tabela no último backup (lidas do campo "detalhes")
+const NOMES_TABELAS_BACKUP = {
+  registros: 'Expediente / Plantão', registros_bo: 'Setor de B.O.', custodia: 'Custódia',
+  escrivaes: 'Escrivães (usuários)', feriados: 'Feriados',
+  registros_eleicao: 'Eleições — crimes eleitorais', registros_eleicao_comuns: 'Eleições — crimes comuns'
+};
+function renderGraficoBackup(log) {
+  const card = document.getElementById('backup-grafico-card');
+  const txt = String((log && log.detalhes) || '');
+  const parte = txt.includes('—') ? txt.split('—').slice(1).join('—') : '';
+  const dados = [];
+  parte.replace(/\(não encontradas:[^)]*\)/, '').replace(/([a-z_]+):\s*(\d+)/g, (m, t, n) => { dados.push({ t, n: parseInt(n) }); return m; });
+  if (!dados.length) { card.style.display = 'none'; return null; }
+  dados.sort((a, b) => b.n - a.n);
+  const max = Math.max(1, ...dados.map(d => d.n));
+  const total = dados.reduce((a, d) => a + d.n, 0);
+  document.getElementById('backup-grafico-total').textContent = `Total: ${total.toLocaleString('pt-BR')} linhas`;
+  document.getElementById('backup-grafico').innerHTML = dados.map(d => {
+    const pct = d.n / max * 100;
+    const nome = NOMES_TABELAS_BACKUP[d.t] || d.t;
+    return `<div title="${nome}: ${d.n.toLocaleString('pt-BR')} linha(s) (${(d.n / total * 100).toFixed(1).replace('.', ',')}% do total)"
+        style="display:grid;grid-template-columns:190px 1fr 64px;align-items:center;gap:10px;padding:5px 0;">
+      <span style="font-size:12.5px;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${nome}</span>
+      <span style="background:var(--cinza);border-radius:4px;height:16px;position:relative;">
+        <span style="position:absolute;left:0;top:0;bottom:0;width:${d.n ? Math.max(pct, 0.8) : 0}%;background:var(--azul-claro);border-radius:0 4px 4px 0;"></span>
+      </span>
+      <span style="font-size:12.5px;font-weight:600;color:var(--texto);text-align:right;font-variant-numeric:tabular-nums;">${d.n.toLocaleString('pt-BR')}</span>
+    </div>`;
+  }).join('');
+  card.style.display = 'block';
+  return dados;
 }
 
 async function gerarBackupManualAgora() {
@@ -6026,7 +6085,7 @@ async function salvarEdicaoRegistro() {
   }
 
   try {
-    await supa.patch(r.tabela, `id=eq.${r.id}`, payload);
+    await adm('update', r.tabela, 'id', r.id, payload);
     fecharEdicaoRegistro();
     await buscarRegistros();
   } catch(e) {
@@ -6039,7 +6098,7 @@ async function excluirRegistroConsulta(idx) {
   if (!r) return;
   if (!confirm(`Excluir este registro?\n\nData: ${formatarDataBR(r.data)}\nEscrivão: ${r.escrivao}\nProcedimento: ${r.procedimento}\n\nEsta ação não pode ser desfeita.`)) return;
   try {
-    await supa.del(r.tabela, `id=eq.${r.id}`);
+    await adm('delete', r.tabela, 'id', r.id);
     await buscarRegistros();
   } catch(e) {
     alert('Erro ao excluir: ' + e.message);
@@ -6612,7 +6671,8 @@ async function elSalvar() {
   btn.disabled = true; txt.textContent = 'Salvando...'; sp.style.display = 'block';
   try {
     if (elEditId) {
-      await supa.patch('registros_eleicao', `id=eq.${elEditId}`, { ...d, atualizado_em: new Date().toISOString() });
+      if (usuarioLogado.isAdmin) await adm('update', 'registros_eleicao', 'id', elEditId, { ...d, atualizado_em: new Date().toISOString() });
+      else await supa.patch('registros_eleicao', `id=eq.${elEditId}`, { ...d, atualizado_em: new Date().toISOString() });
     } else {
       await supa.post('registros_eleicao', { ...d, escrivao: usuarioLogado.nome, hora_registro: new Date().toISOString() });
       elAvisarEmail(d, MAPA_SERVIDOR_CUSTODIA[usuarioLogado.nome] || usuarioLogado.nome);
@@ -6708,7 +6768,8 @@ function elCardResumo(r, acoesHtml, extraHtml) {
 async function elExcluir(id, ehAdmin) {
   if (!confirm(`Excluir o registro eleitoral #${id}? Esta ação não pode ser desfeita.`)) return;
   try {
-    await supa.del('registros_eleicao', `id=eq.${id}`);
+    if (usuarioLogado.isAdmin) await adm('delete', 'registros_eleicao', 'id', id);
+    else await supa.del('registros_eleicao', `id=eq.${id}`);
     if (ehAdmin) elCarregarAdmin(); else elCarregarMeus();
   } catch (e) { alert('Erro ao excluir: ' + e.message); }
 }
@@ -6815,7 +6876,7 @@ async function elCopiarLinha(el) {
 
 async function elMarcarLancado(id, valor) {
   try {
-    await supa.patch('registros_eleicao', `id=eq.${id}`, valor
+    await adm('update', 'registros_eleicao', 'id', id, valor
       ? { lancado: true, lancado_em: new Date().toISOString(), lancado_por: usuarioLogado.nome }
       : { lancado: false, lancado_em: null, lancado_por: null });
     const r = elRegistrosAdmin.find(x => x.id === id);
@@ -6960,7 +7021,7 @@ function elRenderComuns() {
 }
 async function elExcluirComum(id) {
   if (!confirm('Excluir este lançamento?')) return;
-  try { await supa.del('registros_eleicao_comuns', `id=eq.${id}`); elCarregarComuns(); }
+  try { await adm('delete', 'registros_eleicao_comuns', 'id', id); elCarregarComuns(); }
   catch (e) { alert('Erro ao excluir: ' + e.message); }
 }
 function elMontarResumoComuns() {
