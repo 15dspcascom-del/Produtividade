@@ -4746,7 +4746,8 @@ async function salvarDashboardPDF() {
 // ============================================================
 // Preencher com a URL do Web App depois de implantar o Google Apps Script
 // (Implantar > Nova implantação > Aplicativo da Web). Ex: 'https://script.google.com/macros/s/AKfycb.../exec'
-const BACKUP_WEBAPP_URL = '';
+// Cole aqui a URL do App da Web do Google Apps Script (termina em /exec)
+const BACKUP_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzaaBoV31a0of2Qc0luR6AyejAmtW5HMdRKBQwVUFgjvkQ8ibNy99f8IP_oJfmMMQP6/exec';
 
 async function iniciarTelaBackup() {
   await carregarStatusBackup();
@@ -4792,7 +4793,7 @@ async function carregarStatusBackup() {
       const d = new Date(l.executado_em);
       const okL = l.status === 'sucesso';
       return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--cinza-borda);font-size:13px;">
-        <span>${okL ? '✅' : '❌'} ${l.tipo === 'manual' ? 'Manual' : 'Automático'} — ${l.detalhes || ''}</span>
+        <span>${okL ? '✅' : '❌'} ${l.tipo === 'manual' ? 'Manual' : 'Automático'} — ${l.detalhes || ''}${l.pasta_url ? ` <a href="${l.pasta_url}" target="_blank" rel="noopener" style="color:var(--azul-claro);font-weight:600;">📁 abrir pasta</a>` : ''}</span>
         <span style="color:var(--texto-leve);white-space:nowrap;">${d.toLocaleString('pt-BR')}</span>
       </div>`;
     }).join('');
