@@ -1448,8 +1448,10 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         <button class="btn-enviar" style="max-width:240px;background:var(--verde);" onclick="cvliGerar('png')">🖼️ Baixar imagem (WhatsApp)</button>
       </div>
 
-      <div style="background:#fff;border:1.5px solid var(--cinza-borda);border-radius:10px;padding:12px;overflow:auto;">
-        <div id="cvli-folha"></div>
+      <div id="cvli-moldura" style="background:#fff;border:1.5px solid var(--cinza-borda);border-radius:10px;padding:12px;overflow:hidden;">
+        <div id="cvli-escala" style="transform-origin:top left;">
+          <div id="cvli-folha"></div>
+        </div>
       </div>
     </div>
 
@@ -7648,7 +7650,19 @@ function cvliRender() {
   document.getElementById('cvli-folha').innerHTML = `
     <div class="cvli-titulo">15ª DELEGACIA SECCIONAL DE POLÍCIA CIVIL - PATOS/PB<br>UNIDADES E DELEGADOS RESPONSÁVEIS EM CASOS DE <u>CVLIs</u></div>
     <div class="cvli-blocos"><div>${exp}</div><div>${plant}</div></div>`;
+  cvliAjustarEscala();
 }
+// Reduz a prévia para caber inteira na tela (o PDF/imagem continuam em tamanho real)
+function cvliAjustarEscala() {
+  const moldura = document.getElementById('cvli-moldura'), esc = document.getElementById('cvli-escala'), folha = document.getElementById('cvli-folha');
+  if (!moldura || !esc || !folha || moldura.offsetParent === null) return;
+  const disponivel = moldura.clientWidth - 24;
+  const k = Math.min(1, disponivel / folha.offsetWidth);
+  esc.style.transform = k < 1 ? `scale(${k})` : 'none';
+  esc.style.height = (folha.offsetHeight * k) + 'px';
+  esc.style.width = (folha.offsetWidth * k) + 'px';
+}
+window.addEventListener('resize', () => { if (document.getElementById('tela-cvli')?.classList.contains('ativa')) cvliAjustarEscala(); });
 
 async function cvliGerar(formato) {
   const fds = cvliEhFds();
@@ -7666,7 +7680,12 @@ async function cvliGerar(formato) {
   btn.disabled = true;
   try {
     const el = document.getElementById('cvli-folha');
-    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true, windowWidth: 1600, width: el.scrollWidth, height: el.scrollHeight });
+    const esc = document.getElementById('cvli-escala');
+    esc.style.transform = 'none';
+    let canvas;
+    try {
+      canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true, windowWidth: 1600, width: el.scrollWidth, height: el.scrollHeight });
+    } finally { cvliAjustarEscala(); }
     if (formato === 'png') {
       const a = document.createElement('a');
       a.href = canvas.toDataURL('image/png'); a.download = nomeArq + '.png';
