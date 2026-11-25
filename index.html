@@ -713,6 +713,9 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
 @media (max-width: 760px) { .adm-painel { grid-template-columns: 1fr; } }
 
 /* ===== FOLHA CVLI (delegados responsáveis) ===== */
+#cvli-folha.cvli-retrato { width: 900px; padding: 30px 30px 40px; }
+#cvli-folha.cvli-retrato .cvli-tab td { padding: 10px 8px; }
+#cvli-folha.cvli-retrato .cvli-tab tr td[rowspan] { height: 60px; }
 #cvli-folha { width: 1400px; background: #fff; padding: 26px 30px 30px; font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; }
 .cvli-titulo { text-align: center; color: #1f4d78; font-weight: 700; font-size: 20px; line-height: 1.35; margin-bottom: 18px; }
 .cvli-blocos { display: flex; gap: 22px; align-items: flex-start; }
@@ -1412,7 +1415,7 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         <button class="btn-voltar" onclick="mostrarTela('admin')">← Voltar</button>
       </div>
       <div class="el-filtros" style="align-items:flex-end;">
-        <div class="fm-item"><label>Data</label><input type="date" id="cvli-data" onchange="cvliAtualizarTipo();cvliRender()"></div>
+        <div class="fm-item"><label>Data</label><input type="date" id="cvli-data" onchange="cvliAtualizarTipo();cvliRender()" oninput="cvliAtualizarTipo();cvliRender()"></div>
         <div class="fm-item" style="min-width:230px;"><label>Escala</label>
           <select id="cvli-tipo" onchange="cvliMostrarCampos();cvliRender()">
             <option value="auto">Automático (pela data)</option>
@@ -1429,17 +1432,17 @@ tbody td { padding: 12px 16px; font-size: 13px; color: var(--texto); }
         <div class="fm-item"><label>Telefone</label><input type="text" id="cvli-tel-util" placeholder="83.99999-9999" oninput="cvliRender()"></div>
       </div>
       <div id="cvli-campos-fds" style="display:none;">
-        <div class="el-filtros">
-          <div class="fm-item" style="min-width:150px;"><label style="color:var(--azul);">Plantão de PATOS</label><div style="font-size:11px;color:var(--texto-leve);">demais cidades</div></div>
-          <div class="fm-item" style="min-width:240px;"><label>Delegado plantonista</label><select id="cvli-del-patos" onchange="cvliEscolherDelegado('patos')"></select></div>
-          <div class="fm-item" style="min-width:200px;"><label>Nome (se for outro)</label><input type="text" id="cvli-nome-patos" oninput="cvliRender()"></div>
-          <div class="fm-item"><label>Telefone</label><input type="text" id="cvli-tel-patos" oninput="cvliRender()"></div>
-        </div>
-        <div class="el-filtros">
-          <div class="fm-item" style="min-width:150px;"><label style="color:var(--azul);">Plantão de TEIXEIRA</label><div style="font-size:11px;color:var(--texto-leve);">Teixeira, Desterro, Maturéia, Cacimbas</div></div>
-          <div class="fm-item" style="min-width:240px;"><label>Delegado plantonista</label><select id="cvli-del-teixeira" onchange="cvliEscolherDelegado('teixeira')"></select></div>
+        <div class="el-filtros" style="border-left:5px solid #1f4d78;">
+          <div class="fm-item" style="width:210px;"><label style="color:#1f4d78;font-size:12px;">1) PLANTÃO DE TEIXEIRA</label><div style="font-size:11px;color:var(--texto-leve);">Teixeira, Desterro, Maturéia e Cacimbas</div></div>
+          <div class="fm-item" style="min-width:240px;"><label>Delegado plantonista — Teixeira</label><select id="cvli-del-teixeira" onchange="cvliEscolherDelegado('teixeira')"></select></div>
           <div class="fm-item" style="min-width:200px;"><label>Nome (se for outro)</label><input type="text" id="cvli-nome-teixeira" oninput="cvliRender()"></div>
           <div class="fm-item"><label>Telefone</label><input type="text" id="cvli-tel-teixeira" oninput="cvliRender()"></div>
+        </div>
+        <div class="el-filtros" style="border-left:5px solid #1f4d78;">
+          <div class="fm-item" style="width:210px;"><label style="color:#1f4d78;font-size:12px;">2) PLANTÃO DE PATOS</label><div style="font-size:11px;color:var(--texto-leve);">Patos e todas as demais cidades</div></div>
+          <div class="fm-item" style="min-width:240px;"><label>Delegado plantonista — Patos</label><select id="cvli-del-patos" onchange="cvliEscolherDelegado('patos')"></select></div>
+          <div class="fm-item" style="min-width:200px;"><label>Nome (se for outro)</label><input type="text" id="cvli-nome-patos" oninput="cvliRender()"></div>
+          <div class="fm-item"><label>Telefone</label><input type="text" id="cvli-tel-patos" oninput="cvliRender()"></div>
         </div>
       </div>
 
@@ -7526,7 +7529,8 @@ const CVLI_DELEGADOS = [
   { nome: 'DR EDMILSON',  tel: '83.99660-5646' },
   { nome: 'DR MARTINS',   tel: '83.99961-0871' },
   { nome: 'DRA DANIELA',  tel: '83.99937-3942' },
-  { nome: 'DR CLENALDO',  tel: '83.98187-5980' }
+  { nome: 'DR CLENALDO',  tel: '83.98187-5980' },
+  { nome: 'DRA ELISA',    tel: '85.99931-2929' }
 ];
 // Expediente (seg a sex, 08h às 18h) — fixo
 const CVLI_EXPEDIENTE = [
@@ -7542,7 +7546,7 @@ const CVLI_EXPEDIENTE = [
   { local: 'CACIMBA DE AREIA', unidade: '1ª DD', dels: [['DRA DANIELA', '83.99937-3942']], alto: true }
 ];
 const CVLI_PATOS_DHE = [['DRA SILVIA', '83.99921-6401'], ['DR EMERSON', '82.99948-1168']];
-const CVLI_CIDADES_PATOS_FDS = 'SANTA LUZIA, VÁRZEA, JUNCO DO SERIDÓ, SÃO JOSÉ DO SABUGI, MALTA, CONDADO, VISTA SERRANA, SÃO MAMEDE, SANTA TEREZINHA E SÃO JOSÉ DO BONFIM, QUIXABA, AREIA DE BARAÚNAS, SÃO JOSÉ DE ESPINHARAS E CACIMBA DE AREIA';
+const CVLI_CIDADES_PATOS_FDS = 'PATOS, SANTA LUZIA, VÁRZEA, JUNCO DO SERIDÓ, SÃO JOSÉ DO SABUGI, MALTA, CONDADO, VISTA SERRANA, SÃO MAMEDE, SANTA TEREZINHA E SÃO JOSÉ DO BONFIM, QUIXABA, AREIA DE BARAÚNAS, SÃO JOSÉ DE ESPINHARAS E CACIMBA DE AREIA';
 const CVLI_DIAS = ['DOMINGO', 'SEGUNDA-FEIRA', 'TERÇA-FEIRA', 'QUARTA-FEIRA', 'QUINTA-FEIRA', 'SEXTA-FEIRA', 'SÁBADO'];
 
 function cvliLS(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem('cvli_' + k) || 'null'); localStorage.setItem('cvli_' + k, JSON.stringify(v)); } catch (e) { return null; } }
@@ -7601,9 +7605,9 @@ function cvliLinhasDels(dels) {
   // devolve as células "delegado | telefone" e o rowspan necessário
   return dels.map(([n, t]) => `<td>${elEsc(n)}</td><td>${elEsc(t)}</td>`);
 }
-function cvliTabela(cabecalho, larguras, linhas) {
+function cvliTabela(cabecalho, larguras, linhas, zInicial) {
   const cols = `<colgroup>${larguras.map(w => `<col style="width:${w}px">`).join('')}</colgroup>`;
-  let corpo = '', z = 1;
+  let corpo = '', z = zInicial === undefined ? 1 : zInicial;
   linhas.forEach(l => {
     const dels = l.dels.length ? l.dels : [['', '']];
     const span = dels.length;
@@ -7627,29 +7631,36 @@ function cvliRender() {
   const fds = cvliEhFds();
   const L = [190, 170, 165, 125];
 
-  const exp = cvliTabela(`<tr><th class="cvli-h1" colspan="4" style="height:95px;">EXPEDIENTE (SEG A SEX: 08H ÀS 18H)</th></tr>`, L, CVLI_EXPEDIENTE);
-
-  let plant;
   const cab = (titulo) => `<tr><th class="cvli-h1" colspan="4">${titulo}</th></tr>
       <tr><th class="cvli-h2" colspan="4">DATA: ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y} - ${diaSem}</th></tr>
       <tr><th class="cvli-h2" colspan="4">PLANTONISTA DE HOJE</th></tr>`;
+  const folha = document.getElementById('cvli-folha');
+
   if (!fds) {
+    // DIA ÚTIL: expediente + plantão lado a lado (A4 deitado)
+    const exp = cvliTabela(`<tr><th class="cvli-h1" colspan="4" style="height:95px;">EXPEDIENTE (SEG A SEX: 08H ÀS 18H)</th></tr>`, L, CVLI_EXPEDIENTE);
     const p = cvliPlantonista('util');
-    plant = cvliTabela(cab('PLANTÃO SEG A SEX (18H ÀS 08H)'), L, [
+    const plant = cvliTabela(cab('PLANTÃO SEG A SEX (18H ÀS 08H)'), L, [
       { local: 'PATOS', unidade: 'DHE', dels: CVLI_PATOS_DHE },
-      { local: 'TODAS AS 21 CIDADES', unidade: 'PLANTÃO CENTRALIZADO DE PATOS', dels: [[p.nome, p.tel]], alto: true, destaque: true }
+      { local: 'TODAS AS 21 CIDADES', unidade: 'PLANTÃO CENTRALIZADO DE PATOS', dels: [[p.nome, p.tel]], alto: true }
     ]);
+    folha.className = '';
+    folha.innerHTML = `
+      <div class="cvli-titulo">15ª DELEGACIA SECCIONAL DE POLÍCIA CIVIL - PATOS/PB<br>UNIDADES E DELEGADOS RESPONSÁVEIS EM CASOS DE <u>CVLIs</u></div>
+      <div class="cvli-blocos"><div>${exp}</div><div>${plant}</div></div>`;
   } else {
+    // SÁBADO, DOMINGO (ou feriado): só o plantão, folha em pé (modelo de 22/11/2026)
     const pp = cvliPlantonista('patos'), pt = cvliPlantonista('teixeira');
-    plant = cvliTabela(cab('PLANTÃO SAB, DOM E FERIADOS (08H ÀS 08H)'), L, [
-      { local: 'PATOS', unidade: 'DHE', dels: CVLI_PATOS_DHE },
-      { local: 'TEIXEIRA, DESTERRO, MATURÉIA E CACIMBAS', unidade: 'PLANTÃO CENTRALIZADO DE TEIXEIRA', dels: [[pt.nome, pt.tel]], alto: true, destaque: true },
-      { local: CVLI_CIDADES_PATOS_FDS, unidade: 'PLANTÃO CENTRALIZADO DE PATOS', dels: [[pp.nome, pp.tel]], destaque: true }
-    ]);
+    const ehFimDeSemana = [0, 6].includes(new Date(y, m - 1, d).getDay());
+    const plant = cvliTabela(cab(ehFimDeSemana ? 'PLANTÃO SAB E DOM (08H ÀS 08H)' : 'PLANTÃO FERIADO (08H ÀS 08H)'), [300, 165, 185, 155], [
+      { local: 'TEIXEIRA, DESTERRO, MATURÉIA E CACIMBAS', unidade: 'PLANTÃO CENTRALIZADO TEIXEIRA', dels: [[pt.nome, pt.tel]], alto: true },
+      { local: CVLI_CIDADES_PATOS_FDS, unidade: 'PLANTÃO CENTRALIZADO DE PATOS', dels: [[pp.nome, pp.tel]] }
+    ], 0);
+    folha.className = 'cvli-retrato';
+    folha.innerHTML = `
+      <div class="cvli-titulo">15ª DELEGACIA SECCIONAL DE POLÍCIA CIVIL - PATOS/PB<br>UNIDADES E DELEGADOS RESPONSÁVEIS EM CASOS DE CVLIs</div>
+      <div style="display:flex;justify-content:center;">${plant}</div>`;
   }
-  document.getElementById('cvli-folha').innerHTML = `
-    <div class="cvli-titulo">15ª DELEGACIA SECCIONAL DE POLÍCIA CIVIL - PATOS/PB<br>UNIDADES E DELEGADOS RESPONSÁVEIS EM CASOS DE <u>CVLIs</u></div>
-    <div class="cvli-blocos"><div>${exp}</div><div>${plant}</div></div>`;
   cvliAjustarEscala();
 }
 // Reduz a prévia para caber inteira na tela (o PDF/imagem continuam em tamanho real)
@@ -7666,7 +7677,7 @@ window.addEventListener('resize', () => { if (document.getElementById('tela-cvli
 
 async function cvliGerar(formato) {
   const fds = cvliEhFds();
-  const chaves = fds ? ['patos', 'teixeira'] : ['util'];
+  const chaves = fds ? ['teixeira', 'patos'] : ['util'];
   for (const k of chaves) {
     const p = cvliPlantonista(k);
     if (!p.nome || !p.tel) { alert(`Informe o delegado plantonista${fds ? ' (' + (k === 'patos' ? 'Patos' : 'Teixeira') + ')' : ''} e o telefone.`); return; }
@@ -7693,11 +7704,11 @@ async function cvliGerar(formato) {
       return;
     }
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('l', 'mm', 'a4');          // A4 paisagem
+    const pdf = new jsPDF(fds ? 'p' : 'l', 'mm', 'a4');   // fim de semana: A4 em pé; dia útil: A4 deitado
     const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight(), mg = 8;
     let w = pw - 2 * mg, h = canvas.height * w / canvas.width;
     if (h > ph - 2 * mg) { h = ph - 2 * mg; w = canvas.width * h / canvas.height; }
-    pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', (pw - w) / 2, mg, w, h);
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', (pw - w) / 2, fds ? 10 : mg, w, h);
     pdf.save(nomeArq + '.pdf');
   } catch (e) {
     alert('Erro ao gerar: ' + e.message);
